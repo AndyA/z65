@@ -1,0 +1,13 @@
+.{
+    .name = .z65,
+    .version = "0.0.0",
+    .fingerprint = 0x798861c22d8c616f, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.0-dev.833+5f7780c53",
+    .dependencies = .{
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

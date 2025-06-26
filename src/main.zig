@@ -1,0 +1,398 @@
+const std = @import("std");
+
+const Opcode = enum(u8) {
+    @"BRK impl", // 00
+    @"ORA X,ind", // 01
+    @"X02 ill", // 02
+    @"X03 ill", // 03
+    @"X04 ill", // 04
+    @"ORA zpg", // 05
+    @"ASL zpg", // 06
+    @"X07 ill", // 07
+    @"PHP impl", // 08
+    @"ORA #", // 09
+    @"ASL A", // 0a
+    @"X0B ill", // 0b
+    @"X0C ill", // 0c
+    @"ORA abs", // 0d
+    @"ASL abs", // 0e
+    @"X0F ill", // 0f
+    @"BPL rel", // 10
+    @"ORA ind,Y", // 11
+    @"X12 ill", // 12
+    @"X13 ill", // 13
+    @"X14 ill", // 14
+    @"ORA zpg,X", // 15
+    @"ASL zpg,X", // 16
+    @"X17 ill", // 17
+    @"CLC impl", // 18
+    @"ORA abs,Y", // 19
+    @"X1A ill", // 1a
+    @"X1B ill", // 1b
+    @"X1C ill", // 1c
+    @"ORA abs,X", // 1d
+    @"ASL abs,X", // 1e
+    @"X1F ill", // 1f
+    @"JSR abs", // 20
+    @"AND X,ind", // 21
+    @"X22 ill", // 22
+    @"X23 ill", // 23
+    @"BIT zpg", // 24
+    @"AND zpg", // 25
+    @"ROL zpg", // 26
+    @"X27 ill", // 27
+    @"PLP impl", // 28
+    @"AND #", // 29
+    @"ROL A", // 2a
+    @"X2B ill", // 2b
+    @"BIT abs", // 2c
+    @"AND abs", // 2d
+    @"ROL abs", // 2e
+    @"X2F ill", // 2f
+    @"BMI rel", // 30
+    @"AND ind,Y", // 31
+    @"X32 ill", // 32
+    @"X33 ill", // 33
+    @"X34 ill", // 34
+    @"AND zpg,X", // 35
+    @"ROL zpg,X", // 36
+    @"X37 ill", // 37
+    @"SEC impl", // 38
+    @"AND abs,Y", // 39
+    @"X3A ill", // 3a
+    @"X3B ill", // 3b
+    @"X3C ill", // 3c
+    @"AND abs,X", // 3d
+    @"ROL abs,X", // 3e
+    @"X3F ill", // 3f
+    @"RTI impl", // 40
+    @"EOR X,ind", // 41
+    @"X42 ill", // 42
+    @"X43 ill", // 43
+    @"X44 ill", // 44
+    @"EOR zpg", // 45
+    @"LSR zpg", // 46
+    @"X47 ill", // 47
+    @"PHA impl", // 48
+    @"EOR #", // 49
+    @"LSR A", // 4a
+    @"X4B ill", // 4b
+    @"JMP abs", // 4c
+    @"EOR abs", // 4d
+    @"LSR abs", // 4e
+    @"X4F ill", // 4f
+    @"BVC rel", // 50
+    @"EOR ind,Y", // 51
+    @"X52 ill", // 52
+    @"X53 ill", // 53
+    @"X54 ill", // 54
+    @"EOR zpg,X", // 55
+    @"LSR zpg,X", // 56
+    @"X57 ill", // 57
+    @"CLI impl", // 58
+    @"EOR abs,Y", // 59
+    @"X5A ill", // 5a
+    @"X5B ill", // 5b
+    @"X5C ill", // 5c
+    @"EOR abs,X", // 5d
+    @"LSR abs,X", // 5e
+    @"X5F ill", // 5f
+    @"RTS impl", // 60
+    @"ADC X,ind", // 61
+    @"X62 ill", // 62
+    @"X63 ill", // 63
+    @"X64 ill", // 64
+    @"ADC zpg", // 65
+    @"ROR zpg", // 66
+    @"X67 ill", // 67
+    @"PLA impl", // 68
+    @"ADC #", // 69
+    @"ROR A", // 6a
+    @"X6B ill", // 6b
+    @"JMP ind", // 6c
+    @"ADC abs", // 6d
+    @"ROR abs", // 6e
+    @"X6F ill", // 6f
+    @"BVS rel", // 70
+    @"ADC ind,Y", // 71
+    @"X72 ill", // 72
+    @"X73 ill", // 73
+    @"X74 ill", // 74
+    @"ADC zpg,X", // 75
+    @"ROR zpg,X", // 76
+    @"X77 ill", // 77
+    @"SEI impl", // 78
+    @"ADC abs,Y", // 79
+    @"X7A ill", // 7a
+    @"X7B ill", // 7b
+    @"X7C ill", // 7c
+    @"ADC abs,X", // 7d
+    @"ROR abs,X", // 7e
+    @"X7F ill", // 7f
+    @"X80 ill", // 80
+    @"STA X,ind", // 81
+    @"X82 ill", // 82
+    @"X83 ill", // 83
+    @"STY zpg", // 84
+    @"STA zpg", // 85
+    @"STX zpg", // 86
+    @"X87 ill", // 87
+    @"DEY impl", // 88
+    @"X89 ill", // 89
+    @"TXA impl", // 8a
+    @"X8B ill", // 8b
+    @"STY abs", // 8c
+    @"STA abs", // 8d
+    @"STX abs", // 8e
+    @"X8F ill", // 8f
+    @"BCC rel", // 90
+    @"STA ind,Y", // 91
+    @"X92 ill", // 92
+    @"X93 ill", // 93
+    @"STY zpg,X", // 94
+    @"STA zpg,X", // 95
+    @"STX zpg,Y", // 96
+    @"X97 ill", // 97
+    @"TYA impl", // 98
+    @"STA abs,Y", // 99
+    @"TXS impl", // 9a
+    @"X9B ill", // 9b
+    @"X9C ill", // 9c
+    @"STA abs,X", // 9d
+    @"X9E ill", // 9e
+    @"X9F ill", // 9f
+    @"LDY #", // a0
+    @"LDA X,ind", // a1 LDA (zp, X)
+    @"LDX #", // a2
+    @"XA3 ill", // a3
+    @"LDY zpg", // a4
+    @"LDA zpg", // a5
+    @"LDX zpg", // a6
+    @"XA7 ill", // a7
+    @"TAY impl", // a8
+    @"LDA #", // a9
+    @"TAX impl", // aa
+    @"XAB ill", // ab
+    @"LDY abs", // ac
+    @"LDA abs", // ad
+    @"LDX abs", // ae
+    @"XAF ill", // af
+    @"BCS rel", // b0
+    @"LDA ind,Y", // b1 LDA (zp), Y
+    @"XB2 ill", // b2
+    @"XB3 ill", // b3
+    @"LDY zpg,X", // b4
+    @"LDA zpg,X", // b5
+    @"LDX zpg,Y", // b6
+    @"XB7 ill", // b7
+    @"CLV impl", // b8
+    @"LDA abs,Y", // b9
+    @"TSX impl", // ba
+    @"XBB ill", // bb
+    @"LDY abs,X", // bc
+    @"LDA abs,X", // bd
+    @"LDX abs,Y", // be
+    @"XBF ill", // bf
+    @"CPY #", // c0
+    @"CMP X,ind", // c1
+    @"XC2 ill", // c2
+    @"XC3 ill", // c3
+    @"CPY zpg", // c4
+    @"CMP zpg", // c5
+    @"DEC zpg", // c6
+    @"XC7 ill", // c7
+    @"INY impl", // c8
+    @"CMP #", // c9
+    @"DEX impl", // ca
+    @"XCB ill", // cb
+    @"CPY abs", // cc
+    @"CMP abs", // cd
+    @"DEC abs", // ce
+    @"XCF ill", // cf
+    @"BNE rel", // d0
+    @"CMP ind,Y", // d1
+    @"XD2 ill", // d2
+    @"XD3 ill", // d3
+    @"XD4 ill", // d4
+    @"CMP zpg,X", // d5
+    @"DEC zpg,X", // d6
+    @"XD7 ill", // d7
+    @"CLD impl", // d8
+    @"CMP abs,Y", // d9
+    @"XDA ill", // da
+    @"XDB ill", // db
+    @"XDC ill", // dc
+    @"CMP abs,X", // dd
+    @"DEC abs,X", // de
+    @"XDF ill", // df
+    @"CPX #", // e0
+    @"SBC X,ind", // e1
+    @"XE2 ill", // e2
+    @"XE3 ill", // e3
+    @"CPX zpg", // e4
+    @"SBC zpg", // e5
+    @"INC zpg", // e6
+    @"XE7 ill", // e7
+    @"INX impl", // e8
+    @"SBC #", // e9
+    @"NOP impl", // ea
+    @"XEB ill", // eb
+    @"CPX abs", // ec
+    @"SBC abs", // ed
+    @"INC abs", // ee
+    @"XEF ill", // ef
+    @"BEQ rel", // f0
+    @"SBC ind,Y", // f1
+    @"XF2 ill", // f2
+    @"XF3 ill", // f3
+    @"XF4 ill", // f4
+    @"SBC zpg,X", // f5
+    @"INC zpg,X", // f6
+    @"XF7 ill", // f7
+    @"SED impl", // f8
+    @"SBC abs,Y", // f9
+    @"XFA ill", // fa
+    @"XFB ill", // fb
+    @"XFC ill", // fc
+    @"SBC abs,X", // fd
+    @"INC abs,X", // fe
+    @"XFF ill", // ff
+};
+
+const Instr = enum(u8) {
+    ADC,
+    AND,
+    ASL,
+    BCC,
+    BCS,
+    BEQ,
+    BIT,
+    BMI,
+    BNE,
+    BPL,
+    BRK,
+    BVC,
+    BVS,
+    CLC,
+    CLD,
+    CLI,
+    CLV,
+    CMP,
+    CPX,
+    CPY,
+    DEC,
+    DEX,
+    DEY,
+    EOR,
+    INC,
+    INX,
+    INY,
+    JMP,
+    JSR,
+    LDA,
+    LDX,
+    LDY,
+    LSR,
+    NOP,
+    ORA,
+    PHA,
+    PHP,
+    PLA,
+    PLP,
+    ROL,
+    ROR,
+    RTI,
+    RTS,
+    SBC,
+    SEC,
+    SED,
+    SEI,
+    STA,
+    STX,
+    STY,
+    TAX,
+    TAY,
+    TSX,
+    TXA,
+    TXS,
+    TYA,
+};
+
+const AdMode = enum(u8) {
+    @":#",
+    @":A",
+    @":X,ind",
+    @":abs",
+    @":abs,X",
+    @":abs,Y",
+    @":ill",
+    @":impl",
+    @":ind",
+    @":ind,Y",
+    @":rel",
+    @":zpg",
+    @":zpg,X",
+    @":zpg,Y",
+};
+
+const MEMC = struct {
+    M: [0x10000]u8, // 64K memory
+    const Self = @This();
+
+    pub fn poke8(self: *Self, addr: u16, value: u8) void {
+        self.M[addr] = value;
+    }
+
+    pub fn peek8(self: *Self, addr: u16) u8 {
+        return self.M[addr];
+    }
+
+    pub fn poke16(self: *Self, addr: u16, value: u16) void {
+        self.M[addr] = @intCast(value & 0x00FF);
+        self.M[addr +% 1] = @intCast((value >> 8) & 0x00FF);
+    }
+
+    pub fn peek16(self: *Self, addr: u16) u16 {
+        const lo: u16 = @intCast(self.M[addr]);
+        const hi: u16 = @intCast(self.M[addr +% 1]);
+        return @as(u16, (hi << 8) | lo);
+    }
+};
+
+const I = struct {
+    pub fn STA(cpu: anytype, ea: u16) void {
+        _ = cpu;
+        _ = ea;
+    }
+};
+
+pub fn make6502() type {
+    const M6502 = struct {
+        A: u8,
+        X: u8,
+        Y: u8,
+        S: u8,
+        P: u8,
+        PC: u16,
+        mem: MEMC,
+        const Self = @This();
+
+        pub fn push8(self: *Self, byte: u8) void {
+            self.mem.poke8(0x0100 + u16(self.S), byte);
+            self.S -%= 1;
+        }
+
+        pub fn pop8(self: *Self) u8 {
+            self.S +%= 1;
+            return self.mem.peek8(0x0100 + u16(self.S));
+        }
+    };
+
+    return M6502;
+}
+
+pub fn main() !void {
+    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    const M6502 = make6502();
+    _ = M6502;
+}
