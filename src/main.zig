@@ -1,6 +1,17 @@
 const std = @import("std");
-const C = @import("const.zig");
 const mos6502 = @import("mos6502.zig");
+
+pub const IRQV = 0xfffe;
+pub const RESETV = 0xfffc;
+pub const NMIV = 0xfffa;
+
+pub const C_BIT = 1 << 0;
+pub const Z_BIT = 1 << 1;
+pub const I_BIT = 1 << 2;
+pub const D_BIT = 1 << 3;
+pub const B_BIT = 1 << 4;
+pub const V_BIT = 1 << 6;
+pub const N_BIT = 1 << 7;
 
 pub fn makeMemory() type {
     return struct {
@@ -38,8 +49,9 @@ const Instructions = struct {
     }
 
     fn set_nz(cpu: anytype, byte: u8) u8 {
-        const flags = if (byte == 0) C.Z_BIT else 0 | if (byte & 0x80 != 0) C.N_BIT else 0;
-        cpu.P = (cpu.P & ~(C.Z_BIT | C.N_BIT)) | flags;
+        const flags = (if (byte == 0) Z_BIT else 0) |
+            (if (byte & 0x80 != 0) N_BIT else 0);
+        cpu.P = (cpu.P & ~(Z_BIT | N_BIT)) | flags;
         return byte;
     }
 
@@ -52,29 +64,29 @@ const Instructions = struct {
     }
 
     fn set_c(cpu: anytype, value: bool) void {
-        Self.set_if(C.C_BIT, cpu, value);
+        Self.set_if(C_BIT, cpu, value);
     }
 
     fn set_v(cpu: anytype, value: bool) void {
-        Self.set_if(C.V_BIT, cpu, value);
+        Self.set_if(V_BIT, cpu, value);
     }
 
     fn shl(comptime rotate: bool, cpu: anytype, byte: u8) u8 {
         const c_out = (byte & 0x80) != 0;
-        const result = byte << 1 | if (rotate and cpu.P & C.C_BIT) 1 else 0;
+        const result = byte << 1 | if (rotate and cpu.P & C_BIT) 1 else 0;
         Self.set_c(cpu, c_out);
         return Self.set_nz(cpu, result);
     }
 
     fn shr(comptime rotate: bool, cpu: anytype, byte: u8) u8 {
         const c_out = (byte & 0x01) != 0;
-        const result = byte >> 1 | if (rotate and cpu.P & C.C_BIT) 0x80 else 0;
+        const result = byte >> 1 | if (rotate and cpu.P & C_BIT) 0x80 else 0;
         Self.set_c(cpu, c_out);
         return Self.set_nz(cpu, result);
     }
 
     fn adc_binary(cpu: anytype, lhs: u8, rhs: u8) u8 {
-        const c_in = if (cpu.P & C.C_BIT != 0) 1 else 0;
+        const c_in = if (cpu.P & C_BIT != 0) 1 else 0;
         const result: u16 = @as(u16, lhs) + @as(u16, rhs) + c_in;
         Self.set_c(cpu, result & 0x100 != 0);
         Self.set_v(cpu, ((lhs ^ result) & (rhs ^ result) & 0x80) != 0);
@@ -82,7 +94,7 @@ const Instructions = struct {
     }
 
     fn adc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
-        const c_in0: u8 = if (cpu.P & C.C_BIT != 0) 1 else 0;
+        const c_in0: u8 = if (cpu.P & C_BIT != 0) 1 else 0;
         const l0 = lhs & 0x0f;
         const l1 = (lhs >> 4) & 0x0f;
         const r0 = rhs & 0x0f;
@@ -106,7 +118,7 @@ const Instructions = struct {
     }
 
     fn adc(cpu: anytype, lhs: u8, rhs: u8) u8 {
-        if (cpu.P & C.D_BIT == 0) {
+        if (cpu.P & D_BIT == 0) {
             return Self.adc_binary(cpu, lhs, rhs);
         } else {
             return Self.adc_decimal(cpu, lhs, rhs);
@@ -118,6 +130,7 @@ const Instructions = struct {
     }
 
     fn cmp(cpu: anytype, lhs: u8, rhs: u8) u8 {
+        Self.set_c(cpu, true);
         _ = Self.adc_binary(cpu, lhs, rhs ^ 0xff);
     }
 
@@ -138,66 +151,66 @@ const Instructions = struct {
     }
 
     pub fn BCC(cpu: anytype, ea: u16) void {
-        Self.branch(C.C_BIT, false, cpu, ea);
+        Self.branch(C_BIT, false, cpu, ea);
     }
 
     pub fn BCS(cpu: anytype, ea: u16) void {
-        Self.branch(C.C_BIT, true, cpu, ea);
+        Self.branch(C_BIT, true, cpu, ea);
     }
 
     pub fn BEQ(cpu: anytype, ea: u16) void {
-        Self.branch(C.Z_BIT, true, cpu, ea);
+        Self.branch(Z_BIT, true, cpu, ea);
     }
 
     pub fn BIT(cpu: anytype, ea: u16) void {
         const byte = cpu.A & cpu.mem.peek8(ea);
-        const flags = (if (byte == 0) C.Z_BIT else 0) |
-            (if (byte & 0x80 != 0) C.N_BIT else 0) |
-            (if (byte & 0x40 != 0) C.V_BIT else 0);
-        cpu.P = (cpu.P & ~(C.Z_BIT | C.N_BIT | C.V_BIT)) | flags;
+        const flags = (if (byte == 0) Z_BIT else 0) |
+            (if (byte & 0x80 != 0) N_BIT else 0) |
+            (if (byte & 0x40 != 0) V_BIT else 0);
+        cpu.P = (cpu.P & ~(Z_BIT | N_BIT | V_BIT)) | flags;
     }
 
     pub fn BMI(cpu: anytype, ea: u16) void {
-        Self.branch(C.N_BIT, true, cpu, ea);
+        Self.branch(N_BIT, true, cpu, ea);
     }
 
     pub fn BNE(cpu: anytype, ea: u16) void {
-        Self.branch(C.Z_BIT, false, cpu, ea);
+        Self.branch(Z_BIT, false, cpu, ea);
     }
 
     pub fn BPL(cpu: anytype, ea: u16) void {
-        Self.branch(C.N_BIT, false, cpu, ea);
+        Self.branch(N_BIT, false, cpu, ea);
     }
 
     pub fn BRK(cpu: anytype) void {
         cpu.push16(cpu.PC);
         Self.PHP(cpu);
-        cpu.P |= C.B_BIT | C.I_BIT; // Set B and I flags
-        cpu.PC = cpu.mem.peek16(C.IRQV);
+        cpu.P |= B_BIT | I_BIT; // Set B and I flags
+        cpu.PC = cpu.mem.peek16(IRQV);
     }
 
     pub fn BVC(cpu: anytype, ea: u16) void {
-        Self.branch(C.V_BIT, false, cpu, ea);
+        Self.branch(V_BIT, false, cpu, ea);
     }
 
     pub fn BVS(cpu: anytype, ea: u16) void {
-        Self.branch(C.V_BIT, true, cpu, ea);
+        Self.branch(V_BIT, true, cpu, ea);
     }
 
     pub fn CLC(cpu: anytype) void {
-        cpu.P &= ~C.C_BIT;
+        cpu.P &= ~C_BIT;
     }
 
     pub fn CLD(cpu: anytype) void {
-        cpu.P &= ~C.D_BIT;
+        cpu.P &= ~D_BIT;
     }
 
     pub fn CLI(cpu: anytype) void {
-        cpu.P &= ~C.I_BIT;
+        cpu.P &= ~I_BIT;
     }
 
     pub fn CLV(cpu: anytype) void {
-        cpu.P &= ~C.V_BIT;
+        cpu.P &= ~V_BIT;
     }
 
     pub fn CMP(cpu: anytype, ea: u16) void {
@@ -321,15 +334,15 @@ const Instructions = struct {
     }
 
     pub fn SEC(cpu: anytype) void {
-        cpu.P |= C.C_BIT;
+        cpu.P |= C_BIT;
     }
 
     pub fn SED(cpu: anytype) void {
-        cpu.P |= C.D_BIT;
+        cpu.P |= D_BIT;
     }
 
     pub fn SEI(cpu: anytype) void {
-        cpu.P |= C.I_BIT;
+        cpu.P |= I_BIT;
     }
 
     pub fn STA(cpu: anytype, ea: u16) void {
@@ -510,7 +523,7 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
             }
 
             pub fn reset(self: *Self) void {
-                self.PC = self.mem.fetch16(C.RESETV);
+                self.PC = self.mem.fetch16(RESETV);
             }
 
             pub fn step(self: *Self) void {
