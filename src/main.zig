@@ -398,6 +398,7 @@ const Instructions = struct {
 };
 
 const AddressModes = struct {
+    const Self = @This();
     fn zp16(cpu: anytype, zp: u8) u16 {
         const lo: u16 = @intCast(cpu.mem.peek8(zp));
         const hi: u16 = @intCast(cpu.mem.peek8(zp +% 1));
@@ -412,7 +413,7 @@ const AddressModes = struct {
 
     pub fn @"X,ind"(cpu: anytype) u16 {
         const zp = cpu.fetch8();
-        return AddressModes.zp16(cpu, zp +% cpu.X);
+        return Self.zp16(cpu, zp +% cpu.X);
     }
 
     pub fn abs(cpu: anytype) u16 {
@@ -441,7 +442,7 @@ const AddressModes = struct {
 
     pub fn @"ind,Y"(cpu: anytype) u16 {
         const zp = cpu.fetch8();
-        return AddressModes.zp16(cpu, zp) +% cpu.Y;
+        return Self.zp16(cpu, zp) +% cpu.Y;
     }
 
     pub fn rel(cpu: anytype) u16 {
