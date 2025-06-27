@@ -1,4 +1,4 @@
-pub const instruction_set = [_][]const u8{
+pub const INSTRUCTION_SET = [_][]const u8{
     "BRK impl", // 00
     "ORA X,ind", // 01
     "X02 ill", // 02
