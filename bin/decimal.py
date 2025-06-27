@@ -79,21 +79,20 @@ def to_bcd(byte: int) -> int:
     return (byte // 100 % 10) << 8 | (byte // 10 % 10) << 4 | (byte % 10)
 
 
-def adc(a: int, b: int, c_in: int) -> tuple[int, int]:
-    bin_res = (a + b + c_in) & 0xFF
+def adc(lhs: int, rhs: int, c_in: int) -> tuple[int, int]:
+    bin_res = (lhs + rhs + c_in) & 0xFF
     z_bit = Z_BIT if bin_res == 0 else 0
 
-    dr_hi = 0
-    dr_lo = (a & 0x0F) + (b & 0x0F) + c_in
+    dr_lo = (lhs & 0x0F) + (rhs & 0x0F) + c_in
+    dr_hi = (lhs >> 4) + (rhs >> 4)
+
     if dr_lo > 9:
         dr_lo -= 10
         dr_lo &= 0x0F
-        dr_hi = 1
-
-    dr_hi += (a >> 4) + (b >> 4)
+        dr_hi += 1
 
     n_bit = N_BIT if dr_hi & 0x08 else 0
-    v_bit = V_BIT if ((a ^ b) & 0x80) == 0 and ((a ^ (dr_hi << 4)) & 0x80) else 0
+    v_bit = V_BIT if ((lhs ^ rhs) & 0x80) == 0 and ((lhs ^ (dr_hi << 4)) & 0x80) else 0
     c_bit = 0
 
     if dr_hi > 9:
@@ -106,10 +105,10 @@ def adc(a: int, b: int, c_in: int) -> tuple[int, int]:
     return res, c_bit | z_bit | n_bit | v_bit
 
 
-def sbc(a: int, b: int, c_in: int) -> tuple[int, int]:
-    bin_res = a - b - 1 + c_in
-    dr_lo = (a & 0x0F) - (b & 0x0F) - 1 + c_in
-    dr_hi = (a >> 4) - (b >> 4)
+def sbc(lhs: int, rhs: int, c_in: int) -> tuple[int, int]:
+    bin_res = lhs - rhs - 1 + c_in
+    dr_lo = (lhs & 0x0F) - (rhs & 0x0F) - 1 + c_in
+    dr_hi = (lhs >> 4) - (rhs >> 4)
 
     if dr_lo & 0x10:
         dr_lo = (dr_lo - 6) & 0x0F
@@ -120,7 +119,7 @@ def sbc(a: int, b: int, c_in: int) -> tuple[int, int]:
 
     n_bit = N_BIT if bin_res & 0x80 else 0
     z_bit = Z_BIT if bin_res & 0xFF == 0 else 0
-    v_bit = V_BIT if (a ^ bin_res) & (b ^ a) & 0x80 else 0
+    v_bit = V_BIT if (lhs ^ bin_res) & (rhs ^ lhs) & 0x80 else 0
     c_bit = C_BIT if bin_res & 0x100 == 0 else 0
 
     return dr_lo | (dr_hi << 4), c_bit | z_bit | n_bit | v_bit

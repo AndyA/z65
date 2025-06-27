@@ -126,9 +126,57 @@ const Instructions = struct {
     }
 
     fn adc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
-        _ = cpu;
-        _ = lhs;
-        _ = rhs;
+        var flags: u8 = 0;
+
+        const c_in = carry(0x01, cpu);
+        const bin_res: u8 = (lhs + rhs + c_in) & 0xff;
+        if (bin_res == 0) flags |= Z_BIT;
+
+        var dr_lo: u8 = (lhs & 0x0f) + (rhs & 0x0f) + c_in;
+        var dr_hi: u8 = (lhs >> 4) + (rhs >> 4);
+        if (dr_lo > 9) {
+            dr_lo = (dr_lo - 10) & 0x0f;
+            dr_hi += 1;
+        }
+
+        if (dr_hi & 0x08 != 0) flags |= N_BIT;
+        if ((lhs ^ rhs & 0x80 == 0) and ((lhs ^ (dr_hi << 4)) & 0x80 != 0))
+            flags |= V_BIT;
+
+        if (dr_hi > 9) {
+            dr_hi -= 10;
+            dr_hi &= 0x0f;
+            flags |= C_BIT;
+        }
+
+        cpu.P = (cpu.P & ~(Z_BIT | N_BIT | V_BIT | C_BIT)) | flags;
+        return @as(u8, (dr_hi << 4) | dr_lo);
+    }
+
+    fn sbc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
+        var flags: u8 = 0;
+        const c_in = carry(0x01, cpu);
+
+        const bin_res: u16 = (@as(u16, lhs) -% @as(u16, rhs) -% 1 +% @as(u16, c_in));
+        if (bin_res & 0x80 != 0) flags |= N_BIT;
+        if (bin_res & 0xff == 0) flags |= Z_BIT;
+        if ((lhs ^ bin_res) & (rhs ^ bin_res) & 0x80 != 0) flags |= V_BIT;
+        if (bin_res & 0x100 != 0) flags |= C_BIT;
+
+        cpu.P = (cpu.P & ~(Z_BIT | N_BIT | V_BIT | C_BIT)) | flags;
+
+        var dr_lo: u8 = (lhs & 0x0f) -% (rhs & 0x0f) -% 1 +% c_in;
+        var dr_hi: u8 = (lhs >> 4) -% (rhs >> 4);
+
+        if (dr_lo & 0x10 != 0) {
+            dr_lo = (dr_lo -% 6) & 0x0f;
+            dr_hi -= 1;
+        }
+
+        if (dr_hi & 0x10 != 0) {
+            dr_hi = (dr_hi -% 6) & 0x0f;
+        }
+
         return 0;
     }
 
@@ -141,7 +189,11 @@ const Instructions = struct {
     }
 
     fn sbc(cpu: anytype, lhs: u8, rhs: u8) u8 {
-        return Self.adc(cpu, lhs, rhs ^ 0xff);
+        if (cpu.P & D_BIT == 0) {
+            return Self.adc_binary(cpu, lhs, rhs ^ 0xff);
+        } else {
+            return Self.sbc_decimal(cpu, lhs, rhs);
+        }
     }
 
     fn cmp(cpu: anytype, lhs: u8, rhs: u8) void {
