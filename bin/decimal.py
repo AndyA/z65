@@ -14,7 +14,7 @@ MODES = {"adc_cc", "adc_cs", "sbc_cc", "sbc_cs"}
 def load_ref(mode: str, prefix: str) -> bytes:
     parts: list[bytes] = []
     for part in range(8):
-        name = os.path.join("ref", mode, f"{prefix}{part}")
+        name = os.path.join("ref", "decimal", mode, f"{prefix}{part}")
         with open(name, "rb") as f:
             parts.append(f.read())
     return b"".join(parts)
