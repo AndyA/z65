@@ -40,17 +40,6 @@ pub fn makeMemory() type {
         pub fn peek8(self: *Self, addr: u16) u8 {
             return self.ram[addr];
         }
-
-        pub fn poke16(self: *Self, addr: u16, value: u16) void {
-            self.poke8(addr, @intCast(value & 0x00FF));
-            self.poke8(addr +% 1, @intCast((value >> 8) & 0x00FF));
-        }
-
-        pub fn peek16(self: *Self, addr: u16) u16 {
-            const lo: u16 = @intCast(self.peek8(addr));
-            const hi: u16 = @intCast(self.peek8(addr +% 1));
-            return (hi << 8) | lo;
-        }
     };
 }
 
@@ -202,15 +191,15 @@ const Instructions = struct {
     }
 
     pub fn ADC(cpu: anytype, ea: u16) void {
-        cpu.A = Self.adc(cpu, cpu.A, cpu.mem.peek8(ea));
+        cpu.A = Self.adc(cpu, cpu.A, cpu.peek8(ea));
     }
 
     pub fn AND(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A & cpu.mem.peek8(ea));
+        cpu.A = Self.set_nz(cpu, cpu.A & cpu.peek8(ea));
     }
 
     pub fn ASL(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, Self.shl(cpu, cpu.mem.peek8(ea)));
+        cpu.poke8(ea, Self.shl(cpu, cpu.peek8(ea)));
     }
 
     pub fn ASLA(cpu: anytype) void {
@@ -230,7 +219,7 @@ const Instructions = struct {
     }
 
     pub fn BIT(cpu: anytype, ea: u16) void {
-        const byte = cpu.A & cpu.mem.peek8(ea);
+        const byte = cpu.A & cpu.peek8(ea);
         const flags = (if (byte == 0) Z_BIT else 0) |
             (if (byte & 0x80 != 0) N_BIT else 0) |
             (if (byte & 0x40 != 0) V_BIT else 0);
@@ -253,7 +242,7 @@ const Instructions = struct {
         cpu.push16(cpu.PC);
         Self.PHP(cpu);
         cpu.P |= B_BIT | I_BIT; // Set B and I flags
-        cpu.PC = cpu.mem.peek16(IRQV);
+        cpu.PC = cpu.peek16(IRQV);
     }
 
     pub fn BVC(cpu: anytype, ea: u16) void {
@@ -281,19 +270,19 @@ const Instructions = struct {
     }
 
     pub fn CMP(cpu: anytype, ea: u16) void {
-        Self.cmp(cpu, cpu.A, cpu.mem.peek8(ea));
+        Self.cmp(cpu, cpu.A, cpu.peek8(ea));
     }
 
     pub fn CPX(cpu: anytype, ea: u16) void {
-        Self.cmp(cpu, cpu.X, cpu.mem.peek8(ea));
+        Self.cmp(cpu, cpu.X, cpu.peek8(ea));
     }
 
     pub fn CPY(cpu: anytype, ea: u16) void {
-        Self.cmp(cpu, cpu.Y, cpu.mem.peek8(ea));
+        Self.cmp(cpu, cpu.Y, cpu.peek8(ea));
     }
 
     pub fn DEC(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, Self.set_nz(cpu, cpu.mem.peek8(ea) -% 1));
+        cpu.poke8(ea, Self.set_nz(cpu, cpu.peek8(ea) -% 1));
     }
 
     pub fn DEX(cpu: anytype) void {
@@ -305,11 +294,11 @@ const Instructions = struct {
     }
 
     pub fn EOR(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A ^ cpu.mem.peek8(ea));
+        cpu.A = Self.set_nz(cpu, cpu.A ^ cpu.peek8(ea));
     }
 
     pub fn INC(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, Self.set_nz(cpu, cpu.mem.peek8(ea) +% 1));
+        cpu.poke8(ea, Self.set_nz(cpu, cpu.peek8(ea) +% 1));
     }
 
     pub fn INX(cpu: anytype) void {
@@ -330,19 +319,19 @@ const Instructions = struct {
     }
 
     pub fn LDA(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.mem.peek8(ea));
+        cpu.A = Self.set_nz(cpu, cpu.peek8(ea));
     }
 
     pub fn LDX(cpu: anytype, ea: u16) void {
-        cpu.X = Self.set_nz(cpu, cpu.mem.peek8(ea));
+        cpu.X = Self.set_nz(cpu, cpu.peek8(ea));
     }
 
     pub fn LDY(cpu: anytype, ea: u16) void {
-        cpu.Y = Self.set_nz(cpu, cpu.mem.peek8(ea));
+        cpu.Y = Self.set_nz(cpu, cpu.peek8(ea));
     }
 
     pub fn LSR(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, Self.shr(cpu, cpu.mem.peek8(ea)));
+        cpu.poke8(ea, Self.shr(cpu, cpu.peek8(ea)));
     }
 
     pub fn LSRA(cpu: anytype) void {
@@ -354,7 +343,7 @@ const Instructions = struct {
     }
 
     pub fn ORA(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A | cpu.mem.peek8(ea));
+        cpu.A = Self.set_nz(cpu, cpu.A | cpu.peek8(ea));
     }
 
     pub fn PHA(cpu: anytype) void {
@@ -372,7 +361,7 @@ const Instructions = struct {
     }
 
     pub fn ROL(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, Self.rol(cpu, cpu.mem.peek8(ea)));
+        cpu.poke8(ea, Self.rol(cpu, cpu.peek8(ea)));
     }
 
     pub fn ROLA(cpu: anytype) void {
@@ -380,7 +369,7 @@ const Instructions = struct {
     }
 
     pub fn ROR(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, Self.ror(cpu, cpu.mem.peek8(ea)));
+        cpu.poke8(ea, Self.ror(cpu, cpu.peek8(ea)));
     }
 
     pub fn RORA(cpu: anytype) void {
@@ -397,7 +386,7 @@ const Instructions = struct {
     }
 
     pub fn SBC(cpu: anytype, ea: u16) void {
-        cpu.A = Self.sbc(cpu, cpu.A, cpu.mem.peek8(ea));
+        cpu.A = Self.sbc(cpu, cpu.A, cpu.peek8(ea));
     }
 
     pub fn SEC(cpu: anytype) void {
@@ -413,15 +402,15 @@ const Instructions = struct {
     }
 
     pub fn STA(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, cpu.A);
+        cpu.poke8(ea, cpu.A);
     }
 
     pub fn STX(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, cpu.X);
+        cpu.poke8(ea, cpu.X);
     }
 
     pub fn STY(cpu: anytype, ea: u16) void {
-        cpu.mem.poke8(ea, cpu.Y);
+        cpu.poke8(ea, cpu.Y);
     }
 
     pub fn TAX(cpu: anytype) void {
@@ -452,8 +441,8 @@ const Instructions = struct {
 const AddressModes = struct {
     const Self = @This();
     fn zp16(cpu: anytype, zp: u8) u16 {
-        const lo: u16 = @intCast(cpu.mem.peek8(zp));
-        const hi: u16 = @intCast(cpu.mem.peek8(zp +% 1));
+        const lo: u16 = @intCast(cpu.peek8(zp));
+        const hi: u16 = @intCast(cpu.peek8(zp +% 1));
         return @as(u16, (hi << 8) | lo);
     }
 
@@ -487,8 +476,8 @@ const AddressModes = struct {
         if (hi_addr & 0x00FF == 0x0000) {
             hi_addr -= 0x0100;
         }
-        const lo: u16 = @intCast(cpu.mem.peek8(lo_addr));
-        const hi: u16 = @intCast(cpu.mem.peek8(hi_addr));
+        const lo: u16 = @intCast(cpu.peek8(lo_addr));
+        const hi: u16 = @intCast(cpu.peek8(hi_addr));
         return @as(u16, (hi << 8) | lo);
     }
 
@@ -557,8 +546,27 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
 
             const Self = @This();
 
+            pub fn peek8(self: *Self, addr: u16) u8 {
+                return self.mem.peek8(addr);
+            }
+
+            pub fn poke8(self: *Self, addr: u16, value: u8) void {
+                self.mem.poke8(addr, value);
+            }
+
+            pub fn peek16(self: *Self, addr: u16) u16 {
+                const lo: u16 = @intCast(self.peek8(addr));
+                const hi: u16 = @intCast(self.peek8(addr +% 1));
+                return (hi << 8) | lo;
+            }
+
+            pub fn poke16(self: *Self, addr: u16, value: u16) void {
+                self.poke8(addr, @intCast(value & 0x00FF));
+                self.poke8(addr +% 1, @intCast((value >> 8) & 0x00FF));
+            }
+
             pub fn fetch8(self: *Self) u8 {
-                const byte = self.mem.peek8(self.PC);
+                const byte = self.peek8(self.PC);
                 // std.debug.print("{x:0>4}: {x:0>2}\n", .{ self.PC, byte });
                 self.PC +%= 1;
                 return byte;
@@ -571,13 +579,13 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
             }
 
             pub fn push8(self: *Self, byte: u8) void {
-                self.mem.poke8(STACK | self.S, byte);
+                self.poke8(STACK | self.S, byte);
                 self.S -%= 1;
             }
 
             pub fn pop8(self: *Self) u8 {
                 self.S +%= 1;
-                return self.mem.peek8(STACK | self.S);
+                return self.peek8(STACK | self.S);
             }
 
             pub fn push16(self: *Self, value: u16) void {
@@ -634,7 +642,7 @@ pub fn main() !void {
     const Memory = makeMemory();
     const M6502 = make6502(Memory, mos6502.INSTRUCTION_SET);
     var ram: [0x10000]u8 = @splat(0);
-    var mem = Memory{ .ram = &ram };
+    const mem = Memory{ .ram = &ram };
     var mc = M6502{
         .mem = mem,
         .A = 0x00,
@@ -645,19 +653,19 @@ pub fn main() !void {
         .PC = 0x8000,
     };
 
-    mem.poke8(0x8000, 0xA2); // LDX #0
-    mem.poke8(0x8001, 0x00);
-    mem.poke8(0x8002, 0xA0); // LDY #0
-    mem.poke8(0x8003, 0x00);
-    mem.poke8(0x8004, 0xC8); // INY
-    mem.poke8(0x8005, 0xD0); // BNE $8004
-    mem.poke8(0x8006, 0xFD);
-    mem.poke8(0x8007, 0xE8); // INX
-    mem.poke8(0x8008, 0xD0); // BNE $8002
-    mem.poke8(0x8009, 0xF8);
-    mem.poke8(0x800A, 0x60); // RTS
+    mc.poke8(0x8000, 0xA2); // LDX #0
+    mc.poke8(0x8001, 0x00);
+    mc.poke8(0x8002, 0xA0); // LDY #0
+    mc.poke8(0x8003, 0x00);
+    mc.poke8(0x8004, 0xC8); // INY
+    mc.poke8(0x8005, 0xD0); // BNE $8004
+    mc.poke8(0x8006, 0xFD);
+    mc.poke8(0x8007, 0xE8); // INX
+    mc.poke8(0x8008, 0xD0); // BNE $8002
+    mc.poke8(0x8009, 0xF8);
+    mc.poke8(0x800A, 0x60); // RTS
 
-    mem.poke16(IRQV, 0x8000); // IRQ vector
+    mc.poke16(IRQV, 0x8000); // IRQ vector
     std.debug.print("{s}\n", .{mc});
 
     for (0..1000) |_| {
