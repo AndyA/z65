@@ -13,6 +13,7 @@ const Z_BIT = constants.Z_BIT;
 const I_BIT = constants.I_BIT;
 const D_BIT = constants.D_BIT;
 const B_BIT = constants.B_BIT;
+const Q_BIT = constants.Q_BIT; // always 1
 const V_BIT = constants.V_BIT;
 const N_BIT = constants.N_BIT;
 
@@ -176,7 +177,7 @@ pub fn main() !void {
         .X = 0x00,
         .Y = 0x00,
         .S = 0xff,
-        .P = C_BIT | I_BIT, // Set C and I flags
+        .P = C_BIT | I_BIT | Q_BIT, // Set C, I, and Q flags
         .PC = 0x8000,
     };
 

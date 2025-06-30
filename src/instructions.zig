@@ -14,6 +14,7 @@ pub const Instructions = struct {
     const I_BIT = constants.I_BIT;
     const D_BIT = constants.D_BIT;
     const B_BIT = constants.B_BIT;
+    const Q_BIT = constants.Q_BIT; // always 1
     const V_BIT = constants.V_BIT;
     const N_BIT = constants.N_BIT;
 
@@ -323,7 +324,7 @@ pub const Instructions = struct {
     }
 
     pub fn PHP(cpu: anytype) void {
-        cpu.push8(cpu.P);
+        cpu.push8(cpu.P | Q_BIT);
     }
     pub fn PLA(cpu: anytype) void {
         cpu.A = Self.set_nz(cpu, cpu.pop8());
