@@ -2,6 +2,7 @@ const std = @import("std");
 const mos6502 = @import("mos6502.zig");
 const memory = @import("memory.zig");
 const constants = @import("constants.zig");
+const PSR = @import("status_reg.zig").PSR;
 
 const STACK = constants.STACK;
 const IRQV = constants.IRQV;
@@ -56,6 +57,7 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
             Y: u8 = 0,
             S: u8 = 0,
             P: u8 = 0,
+            PP: PSR,
             PC: u16 = 0,
             mem: Memory,
 
@@ -178,6 +180,7 @@ pub fn main() !void {
         .Y = 0x00,
         .S = 0xff,
         .P = C_BIT | I_BIT | Q_BIT, // Set C, I, and Q flags
+        .PP = PSR{},
         .PC = 0x8000,
     };
 
@@ -200,4 +203,8 @@ pub fn main() !void {
         mc.step();
         std.debug.print("{s}\n", .{mc});
     }
+}
+
+test {
+    @import("std").testing.refAllDecls(@This());
 }

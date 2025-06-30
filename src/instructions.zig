@@ -29,6 +29,10 @@ pub const Instructions = struct {
         const flags = (if (byte == 0) Z_BIT else 0) |
             (if (byte & 0x80 != 0) N_BIT else 0);
         cpu.P = (cpu.P & ~(Z_BIT | N_BIT)) | flags;
+
+        cpu.PP.Z = byte == 0;
+        cpu.PP.N = (byte & 0x80) != 0;
+
         return byte;
     }
 
@@ -42,10 +46,12 @@ pub const Instructions = struct {
 
     fn set_c(cpu: anytype, value: bool) void {
         Self.set_if(C_BIT, cpu, value);
+        cpu.PP.C = value;
     }
 
     fn set_v(cpu: anytype, value: bool) void {
         Self.set_if(V_BIT, cpu, value);
+        cpu.PP.V = value;
     }
 
     fn carry(comptime value: u8, cpu: anytype) u8 {
