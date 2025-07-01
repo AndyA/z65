@@ -19,6 +19,32 @@ pub const PSR = packed struct {
     pub fn set(self: *Self, byte: u8) void {
         self.* = @bitCast(byte);
     }
+
+    pub fn format(
+        self: Self,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = fmt;
+        _ = options;
+        var buf: [8]u8 = undefined;
+        const flags = self.value();
+
+        const off_flags = "nv0bdizc";
+        const on_flags = "NV1BDIZC";
+        var mask: u8 = 0x80;
+        for (off_flags, 0..) |c, i| {
+            if (flags & mask != 0) {
+                buf[i] = on_flags[i];
+            } else {
+                buf[i] = c;
+            }
+            mask >>= 1;
+        }
+
+        try writer.print("{s}", .{buf});
+    }
 };
 
 test "PSR" {

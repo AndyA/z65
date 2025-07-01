@@ -9,15 +9,6 @@ const IRQV = constants.IRQV;
 const RESETV = constants.RESETV;
 const NMIV = constants.NMIV;
 
-const C_BIT = constants.C_BIT;
-const Z_BIT = constants.Z_BIT;
-const I_BIT = constants.I_BIT;
-const D_BIT = constants.D_BIT;
-const B_BIT = constants.B_BIT;
-const Q_BIT = constants.Q_BIT; // always 1
-const V_BIT = constants.V_BIT;
-const N_BIT = constants.N_BIT;
-
 pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
     comptime {
         const AddressModes = @import("address_modes.zig").AddressModes;
@@ -56,8 +47,7 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
             X: u8 = 0,
             Y: u8 = 0,
             S: u8 = 0,
-            P: u8 = 0,
-            PP: PSR,
+            P: PSR = PSR{},
             PC: u16 = 0,
             mem: Memory,
 
@@ -118,7 +108,6 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
 
             pub fn reset(self: *Self) void {
                 self.PC = self.mem.fetch16(RESETV);
-                self.P = C_BIT | I_BIT;
             }
 
             pub fn step(self: *Self) void {
@@ -131,20 +120,6 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
                 }
             }
 
-            fn formatFlags(flags: u8, buf: *[8]u8) void {
-                const off_flags = "nv0bdizc";
-                const on_flags = "NV1BDIZC";
-                var mask: u8 = 0x80;
-                for (off_flags, 0..) |c, i| {
-                    if (flags & mask != 0) {
-                        buf[i] = on_flags[i];
-                    } else {
-                        buf[i] = c;
-                    }
-                    mask >>= 1;
-                }
-            }
-
             pub fn format(
                 self: Self,
                 comptime fmt: []const u8,
@@ -153,11 +128,9 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
             ) !void {
                 _ = fmt;
                 _ = options;
-                var flags_buf: [8]u8 = undefined;
-                Self.formatFlags(self.P, &flags_buf);
                 try writer.print("PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}", .{
                     self.PC,
-                    flags_buf,
+                    self.P,
                     self.A,
                     self.X,
                     self.Y,
@@ -179,8 +152,7 @@ pub fn main() !void {
         .X = 0x00,
         .Y = 0x00,
         .S = 0xff,
-        .P = C_BIT | I_BIT | Q_BIT, // Set C, I, and Q flags
-        .PP = PSR{},
+        .P = PSR{},
         .PC = 0x8000,
     };
 
