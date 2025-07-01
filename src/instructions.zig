@@ -10,22 +10,6 @@ pub const Instructions = struct {
         return byte;
     }
 
-    fn set_if(comptime bit: u8, cpu: anytype, value: bool) void {
-        if (value) {
-            cpu.P |= bit;
-        } else {
-            cpu.P &= ~bit;
-        }
-    }
-
-    fn set_c(cpu: anytype, value: bool) void {
-        cpu.P.C = value;
-    }
-
-    fn set_v(cpu: anytype, value: bool) void {
-        cpu.P.V = value;
-    }
-
     fn carry(comptime value: u8, cpu: anytype) u8 {
         if (cpu.P.C) {
             return value;
@@ -36,38 +20,37 @@ pub const Instructions = struct {
 
     fn rol(cpu: anytype, byte: u8) u8 {
         const c_in = carry(0x01, cpu);
-        Self.set_c(cpu, (byte & 0x80) != 0);
+        cpu.P.C = (byte & 0x80) != 0;
         return Self.set_nz(cpu, byte << 1 | c_in);
     }
 
     fn ror(cpu: anytype, byte: u8) u8 {
         const c_in = carry(0x80, cpu);
-        Self.set_c(cpu, (byte & 0x01) != 0);
+        cpu.P.C = (byte & 0x01) != 0;
         return Self.set_nz(cpu, byte >> 1 | c_in);
     }
 
     fn shl(cpu: anytype, byte: u8) u8 {
-        Self.set_c(cpu, (byte & 0x80) != 0);
+        cpu.P.C = (byte & 0x80) != 0;
         return Self.set_nz(cpu, byte << 1);
     }
 
     fn shr(cpu: anytype, byte: u8) u8 {
-        Self.set_c(cpu, (byte & 0x01) != 0);
+        cpu.P.C = (byte & 0x01) != 0;
         return Self.set_nz(cpu, byte >> 1);
     }
 
     fn adc_binary(cpu: anytype, lhs: u8, rhs: u8) u8 {
         const c_in = carry(0x01, cpu);
         const result: u16 = @as(u16, lhs) + @as(u16, rhs) + @as(u16, c_in);
-        Self.set_c(cpu, result & 0x100 != 0);
-        Self.set_v(cpu, ((lhs ^ result) & (rhs ^ result) & 0x80) != 0);
+        cpu.P.C = result & 0x100 != 0;
+        cpu.P.V = ((lhs ^ result) & (rhs ^ result) & 0x80) != 0;
         return Self.set_nz(cpu, @intCast(result & 0xff));
     }
 
     fn adc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
         const c_in = carry(0x01, cpu);
         const bin_res: u8 = (lhs + rhs + c_in) & 0xff;
-        cpu.P.Z = bin_res == 0;
 
         var dr_lo: u8 = (lhs & 0x0f) + (rhs & 0x0f) + c_in;
         var dr_hi: u8 = (lhs >> 4) + (rhs >> 4);
@@ -77,8 +60,10 @@ pub const Instructions = struct {
         }
 
         cpu.P.N = dr_hi & 0x08 != 0;
+        cpu.P.Z = bin_res == 0;
         cpu.P.V = (lhs ^ rhs & 0x80 == 0) and ((lhs ^ (dr_hi << 4)) & 0x80 != 0);
         cpu.P.C = false;
+
         if (dr_hi > 9) {
             dr_hi -= 10;
             dr_hi &= 0x0f;
@@ -90,8 +75,8 @@ pub const Instructions = struct {
 
     fn sbc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
         const c_in = carry(0x01, cpu);
-
         const bin_res: u16 = (@as(u16, lhs) -% @as(u16, rhs) -% 1 +% @as(u16, c_in));
+
         cpu.P.N = (bin_res & 0x80) != 0;
         cpu.P.Z = (bin_res & 0xff) == 0;
         cpu.P.V = ((lhs ^ bin_res) & (rhs ^ bin_res) & 0x80) != 0;
@@ -129,7 +114,7 @@ pub const Instructions = struct {
     }
 
     fn cmp(cpu: anytype, lhs: u8, rhs: u8) void {
-        Self.set_c(cpu, true);
+        cpu.P.C = true;
         _ = Self.adc_binary(cpu, lhs, rhs ^ 0xff);
     }
 
