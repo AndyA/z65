@@ -150,7 +150,7 @@ pub const Instructions = struct {
         const byte = cpu.A & cpu.peek8(ea);
         cpu.P.Z = byte == 0;
         cpu.P.N = (byte & 0x80) != 0;
-        cpu.P.V = (byte & 0x40 != 0);
+        cpu.P.V = (byte & 0x40) != 0;
     }
 
     pub fn BMI(cpu: anytype, ea: u16) void {
@@ -166,11 +166,8 @@ pub const Instructions = struct {
     }
 
     pub fn BRK(cpu: anytype) void {
-        cpu.push16(cpu.PC);
-        Self.PHP(cpu);
+        cpu.handle_irq();
         cpu.P.B = true;
-        cpu.P.I = true;
-        cpu.PC = cpu.peek16(constants.IRQV);
     }
 
     pub fn BVC(cpu: anytype, ea: u16) void {

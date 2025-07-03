@@ -1,19 +1,19 @@
 const std = @import("std");
-const mos6502 = @import("mos6502.zig");
-const memory = @import("memory.zig");
 const constants = @import("constants.zig");
 const PSR = @import("status_reg.zig").PSR;
 
-const STACK = constants.STACK;
-const IRQV = constants.IRQV;
-const RESETV = constants.RESETV;
-const NMIV = constants.NMIV;
-
-pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
+pub fn make6502(
+    comptime AddressModes: type,
+    comptime Instructions: type,
+    comptime Memory: type,
+    comptime InterruptSource: type,
+    comptime opcodes: [256][]const u8,
+) type {
+    const STACK = constants.STACK;
+    const IRQV = constants.IRQV;
+    const RESETV = constants.RESETV;
+    const NMIV = constants.NMIV;
     comptime {
-        const AddressModes = @import("address_modes.zig").AddressModes;
-        const Instructions = @import("instructions.zig").Instructions;
-
         var despatch: [256]fn (cpu: anytype) void = undefined;
 
         for (opcodes, 0..) |spec, opcode| {
@@ -43,13 +43,14 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
         }
 
         return struct {
+            mem: Memory,
+            int_source: InterruptSource,
             A: u8 = 0,
             X: u8 = 0,
             Y: u8 = 0,
-            S: u8 = 0,
+            S: u8 = 0xff,
             P: PSR = PSR{},
             PC: u16 = 0,
-            mem: Memory,
 
             const Self = @This();
 
@@ -106,11 +107,34 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
                 return (hi << 8) | lo;
             }
 
+            fn interrupt(self: *Self, vector: u16) void {
+                self.push16(self.PC);
+                self.push8(self.P.value());
+                self.PC = self.peek16(vector);
+                self.P.I = true; // Set interrupt disable
+            }
+
+            pub fn handle_irq(self: *Self) void {
+                self.interrupt(IRQV);
+                self.P.B = false;
+            }
+
+            pub fn handle_nmi(self: *Self) void {
+                self.interrupt(NMIV);
+            }
+
             pub fn reset(self: *Self) void {
                 self.PC = self.mem.fetch16(RESETV);
+                self.P.I = true; // Set interrupt disable
             }
 
             pub fn step(self: *Self) void {
+                if (self.int_source.poll_nmi()) {
+                    self.int_source.ack_nmi();
+                    self.handle_nmi();
+                } else if (!self.P.I and self.int_source.poll_irq()) {
+                    self.handle_irq();
+                }
                 const opcode = self.fetch8();
                 switch (opcode) {
                     inline 0x00...0xff => |op| {
@@ -143,16 +167,21 @@ pub fn make6502(comptime Memory: type, comptime opcodes: [256][]const u8) type {
 
 pub fn main() !void {
     @setEvalBranchQuota(4000);
-    const M6502 = make6502(memory.FlatMemory, mos6502.INSTRUCTION_SET);
+    const memory = @import("memory.zig");
+    const ints = @import("interrupts.zig");
+
+    const M6502 = make6502(
+        @import("address_modes.zig").AddressModes,
+        @import("instructions.zig").Instructions,
+        memory.FlatMemory,
+        ints.NullInterruptSource,
+        @import("mos6502.zig").INSTRUCTION_SET,
+    );
     var ram: [0x10000]u8 = @splat(0);
     const mem = memory.FlatMemory{ .ram = &ram };
     var mc = M6502{
         .mem = mem,
-        .A = 0x00,
-        .X = 0x00,
-        .Y = 0x00,
-        .S = 0xff,
-        .P = PSR{},
+        .int_source = ints.NullInterruptSource{},
         .PC = 0x8000,
     };
 
@@ -168,7 +197,7 @@ pub fn main() !void {
     mc.poke8(0x8009, 0xF8);
     mc.poke8(0x800A, 0x60); // RTS
 
-    mc.poke16(IRQV, 0x8000); // IRQ vector
+    mc.poke16(constants.IRQV, 0x8000); // IRQ vector
     std.debug.print("{s}\n", .{mc});
 
     for (0..1000) |_| {

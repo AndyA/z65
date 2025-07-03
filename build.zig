@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
+    const z65 = b.addExecutable(.{
         .name = "z65",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
@@ -13,11 +13,11 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    b.installArtifact(exe);
+    b.installArtifact(z65);
 
     const run_step = b.step("run", "Run the app");
 
-    const run_cmd = b.addRunArtifact(exe);
+    const run_cmd = b.addRunArtifact(z65);
     run_step.dependOn(&run_cmd.step);
 
     run_cmd.step.dependOn(b.getInstallStep());
@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) void {
     }
 
     const exe_tests = b.addTest(.{
-        .root_module = exe.root_module,
+        .root_module = z65.root_module,
     });
 
     const run_exe_tests = b.addRunArtifact(exe_tests);

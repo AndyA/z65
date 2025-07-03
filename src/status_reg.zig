@@ -18,6 +18,7 @@ pub const PSR = packed struct {
 
     pub fn set(self: *Self, byte: u8) void {
         self.* = @bitCast(byte);
+        self.Q = true; // Q bit is always set to 1
     }
 
     pub fn format(
