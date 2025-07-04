@@ -1,25 +1,24 @@
 const std = @import("std");
-const cpu = @import("cpu.zig");
 
 pub fn main() !void {
-    @setEvalBranchQuota(4000);
+    const cpu = @import("cpu.zig");
     const memory = @import("memory.zig");
-    const ints = @import("interrupts.zig");
+    var ram: [0x10000]u8 = @splat(0);
 
-    const M6502 = cpu.make6502(
+    const M6502 = cpu.makeCPU(
+        @import("mos6502.zig").INSTRUCTION_SET,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,
         memory.FlatMemory,
-        ints.NullInterruptSource,
-        @import("mos6502.zig").INSTRUCTION_SET,
+        cpu.NullInterruptSource,
+        cpu.PanicTrapHandler,
     );
-    var ram: [0x10000]u8 = @splat(0);
-    const mem = memory.FlatMemory{ .ram = &ram };
-    var mc = M6502{
-        .mem = mem,
-        .int_source = ints.NullInterruptSource{},
-        .PC = 0x8000,
-    };
+
+    var mc = M6502.init(
+        memory.FlatMemory{ .ram = &ram },
+        cpu.NullInterruptSource{},
+        cpu.PanicTrapHandler{},
+    );
 
     mc.poke8(0x8000, 0xA2); // LDX #0
     mc.poke8(0x8001, 0x00);
@@ -33,6 +32,7 @@ pub fn main() !void {
     mc.poke8(0x8009, 0xF8);
     mc.poke8(0x800A, 0x60); // RTS
 
+    mc.PC = 0x8000;
     std.debug.print("{s}\n", .{mc});
 
     for (0..1000) |_| {

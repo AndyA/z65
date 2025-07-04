@@ -1,11 +1,39 @@
 const std = @import("std");
 
-pub fn make6502(
+pub const PanicTrapHandler = struct {
+    pub const Self = @This();
+    pub fn trap(self: Self, cpu: anytype, opcode: u8) void {
+        _ = self;
+        std.debug.print("Illegal instruction {x} at {x}\n", .{ opcode, cpu.PC });
+        @panic("Illegal instruction");
+    }
+};
+
+pub const NullInterruptSource = struct {
+    pub const Self = @This();
+
+    pub fn poll_irq(self: Self) bool {
+        _ = self;
+        return false; // No IRQ
+    }
+
+    pub fn poll_nmi(self: Self) bool {
+        _ = self;
+        return false; // No NMI
+    }
+
+    pub fn ack_nmi(self: *Self) void {
+        _ = self; // No NMI to clear
+    }
+};
+
+pub fn makeCPU(
+    comptime opcodes: [256][]const u8,
     comptime AddressModes: type,
     comptime Instructions: type,
     comptime Memory: type,
     comptime InterruptSource: type,
-    comptime opcodes: [256][]const u8,
+    comptime TrapHandler: type,
 ) type {
     const constants = @import("constants.zig");
     const STACK = constants.STACK;
@@ -15,7 +43,8 @@ pub fn make6502(
     const PSR = @import("status_reg.zig").PSR;
 
     comptime {
-        var despatch: [256]fn (cpu: anytype) void = undefined;
+        @setEvalBranchQuota(4000);
+        var despatch: [opcodes.len]fn (cpu: anytype) void = undefined;
 
         for (opcodes, 0..) |spec, opcode| {
             const space = std.mem.indexOfScalar(u8, spec, ' ') orelse @compileError("bad opcode");
@@ -24,7 +53,7 @@ pub fn make6502(
             if (std.mem.eql(u8, addr_mode, "ill")) {
                 const shim = struct {
                     pub fn instr(cpu: anytype) void {
-                        std.debug.print("Illegal instruction {x} at {x}\n", .{ opcode, cpu.PC });
+                        cpu.trap_handler.trap(cpu, opcode);
                     }
                 };
                 despatch[opcode] = shim.instr;
@@ -46,6 +75,7 @@ pub fn make6502(
         return struct {
             mem: Memory,
             int_source: InterruptSource,
+            trap_handler: TrapHandler,
             A: u8 = 0,
             X: u8 = 0,
             Y: u8 = 0,
@@ -54,6 +84,14 @@ pub fn make6502(
             PC: u16 = 0,
 
             const Self = @This();
+
+            pub fn init(mem: Memory, int_source: InterruptSource, trap_handler: TrapHandler) Self {
+                return Self{
+                    .mem = mem,
+                    .int_source = int_source,
+                    .trap_handler = trap_handler,
+                };
+            }
 
             pub fn peek8(self: *Self, addr: u16) u8 {
                 return self.mem.peek8(addr);
@@ -79,6 +117,17 @@ pub fn make6502(
                 // std.debug.print("{x:0>4}: {x:0>2}\n", .{ self.PC, byte });
                 self.PC +%= 1;
                 return byte;
+            }
+
+            pub fn asm8(self: *Self, byte: u8) void {
+                self.poke8(self.PC, byte);
+                self.PC +%= 1;
+            }
+
+            pub fn asm16(self: *Self, value: u16) void {
+                self.poke8(self.PC, @intCast(value & 0x00FF));
+                self.poke8(self.PC +% 1, @intCast((value >> 8) & 0x00FF));
+                self.PC +%= 2;
             }
 
             pub fn fetch16(self: *Self) u16 {
@@ -138,7 +187,7 @@ pub fn make6502(
                 }
                 const opcode = self.fetch8();
                 switch (opcode) {
-                    inline 0x00...0xff => |op| {
+                    inline 0...opcodes.len - 1 => |op| {
                         const instruction = despatch[op];
                         instruction(self);
                     },
@@ -164,4 +213,92 @@ pub fn make6502(
             }
         };
     }
+}
+
+test "cpu" {
+    const expect = @import("std").testing.expect;
+    const memory = @import("memory.zig");
+
+    var ram: [0x10000]u8 = @splat(0);
+
+    const M6502 = makeCPU(
+        @import("mos6502.zig").INSTRUCTION_SET,
+        @import("address_modes.zig").AddressModes,
+        @import("instructions.zig").Instructions,
+        memory.FlatMemory,
+        NullInterruptSource,
+        PanicTrapHandler,
+    );
+
+    var mc = M6502.init(
+        memory.FlatMemory{ .ram = &ram },
+        NullInterruptSource{},
+        PanicTrapHandler{},
+    );
+
+    // stack stuff
+    mc.poke8(0x1ff, 0xaa); // Test stack wrap
+    mc.poke8(0x100, 0x5a); // Test stack wrap
+    try expect(mc.peek8(0x1ff) == 0xaa);
+    mc.push8(0x55);
+    try expect(mc.peek8(0x1ff) == 0x55);
+    try expect(mc.S == 0xfe);
+    try expect(mc.pop8() == 0x55);
+    try expect(mc.S == 0xff);
+    try expect(mc.pop8() == 0x5a);
+    try expect(mc.S == 0x00);
+    mc.push8(0xa5);
+    try expect(mc.S == 0xff);
+    try expect(mc.peek8(0x100) == 0xa5);
+}
+
+test "trap" {
+    const expect = @import("std").testing.expect;
+    const memory = @import("memory.zig");
+    const TRAP_OPCODE: u8 = 0xA7; // Illegal opcode
+
+    const TestTrapHandler = struct {
+        pub const Self = @This();
+        trapped: []usize,
+        pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
+            if (opcode == TRAP_OPCODE) {
+                const signal: u8 = cpu.fetch8();
+                self.trapped[signal] += 1;
+            } else {
+                @panic("Illegal instruction");
+            }
+        }
+    };
+
+    var ram: [0x10000]u8 = @splat(0);
+    var trapped: [256]usize = @splat(0);
+
+    const M6502 = makeCPU(
+        @import("mos6502.zig").INSTRUCTION_SET,
+        @import("address_modes.zig").AddressModes,
+        @import("instructions.zig").Instructions,
+        memory.FlatMemory,
+        NullInterruptSource,
+        TestTrapHandler,
+    );
+
+    var mc = M6502.init(
+        memory.FlatMemory{ .ram = &ram },
+        NullInterruptSource{},
+        TestTrapHandler{ .trapped = &trapped },
+    );
+
+    mc.PC = 0x8000;
+    mc.asm8(TRAP_OPCODE);
+    mc.asm8(0x01);
+    mc.asm8(TRAP_OPCODE);
+    mc.asm8(0x11);
+    mc.PC = 0x8000;
+
+    mc.step();
+    try expect(mc.trap_handler.trapped[0x01] == 1);
+    try expect(mc.trap_handler.trapped[0x11] == 0);
+    mc.step();
+    try expect(mc.trap_handler.trapped[0x01] == 1);
+    try expect(mc.trap_handler.trapped[0x11] == 1);
 }

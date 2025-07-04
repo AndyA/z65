@@ -256,3 +256,8 @@ pub const INSTRUCTION_SET = [_][]const u8{
     "INC abs,X", // fe
     "XFF ill", // ff
 };
+
+test "INSTRUCTION_SET" {
+    const expect = @import("std").testing.expect;
+    try expect(INSTRUCTION_SET.len == 256);
+}
