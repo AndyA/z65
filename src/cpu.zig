@@ -202,14 +202,8 @@ pub fn makeCPU(
             ) !void {
                 _ = fmt;
                 _ = options;
-                try writer.print("PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}", .{
-                    self.PC,
-                    self.P,
-                    self.A,
-                    self.X,
-                    self.Y,
-                    self.S,
-                });
+                const args = .{ self.PC, self.P, self.A, self.X, self.Y, self.S };
+                try writer.print("PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}", args);
             }
         };
     }
@@ -258,8 +252,8 @@ test "trap" {
     const TRAP_OPCODE: u8 = 0xA7; // Illegal opcode
 
     const TestTrapHandler = struct {
+        trapped: [256]usize = @splat(0),
         pub const Self = @This();
-        trapped: []usize,
         pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
             if (opcode == TRAP_OPCODE) {
                 const signal: u8 = cpu.fetch8();
@@ -271,7 +265,6 @@ test "trap" {
     };
 
     var ram: [0x10000]u8 = @splat(0);
-    var trapped: [256]usize = @splat(0);
 
     const M6502 = makeCPU(
         @import("mos6502.zig").INSTRUCTION_SET,
@@ -285,7 +278,7 @@ test "trap" {
     var mc = M6502.init(
         memory.FlatMemory{ .ram = &ram },
         NullInterruptSource{},
-        TestTrapHandler{ .trapped = &trapped },
+        TestTrapHandler{},
     );
 
     mc.PC = 0x8000;
