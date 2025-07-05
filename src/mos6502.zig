@@ -1,93 +1,5 @@
 pub const InstructionSet6502 = enum(u8) {
-    @"ADC #" = 0x69,
-    @"ADC X,ind" = 0x61,
-    @"ADC abs" = 0x6d,
-    @"ADC abs,X" = 0x7d,
-    @"ADC abs,Y" = 0x79,
-    @"ADC ind,Y" = 0x71,
-    @"ADC zpg" = 0x65,
-    @"ADC zpg,X" = 0x75,
-
-    @"AND #" = 0x29,
-    @"AND X,ind" = 0x21,
-    @"AND abs" = 0x2d,
-    @"AND abs,X" = 0x3d,
-    @"AND abs,Y" = 0x39,
-    @"AND ind,Y" = 0x31,
-    @"AND zpg" = 0x25,
-    @"AND zpg,X" = 0x35,
-
-    @"ASL abs" = 0x0e,
-    @"ASL abs,X" = 0x1e,
-    @"ASL zpg" = 0x06,
-    @"ASL zpg,X" = 0x16,
-    @"ASLA impl" = 0x0a,
-
-    @"BRK impl" = 0x00,
-
-    @"BIT abs" = 0x2c,
-    @"BIT zpg" = 0x24,
-
-    @"BPL rel" = 0x10,
-    @"BMI rel" = 0x30,
-    @"BVC rel" = 0x50,
-    @"BVS rel" = 0x70,
-    @"BCC rel" = 0x90,
-    @"BCS rel" = 0xb0,
-    @"BNE rel" = 0xd0,
-    @"BEQ rel" = 0xf0,
-
-    @"CLC impl" = 0x18,
-    @"CLD impl" = 0xd8,
-    @"CLI impl" = 0x58,
-    @"CLV impl" = 0xb8,
-
-    @"CMP #" = 0xc9,
-    @"CMP X,ind" = 0xc1,
-    @"CMP abs" = 0xcd,
-    @"CMP abs,X" = 0xdd,
-    @"CMP abs,Y" = 0xd9,
-    @"CMP ind,Y" = 0xd1,
-    @"CMP zpg" = 0xc5,
-    @"CMP zpg,X" = 0xd5,
-
-    @"CPX #" = 0xe0,
-    @"CPX abs" = 0xec,
-    @"CPX zpg" = 0xe4,
-
-    @"CPY #" = 0xc0,
-    @"CPY abs" = 0xcc,
-    @"CPY zpg" = 0xc4,
-
-    @"DEC abs" = 0xce,
-    @"DEC abs,X" = 0xde,
-    @"DEC zpg" = 0xc6,
-    @"DEC zpg,X" = 0xd6,
-
-    @"DEX impl" = 0xca,
-    @"DEY impl" = 0x88,
-
-    @"EOR #" = 0x49,
-    @"EOR X,ind" = 0x41,
-    @"EOR abs" = 0x4d,
-    @"EOR abs,X" = 0x5d,
-    @"EOR abs,Y" = 0x59,
-    @"EOR ind,Y" = 0x51,
-    @"EOR zpg" = 0x45,
-    @"EOR zpg,X" = 0x55,
-
-    @"INC abs" = 0xee,
-    @"INC abs,X" = 0xfe,
-    @"INC zpg" = 0xe6,
-    @"INC zpg,X" = 0xf6,
-
-    @"INX impl" = 0xe8,
-    @"INY impl" = 0xc8,
-
-    @"JSR abs" = 0x20,
-    @"JMP abs" = 0x4c,
-    @"JMP ind" = 0x6c,
-
+    // Loads
     @"LDA #" = 0xa9,
     @"LDA X,ind" = 0xa1,
     @"LDA abs" = 0xad,
@@ -109,56 +21,7 @@ pub const InstructionSet6502 = enum(u8) {
     @"LDY zpg" = 0xa4,
     @"LDY zpg,X" = 0xb4,
 
-    @"LSR abs" = 0x4e,
-    @"LSR abs,X" = 0x5e,
-    @"LSR zpg" = 0x46,
-    @"LSR zpg,X" = 0x56,
-    @"LSRA impl" = 0x4a,
-
-    @"NOP impl" = 0xea,
-
-    @"ORA #" = 0x09,
-    @"ORA X,ind" = 0x01,
-    @"ORA abs" = 0x0d,
-    @"ORA abs,X" = 0x1d,
-    @"ORA abs,Y" = 0x19,
-    @"ORA ind,Y" = 0x11,
-    @"ORA zpg" = 0x05,
-    @"ORA zpg,X" = 0x15,
-
-    @"PHA impl" = 0x48,
-    @"PHP impl" = 0x08,
-    @"PLA impl" = 0x68,
-    @"PLP impl" = 0x28,
-
-    @"ROL abs" = 0x2e,
-    @"ROL abs,X" = 0x3e,
-    @"ROL zpg" = 0x26,
-    @"ROL zpg,X" = 0x36,
-    @"ROLA impl" = 0x2a,
-
-    @"ROR abs" = 0x6e,
-    @"ROR abs,X" = 0x7e,
-    @"ROR zpg" = 0x66,
-    @"ROR zpg,X" = 0x76,
-    @"RORA impl" = 0x6a,
-
-    @"RTI impl" = 0x40,
-    @"RTS impl" = 0x60,
-
-    @"SBC #" = 0xe9,
-    @"SBC X,ind" = 0xe1,
-    @"SBC abs" = 0xed,
-    @"SBC abs,X" = 0xfd,
-    @"SBC abs,Y" = 0xf9,
-    @"SBC ind,Y" = 0xf1,
-    @"SBC zpg" = 0xe5,
-    @"SBC zpg,X" = 0xf5,
-
-    @"SEC impl" = 0x38,
-    @"SED impl" = 0xf8,
-    @"SEI impl" = 0x78,
-
+    // Stores
     @"STA X,ind" = 0x81,
     @"STA abs" = 0x8d,
     @"STA abs,X" = 0x9d,
@@ -175,10 +38,159 @@ pub const InstructionSet6502 = enum(u8) {
     @"STY zpg" = 0x84,
     @"STY zpg,X" = 0x94,
 
+    // Stack
+    @"PHA impl" = 0x48,
+    @"PLA impl" = 0x68,
+    @"PHP impl" = 0x08,
+    @"PLP impl" = 0x28,
+
+    // Register transfers
     @"TAX impl" = 0xaa,
-    @"TAY impl" = 0xa8,
-    @"TSX impl" = 0xba,
     @"TXA impl" = 0x8a,
-    @"TXS impl" = 0x9a,
+    @"TAY impl" = 0xa8,
     @"TYA impl" = 0x98,
+    @"TSX impl" = 0xba,
+    @"TXS impl" = 0x9a,
+
+    // Logic
+    @"AND #" = 0x29,
+    @"AND X,ind" = 0x21,
+    @"AND abs" = 0x2d,
+    @"AND abs,X" = 0x3d,
+    @"AND abs,Y" = 0x39,
+    @"AND ind,Y" = 0x31,
+    @"AND zpg" = 0x25,
+    @"AND zpg,X" = 0x35,
+
+    @"EOR #" = 0x49,
+    @"EOR X,ind" = 0x41,
+    @"EOR abs" = 0x4d,
+    @"EOR abs,X" = 0x5d,
+    @"EOR abs,Y" = 0x59,
+    @"EOR ind,Y" = 0x51,
+    @"EOR zpg" = 0x45,
+    @"EOR zpg,X" = 0x55,
+
+    @"ORA #" = 0x09,
+    @"ORA X,ind" = 0x01,
+    @"ORA abs" = 0x0d,
+    @"ORA abs,X" = 0x1d,
+    @"ORA abs,Y" = 0x19,
+    @"ORA ind,Y" = 0x11,
+    @"ORA zpg" = 0x05,
+    @"ORA zpg,X" = 0x15,
+
+    @"BIT abs" = 0x2c,
+    @"BIT zpg" = 0x24,
+
+    // Arithmetic
+    @"ADC #" = 0x69,
+    @"ADC X,ind" = 0x61,
+    @"ADC abs" = 0x6d,
+    @"ADC abs,X" = 0x7d,
+    @"ADC abs,Y" = 0x79,
+    @"ADC ind,Y" = 0x71,
+    @"ADC zpg" = 0x65,
+    @"ADC zpg,X" = 0x75,
+
+    @"SBC #" = 0xe9,
+    @"SBC X,ind" = 0xe1,
+    @"SBC abs" = 0xed,
+    @"SBC abs,X" = 0xfd,
+    @"SBC abs,Y" = 0xf9,
+    @"SBC ind,Y" = 0xf1,
+    @"SBC zpg" = 0xe5,
+    @"SBC zpg,X" = 0xf5,
+
+    // Comparisons
+    @"CMP #" = 0xc9,
+    @"CMP X,ind" = 0xc1,
+    @"CMP abs" = 0xcd,
+    @"CMP abs,X" = 0xdd,
+    @"CMP abs,Y" = 0xd9,
+    @"CMP ind,Y" = 0xd1,
+    @"CMP zpg" = 0xc5,
+    @"CMP zpg,X" = 0xd5,
+
+    @"CPX #" = 0xe0,
+    @"CPX abs" = 0xec,
+    @"CPX zpg" = 0xe4,
+
+    @"CPY #" = 0xc0,
+    @"CPY abs" = 0xcc,
+    @"CPY zpg" = 0xc4,
+
+    // Shifts
+    @"ASL abs" = 0x0e,
+    @"ASL abs,X" = 0x1e,
+    @"ASL zpg" = 0x06,
+    @"ASL zpg,X" = 0x16,
+    @"ASLA impl" = 0x0a,
+
+    @"LSR abs" = 0x4e,
+    @"LSR abs,X" = 0x5e,
+    @"LSR zpg" = 0x46,
+    @"LSR zpg,X" = 0x56,
+    @"LSRA impl" = 0x4a,
+
+    @"ROL abs" = 0x2e,
+    @"ROL abs,X" = 0x3e,
+    @"ROL zpg" = 0x26,
+    @"ROL zpg,X" = 0x36,
+    @"ROLA impl" = 0x2a,
+
+    @"ROR abs" = 0x6e,
+    @"ROR abs,X" = 0x7e,
+    @"ROR zpg" = 0x66,
+    @"ROR zpg,X" = 0x76,
+    @"RORA impl" = 0x6a,
+
+    // Increment/Decrement
+    @"DEC abs" = 0xce,
+    @"DEC abs,X" = 0xde,
+    @"DEC zpg" = 0xc6,
+    @"DEC zpg,X" = 0xd6,
+
+    @"DEX impl" = 0xca,
+    @"DEY impl" = 0x88,
+
+    @"INC abs" = 0xee,
+    @"INC abs,X" = 0xfe,
+    @"INC zpg" = 0xe6,
+    @"INC zpg,X" = 0xf6,
+
+    @"INX impl" = 0xe8,
+    @"INY impl" = 0xc8,
+
+    // Flags
+    @"CLC impl" = 0x18,
+    @"SEC impl" = 0x38,
+    @"CLI impl" = 0x58,
+    @"SEI impl" = 0x78,
+    @"CLV impl" = 0xb8,
+    @"CLD impl" = 0xd8,
+    @"SED impl" = 0xf8,
+
+    // Branches
+    @"BPL rel" = 0x10,
+    @"BMI rel" = 0x30,
+    @"BVC rel" = 0x50,
+    @"BVS rel" = 0x70,
+    @"BCC rel" = 0x90,
+    @"BCS rel" = 0xb0,
+    @"BNE rel" = 0xd0,
+    @"BEQ rel" = 0xf0,
+
+    // Jumps and returns
+    @"JSR abs" = 0x20,
+    @"JMP abs" = 0x4c,
+    @"JMP ind" = 0x6c,
+    @"RTS impl" = 0x60,
+
+    // Interrupts
+    @"BRK impl" = 0x00,
+    @"RTI impl" = 0x40,
+
+    // NOP
+    @"NOP impl" = 0xea,
 };
