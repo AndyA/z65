@@ -1,36 +1,37 @@
 const std = @import("std");
+const cpu = @import("cpu.zig");
+const memory = @import("memory.zig");
+
+const Vanilla6502 = cpu.makeCPU(
+    @import("mos6502.zig").INSTRUCTION_SET,
+    @import("address_modes.zig").AddressModes,
+    @import("instructions.zig").Instructions,
+    memory.FlatMemory,
+    cpu.NullInterruptSource,
+    cpu.PanicTrapHandler,
+);
 
 pub fn main() !void {
-    const cpu = @import("cpu.zig");
-    const memory = @import("memory.zig");
     var ram: [0x10000]u8 = @splat(0);
 
-    const M6502 = cpu.makeCPU(
-        @import("mos6502.zig").INSTRUCTION_SET,
-        @import("address_modes.zig").AddressModes,
-        @import("instructions.zig").Instructions,
-        memory.FlatMemory,
-        cpu.NullInterruptSource,
-        cpu.PanicTrapHandler,
-    );
-
-    var mc = M6502.init(
+    var mc = Vanilla6502.init(
         memory.FlatMemory{ .ram = &ram },
         cpu.NullInterruptSource{},
         cpu.PanicTrapHandler{},
     );
 
-    mc.poke8(0x8000, 0xA2); // LDX #0
-    mc.poke8(0x8001, 0x00);
-    mc.poke8(0x8002, 0xA0); // LDY #0
-    mc.poke8(0x8003, 0x00);
-    mc.poke8(0x8004, 0xC8); // INY
-    mc.poke8(0x8005, 0xD0); // BNE $8004
-    mc.poke8(0x8006, 0xFD);
-    mc.poke8(0x8007, 0xE8); // INX
-    mc.poke8(0x8008, 0xD0); // BNE $8002
-    mc.poke8(0x8009, 0xF8);
-    mc.poke8(0x800A, 0x60); // RTS
+    mc.PC = 0x8000;
+    mc.asm8(0xA2); // LDX #0
+    mc.asm8(0x00);
+    mc.asm8(0xA0); // LDY #0
+    mc.asm8(0x00);
+    mc.asm8(0xC8); // INY
+    mc.asm8(0xD0); // BNE $8004
+    mc.asm8(0xFD);
+    mc.asm8(0xE8); // INX
+    mc.asm8(0xD0); // BNE $8002
+    mc.asm8(0xF8);
+    mc.asm8(0x60); // RTS
 
     mc.PC = 0x8000;
     std.debug.print("{s}\n", .{mc});
