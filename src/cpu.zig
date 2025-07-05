@@ -27,8 +27,13 @@ pub const NullInterruptSource = struct {
     }
 };
 
+fn splitSpace(spec: []const u8) struct { []const u8, []const u8 } {
+    const space = std.mem.indexOfScalar(u8, spec, ' ') orelse return error.InvalidOpcode;
+    return .{ spec[0..space], spec[space + 1 ..] };
+}
+
 pub fn makeCPU(
-    comptime opcodes: [256][]const u8,
+    comptime InstructionSet: type,
     comptime AddressModes: type,
     comptime Instructions: type,
     comptime Memory: type,
@@ -44,32 +49,38 @@ pub fn makeCPU(
 
     comptime {
         @setEvalBranchQuota(4000);
-        var despatch: [opcodes.len]fn (cpu: anytype) void = undefined;
+        var despatch: [0x100]fn (cpu: anytype) void = undefined;
+        // Fill the depatch table with illegal instruction handlers
+        for (despatch, 0..) |_, opcode| {
+            const shim = struct {
+                pub fn instr(cpu: anytype) void {
+                    cpu.trap_handler.trap(cpu, opcode);
+                }
+            };
+            despatch[opcode] = shim.instr;
+        }
 
-        for (opcodes, 0..) |spec, opcode| {
-            const space = std.mem.indexOfScalar(u8, spec, ' ') orelse @compileError("bad opcode");
-            const mnemonic = spec[0..space];
-            const addr_mode = spec[space + 1 ..];
-            if (std.mem.eql(u8, addr_mode, "ill")) {
-                const shim = struct {
-                    pub fn instr(cpu: anytype) void {
-                        cpu.trap_handler.trap(cpu, opcode);
+        switch (@typeInfo(InstructionSet)) {
+            .@"enum" => |en| {
+                for (en.fields) |field| {
+                    const mnemonic, const addr_mode = splitSpace(field.name);
+                    const opcode = field.value;
+                    if (@hasDecl(AddressModes, addr_mode)) {
+                        const addr_fn = @field(AddressModes, addr_mode);
+                        const inst_fn = @field(Instructions, mnemonic);
+                        const shim = struct {
+                            pub fn instr(cpu: anytype) void {
+                                const ea = addr_fn(cpu);
+                                inst_fn(cpu, ea);
+                            }
+                        };
+                        despatch[opcode] = shim.instr;
+                    } else {
+                        despatch[opcode] = @field(Instructions, mnemonic);
                     }
-                };
-                despatch[opcode] = shim.instr;
-            } else if (@hasDecl(AddressModes, addr_mode)) {
-                const addr_fn = @field(AddressModes, addr_mode);
-                const inst_fn = @field(Instructions, mnemonic);
-                const shim = struct {
-                    pub fn instr(cpu: anytype) void {
-                        const ea = addr_fn(cpu);
-                        inst_fn(cpu, ea);
-                    }
-                };
-                despatch[opcode] = shim.instr;
-            } else {
-                despatch[opcode] = @field(Instructions, mnemonic);
-            }
+                }
+            },
+            else => @compileError("InstructionSet must be an enum type"),
         }
 
         return struct {
@@ -102,8 +113,8 @@ pub fn makeCPU(
             }
 
             pub fn peek16(self: *Self, addr: u16) u16 {
-                const lo: u16 = @intCast(self.peek8(addr));
-                const hi: u16 = @intCast(self.peek8(addr +% 1));
+                const lo: u16 = self.peek8(addr);
+                const hi: u16 = self.peek8(addr +% 1);
                 return (hi << 8) | lo;
             }
 
@@ -114,7 +125,6 @@ pub fn makeCPU(
 
             pub fn fetch8(self: *Self) u8 {
                 const byte = self.peek8(self.PC);
-                // std.debug.print("{x:0>4}: {x:0>2}\n", .{ self.PC, byte });
                 self.PC +%= 1;
                 return byte;
             }
@@ -124,21 +134,21 @@ pub fn makeCPU(
                 self.PC +%= 1;
             }
 
+            pub fn asmi(self: *Self, instr: InstructionSet) void {
+                const opcode: u8 = @intFromEnum(instr);
+                self.asm8(opcode);
+            }
+
+            pub fn fetch16(self: *Self) u16 {
+                const lo: u16 = self.fetch8();
+                const hi: u16 = self.fetch8();
+                return (hi << 8) | lo;
+            }
+
             pub fn asm16(self: *Self, value: u16) void {
                 self.poke8(self.PC, @intCast(value & 0x00FF));
                 self.poke8(self.PC +% 1, @intCast((value >> 8) & 0x00FF));
                 self.PC +%= 2;
-            }
-
-            pub fn fetch16(self: *Self) u16 {
-                const lo: u16 = @intCast(self.fetch8());
-                const hi: u16 = @intCast(self.fetch8());
-                return (hi << 8) | lo;
-            }
-
-            pub fn push8(self: *Self, byte: u8) void {
-                self.poke8(STACK | self.S, byte);
-                self.S -%= 1;
             }
 
             pub fn pop8(self: *Self) u8 {
@@ -146,15 +156,20 @@ pub fn makeCPU(
                 return self.peek8(STACK | self.S);
             }
 
-            pub fn push16(self: *Self, value: u16) void {
-                self.push8(@intCast((value >> 8) & 0x00FF));
-                self.push8(@intCast(value & 0x00FF));
+            pub fn push8(self: *Self, byte: u8) void {
+                self.poke8(STACK | self.S, byte);
+                self.S -%= 1;
             }
 
             pub fn pop16(self: *Self) u16 {
-                const lo: u16 = @intCast(self.pop8());
-                const hi: u16 = @intCast(self.pop8());
+                const lo: u16 = self.pop8();
+                const hi: u16 = self.pop8();
                 return (hi << 8) | lo;
+            }
+
+            pub fn push16(self: *Self, value: u16) void {
+                self.push8(@intCast((value >> 8) & 0x00FF));
+                self.push8(@intCast(value & 0x00FF));
             }
 
             fn interrupt(self: *Self, vector: u16) void {
@@ -187,7 +202,7 @@ pub fn makeCPU(
                 }
                 const opcode = self.fetch8();
                 switch (opcode) {
-                    inline 0...opcodes.len - 1 => |op| {
+                    inline 0...despatch.len - 1 => |op| {
                         const instruction = despatch[op];
                         instruction(self);
                     },
@@ -202,8 +217,9 @@ pub fn makeCPU(
             ) !void {
                 _ = fmt;
                 _ = options;
-                const args = .{ self.PC, self.P, self.A, self.X, self.Y, self.S };
-                try writer.print("PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}", args);
+                try writer.print(
+                    \\PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}
+                , .{ self.PC, self.P, self.A, self.X, self.Y, self.S });
             }
         };
     }
@@ -216,7 +232,7 @@ test "cpu" {
     var ram: [0x10000]u8 = @splat(0);
 
     const M6502 = makeCPU(
-        @import("mos6502.zig").INSTRUCTION_SET,
+        @import("mos6502.zig").InstructionSet6502,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,
         memory.FlatMemory,
@@ -267,7 +283,7 @@ test "trap" {
     var ram: [0x10000]u8 = @splat(0);
 
     const M6502 = makeCPU(
-        @import("mos6502.zig").INSTRUCTION_SET,
+        @import("mos6502.zig").InstructionSet6502,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,
         memory.FlatMemory,
