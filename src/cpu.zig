@@ -50,6 +50,7 @@ pub fn makeCPU(
     comptime {
         @setEvalBranchQuota(4000);
         var despatch: [0x100]fn (cpu: anytype) void = undefined;
+        var legal: [0x100]bool = @splat(false);
         // Fill the depatch table with illegal instruction handlers
         for (despatch, 0..) |_, opcode| {
             const shim = struct {
@@ -65,6 +66,9 @@ pub fn makeCPU(
                 for (en.fields) |field| {
                     const mnemonic, const addr_mode = splitSpace(field.name);
                     const opcode = field.value;
+                    if (legal[opcode])
+                        @compileError("Duplicate opcode: " ++ mnemonic ++ " at " ++ mnemonic);
+                    legal[opcode] = true;
                     const inst_fn = @field(Instructions, mnemonic);
                     if (@hasDecl(AddressModes, addr_mode)) {
                         const addr_fn = @field(AddressModes, addr_mode);
