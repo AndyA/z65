@@ -23,17 +23,13 @@ pub fn main() !void {
     );
 
     mc.PC = 0x8000;
-    mc.asmi(.@"LDX #");
-    mc.asm8(0x00);
-    mc.asmi(.@"LDY #");
-    mc.asm8(0x00);
+    mc.asmi8(.@"LDX #", 0x00);
+    mc.asmi8(.@"LDY #", 0x00);
     mc.asmi(.@"INY impl");
-    mc.asmi(.@"BNE rel");
-    mc.asm8(0xFD);
-    mc.asmi(.@"INX impl"); // INX
-    mc.asmi(.@"BNE rel");
-    mc.asm8(0xF8);
-    mc.asmi(.@"RTS impl"); // RTS
+    mc.asmi8(.@"BNE rel", 0xfd);
+    mc.asmi(.@"INX impl");
+    mc.asmi8(.@"BNE rel", 0xf8);
+    mc.asmi(.@"RTS impl");
 
     mc.PC = 0x8000;
     std.debug.print("{s}\n", .{mc});

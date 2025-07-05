@@ -65,9 +65,9 @@ pub fn makeCPU(
                 for (en.fields) |field| {
                     const mnemonic, const addr_mode = splitSpace(field.name);
                     const opcode = field.value;
+                    const inst_fn = @field(Instructions, mnemonic);
                     if (@hasDecl(AddressModes, addr_mode)) {
                         const addr_fn = @field(AddressModes, addr_mode);
-                        const inst_fn = @field(Instructions, mnemonic);
                         const shim = struct {
                             pub fn instr(cpu: anytype) void {
                                 const ea = addr_fn(cpu);
@@ -76,7 +76,7 @@ pub fn makeCPU(
                         };
                         despatch[opcode] = shim.instr;
                     } else {
-                        despatch[opcode] = @field(Instructions, mnemonic);
+                        despatch[opcode] = inst_fn;
                     }
                 }
             },
@@ -132,11 +132,6 @@ pub fn makeCPU(
             pub fn asm8(self: *Self, byte: u8) void {
                 self.poke8(self.PC, byte);
                 self.PC +%= 1;
-            }
-
-            pub fn asmi(self: *Self, instr: InstructionSet) void {
-                const opcode: u8 = @intFromEnum(instr);
-                self.asm8(opcode);
             }
 
             pub fn fetch16(self: *Self) u16 {
@@ -220,6 +215,23 @@ pub fn makeCPU(
                 try writer.print(
                     \\PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}
                 , .{ self.PC, self.P, self.A, self.X, self.Y, self.S });
+            }
+
+            pub fn asmi(self: *Self, instr: InstructionSet) void {
+                const opcode: u8 = @intFromEnum(instr);
+                self.asm8(opcode);
+            }
+
+            pub fn asmi8(self: *Self, instr: InstructionSet, byte: u8) void {
+                const opcode: u8 = @intFromEnum(instr);
+                self.asm8(opcode);
+                self.asm8(byte);
+            }
+
+            pub fn asmi16(self: *Self, instr: InstructionSet, word: u16) void {
+                const opcode: u8 = @intFromEnum(instr);
+                self.asm8(opcode);
+                self.asm16(word);
             }
         };
     }

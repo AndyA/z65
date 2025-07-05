@@ -151,14 +151,13 @@ pub const InstructionSet6502 = enum(u8) {
     @"DEC zpg" = 0xc6,
     @"DEC zpg,X" = 0xd6,
 
-    @"DEX impl" = 0xca,
-    @"DEY impl" = 0x88,
-
     @"INC abs" = 0xee,
     @"INC abs,X" = 0xfe,
     @"INC zpg" = 0xe6,
     @"INC zpg,X" = 0xf6,
 
+    @"DEX impl" = 0xca,
+    @"DEY impl" = 0x88,
     @"INX impl" = 0xe8,
     @"INY impl" = 0xc8,
 
