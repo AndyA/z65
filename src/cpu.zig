@@ -170,8 +170,7 @@ pub fn makeCPU(
                 self.push8(@intCast(value & 0x00FF));
             }
 
-            pub fn is_legal(self: Self, opcode: u8) bool {
-                _ = self;
+            pub fn is_legal(opcode: u8) bool {
                 return legal[opcode];
             }
 
@@ -317,7 +316,7 @@ test "trap" {
         TestTrapHandler{},
     );
 
-    try expect(!mc.is_legal(TRAP_OPCODE));
+    try expect(!M6502.is_legal(TRAP_OPCODE));
 
     mc.PC = 0x8000;
     mc.poke16(M6502.RESETV, mc.PC);
