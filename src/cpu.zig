@@ -41,11 +41,6 @@ pub fn makeCPU(
     comptime TrapHandler: type,
 ) type {
     const constants = @import("constants.zig");
-    const STACK = constants.STACK;
-    const IRQV = constants.IRQV;
-    const RESETV = constants.RESETV;
-    const NMIV = constants.NMIV;
-    const PSR = @import("status_reg.zig").PSR;
 
     comptime {
         @setEvalBranchQuota(4000);
@@ -67,15 +62,14 @@ pub fn makeCPU(
                     const mnemonic, const addr_mode = splitSpace(field.name);
                     const opcode = field.value;
                     if (legal[opcode])
-                        @compileError("Duplicate opcode: " ++ mnemonic ++ " at " ++ mnemonic);
+                        @compileError("Duplicate opcode: " ++ mnemonic);
                     legal[opcode] = true;
                     const inst_fn = @field(Instructions, mnemonic);
                     if (@hasDecl(AddressModes, addr_mode)) {
                         const addr_fn = @field(AddressModes, addr_mode);
                         const shim = struct {
                             pub fn instr(cpu: anytype) void {
-                                const ea = addr_fn(cpu);
-                                inst_fn(cpu, ea);
+                                inst_fn(cpu, addr_fn(cpu));
                             }
                         };
                         despatch[opcode] = shim.instr;
@@ -88,6 +82,13 @@ pub fn makeCPU(
         }
 
         return struct {
+            const Self = @This();
+            const STACK = constants.STACK;
+            const IRQV = constants.IRQV;
+            const RESETV = constants.RESETV;
+            const NMIV = constants.NMIV;
+            const PSR = @import("status_reg.zig").PSR;
+
             mem: Memory,
             int_source: InterruptSource,
             trap_handler: TrapHandler,
@@ -97,8 +98,6 @@ pub fn makeCPU(
             S: u8 = 0xff,
             P: PSR = PSR{},
             PC: u16 = 0,
-
-            const Self = @This();
 
             pub fn init(mem: Memory, int_source: InterruptSource, trap_handler: TrapHandler) Self {
                 return Self{
@@ -171,6 +170,11 @@ pub fn makeCPU(
                 self.push8(@intCast(value & 0x00FF));
             }
 
+            pub fn is_legal(self: Self, opcode: u8) bool {
+                _ = self;
+                return legal[opcode];
+            }
+
             fn interrupt(self: *Self, vector: u16) void {
                 self.push16(self.PC);
                 self.push8(self.P.value());
@@ -188,23 +192,23 @@ pub fn makeCPU(
             }
 
             pub fn reset(self: *Self) void {
-                self.PC = self.mem.fetch16(RESETV);
+                self.PC = self.peek16(RESETV);
                 self.P.I = true; // Set interrupt disable
             }
 
-            pub fn step(self: *Self) void {
+            fn handle_interrupts(self: *Self) void {
                 if (self.int_source.poll_nmi()) {
                     self.int_source.ack_nmi();
                     self.handle_nmi();
                 } else if (!self.P.I and self.int_source.poll_irq()) {
                     self.handle_irq();
                 }
-                const opcode = self.fetch8();
-                switch (opcode) {
-                    inline 0...despatch.len - 1 => |op| {
-                        const instruction = despatch[op];
-                        instruction(self);
-                    },
+            }
+
+            pub fn step(self: *Self) void {
+                self.handle_interrupts();
+                switch (self.fetch8()) {
+                    inline 0...despatch.len - 1 => |op| despatch[op](self),
                 }
             }
 
@@ -313,13 +317,16 @@ test "trap" {
         TestTrapHandler{},
     );
 
+    try expect(!mc.is_legal(TRAP_OPCODE));
+
     mc.PC = 0x8000;
+    mc.poke16(M6502.RESETV, mc.PC);
     mc.asm8(TRAP_OPCODE);
     mc.asm8(0x01);
     mc.asm8(TRAP_OPCODE);
     mc.asm8(0x11);
-    mc.PC = 0x8000;
 
+    mc.reset();
     mc.step();
     try expect(mc.trap_handler.trapped[0x01] == 1);
     try expect(mc.trap_handler.trapped[0x11] == 0);
