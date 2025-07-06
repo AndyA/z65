@@ -183,7 +183,7 @@ pub const InstructionSet6502 = enum(u8) {
     // Jumps and returns
     @"JSR abs" = 0x20,
     @"JMP abs" = 0x4c,
-    @"JMP ind" = 0x6c,
+    @"JMP ind*" = 0x6c,
     @"RTS impl" = 0x60,
 
     // Interrupts
