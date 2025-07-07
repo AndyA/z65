@@ -1,11 +1,10 @@
 const std = @import("std");
 const cpu = @import("cpu.zig");
 const memory = @import("memory.zig");
-
-const InstructionSet = @import("mos6502.zig").InstructionSet6502;
+const tt = @import("type_tools.zig");
 
 const Vanilla6502 = cpu.makeCPU(
-    InstructionSet,
+    @import("wdc65c02.zig").InstructionSet65C02,
     @import("address_modes.zig").AddressModes,
     @import("instructions.zig").Instructions,
     memory.FlatMemory,

@@ -94,6 +94,7 @@ pub fn makeCPU(
             mem: Memory,
             int_source: InterruptSource,
             trap_handler: TrapHandler,
+            stopped: bool = false,
             A: u8 = 0,
             X: u8 = 0,
             Y: u8 = 0,
@@ -183,12 +184,12 @@ pub fn makeCPU(
                 self.P.I = true; // Set interrupt disable
             }
 
-            pub fn handle_irq(self: *Self) void {
+            pub fn handleIrq(self: *Self) void {
                 self.interrupt(IRQV);
                 self.P.B = false;
             }
 
-            pub fn handle_nmi(self: *Self) void {
+            pub fn handleNmi(self: *Self) void {
                 self.interrupt(NMIV);
             }
 
@@ -197,20 +198,24 @@ pub fn makeCPU(
                 self.P.I = true; // Set interrupt disable
             }
 
-            fn handle_interrupts(self: *Self) void {
+            fn handleInterrupts(self: *Self) void {
                 if (self.int_source.poll_nmi()) {
                     self.int_source.ack_nmi();
-                    self.handle_nmi();
+                    self.handleNmi();
                 } else if (!self.P.I and self.int_source.poll_irq()) {
-                    self.handle_irq();
+                    self.handleIrq();
                 }
             }
 
             pub fn step(self: *Self) void {
-                self.handle_interrupts();
+                self.handleInterrupts();
                 switch (self.fetch8()) {
                     inline 0...despatch.len - 1 => |op| despatch[op](self),
                 }
+            }
+
+            pub fn stop(self: *Self) void {
+                self.stopped = true;
             }
 
             pub fn format(

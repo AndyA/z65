@@ -1,5 +1,6 @@
 const std = @import("std");
 const constants = @import("constants.zig");
+const ZpgRel = @import("address_modes.zig").ZpgRel;
 
 pub const Instructions = struct {
     const Self = @This();
@@ -166,7 +167,7 @@ pub const Instructions = struct {
     }
 
     pub fn BRK(cpu: anytype) void {
-        cpu.handle_irq();
+        cpu.handleIrq();
         cpu.P.B = true;
     }
 
@@ -283,6 +284,7 @@ pub const Instructions = struct {
     pub fn PLA(cpu: anytype) void {
         cpu.A = Self.set_nz(cpu, cpu.pop8());
     }
+
     pub fn PLP(cpu: anytype) void {
         cpu.P = @bitCast(cpu.pop8());
     }
@@ -362,5 +364,182 @@ pub const Instructions = struct {
 
     pub fn TYA(cpu: anytype) void {
         cpu.A = Self.set_nz(cpu, cpu.Y);
+    }
+
+    // 65c02 additions
+    pub fn DECA(cpu: anytype) void {
+        cpu.A = Self.set_nz(cpu, cpu.A -% 1);
+    }
+
+    pub fn INCA(cpu: anytype) void {
+        cpu.A = Self.set_nz(cpu, cpu.A +% 1);
+    }
+
+    pub fn PHX(cpu: anytype) void {
+        cpu.push8(cpu.X);
+    }
+
+    pub fn PLX(cpu: anytype) void {
+        cpu.X = Self.set_nz(cpu, cpu.pop8());
+    }
+
+    pub fn PHY(cpu: anytype) void {
+        cpu.push8(cpu.Y);
+    }
+
+    pub fn PLY(cpu: anytype) void {
+        cpu.Y = Self.set_nz(cpu, cpu.pop8());
+    }
+
+    pub fn STZ(cpu: anytype, ea: u16) void {
+        cpu.poke8(ea, 0x00);
+    }
+
+    pub fn TRB(cpu: anytype, ea: u16) void {
+        const byte = cpu.peek8(ea);
+        cpu.P.Z = (byte & cpu.A) == 0;
+        cpu.poke8(ea, byte & ~cpu.A);
+    }
+
+    pub fn TSB(cpu: anytype, ea: u16) void {
+        const byte = cpu.peek8(ea);
+        cpu.P.Z = (byte & cpu.A) == 0;
+        cpu.poke8(ea, byte | cpu.A);
+    }
+
+    pub fn BRA(cpu: anytype, ea: u16) void {
+        cpu.PC = ea;
+    }
+
+    fn bbr(comptime bit: u3, cpu: anytype, ea: ZpgRel) void {
+        const zp, const dest = ea;
+        if (cpu.peek8(zp) & (1 << bit) == 0)
+            cpu.PC = dest;
+    }
+
+    fn bbs(comptime bit: u3, cpu: anytype, ea: ZpgRel) void {
+        const zp, const dest = ea;
+        if (cpu.peek8(zp) & (1 << bit) != 0)
+            cpu.PC = dest;
+    }
+
+    pub fn BBR0(cpu: anytype, ea: ZpgRel) void {
+        Self.bbr(0, cpu, ea);
+    }
+    pub fn BBR1(cpu: anytype, ea: ZpgRel) void {
+        Self.bbr(1, cpu, ea);
+    }
+    pub fn BBR2(cpu: anytype, ea: ZpgRel) void {
+        Self.bbr(2, cpu, ea);
+    }
+    pub fn BBR3(cpu: anytype, ea: ZpgRel) void {
+        Self.bbr(3, cpu, ea);
+    }
+    pub fn BBR4(cpu: anytype, ea: ZpgRel) void {
+        Self.bbr(4, cpu, ea);
+    }
+    pub fn BBR5(cpu: anytype, ea: ZpgRel) void {
+        Self.bbr(5, cpu, ea);
+    }
+    pub fn BBR6(cpu: anytype, ea: ZpgRel) void {
+        Self.bbr(6, cpu, ea);
+    }
+    pub fn BBR7(cpu: anytype, ea: ZpgRel) void {
+        Self.bbr(7, cpu, ea);
+    }
+
+    pub fn BBS0(cpu: anytype, ea: ZpgRel) void {
+        Self.bbs(0, cpu, ea);
+    }
+    pub fn BBS1(cpu: anytype, ea: ZpgRel) void {
+        Self.bbs(1, cpu, ea);
+    }
+    pub fn BBS2(cpu: anytype, ea: ZpgRel) void {
+        Self.bbs(2, cpu, ea);
+    }
+    pub fn BBS3(cpu: anytype, ea: ZpgRel) void {
+        Self.bbs(3, cpu, ea);
+    }
+    pub fn BBS4(cpu: anytype, ea: ZpgRel) void {
+        Self.bbs(4, cpu, ea);
+    }
+    pub fn BBS5(cpu: anytype, ea: ZpgRel) void {
+        Self.bbs(5, cpu, ea);
+    }
+    pub fn BBS6(cpu: anytype, ea: ZpgRel) void {
+        Self.bbs(6, cpu, ea);
+    }
+    pub fn BBS7(cpu: anytype, ea: ZpgRel) void {
+        Self.bbs(7, cpu, ea);
+    }
+
+    fn rmb(comptime bit: u3, cpu: anytype, ea: u16) void {
+        const byte = cpu.peek8(ea);
+        const mask: u8 = 1 << bit;
+        cpu.poke8(ea, byte & ~mask);
+    }
+
+    fn smb(comptime bit: u3, cpu: anytype, ea: u16) void {
+        const byte = cpu.peek8(ea);
+        cpu.poke8(ea, byte | (1 << bit));
+    }
+
+    pub fn RMB0(cpu: anytype, ea: u16) void {
+        Self.rmb(0, cpu, ea);
+    }
+    pub fn RMB1(cpu: anytype, ea: u16) void {
+        Self.rmb(1, cpu, ea);
+    }
+    pub fn RMB2(cpu: anytype, ea: u16) void {
+        Self.rmb(2, cpu, ea);
+    }
+    pub fn RMB3(cpu: anytype, ea: u16) void {
+        Self.rmb(3, cpu, ea);
+    }
+    pub fn RMB4(cpu: anytype, ea: u16) void {
+        Self.rmb(4, cpu, ea);
+    }
+    pub fn RMB5(cpu: anytype, ea: u16) void {
+        Self.rmb(5, cpu, ea);
+    }
+    pub fn RMB6(cpu: anytype, ea: u16) void {
+        Self.rmb(6, cpu, ea);
+    }
+    pub fn RMB7(cpu: anytype, ea: u16) void {
+        Self.rmb(7, cpu, ea);
+    }
+
+    pub fn SMB0(cpu: anytype, ea: u16) void {
+        Self.smb(0, cpu, ea);
+    }
+    pub fn SMB1(cpu: anytype, ea: u16) void {
+        Self.smb(1, cpu, ea);
+    }
+    pub fn SMB2(cpu: anytype, ea: u16) void {
+        Self.smb(2, cpu, ea);
+    }
+    pub fn SMB3(cpu: anytype, ea: u16) void {
+        Self.smb(3, cpu, ea);
+    }
+    pub fn SMB4(cpu: anytype, ea: u16) void {
+        Self.smb(4, cpu, ea);
+    }
+    pub fn SMB5(cpu: anytype, ea: u16) void {
+        Self.smb(5, cpu, ea);
+    }
+    pub fn SMB6(cpu: anytype, ea: u16) void {
+        Self.smb(6, cpu, ea);
+    }
+    pub fn SMB7(cpu: anytype, ea: u16) void {
+        Self.smb(7, cpu, ea);
+    }
+
+    pub fn STP(cpu: anytype) void {
+        cpu.stop();
+    }
+
+    pub fn WAI(cpu: anytype) void {
+        // Wait for interrupt
+        _ = cpu;
     }
 };
