@@ -168,7 +168,7 @@ pub const Instructions = struct {
     }
 
     pub fn BRK(cpu: anytype) void {
-        cpu.handleIrq();
+        cpu.handleIRQ();
         cpu.P.B = true;
     }
 
@@ -540,7 +540,10 @@ pub const Instructions = struct {
     }
 
     pub fn WAI(cpu: anytype) void {
-        // Wait for interrupt
-        _ = cpu;
+        cpu.sleep();
+        switch (cpu.getInterruptState()) {
+            .None => cpu.PC -%= 1, // Loop back to wait for interrupt
+            else => {},
+        }
     }
 };

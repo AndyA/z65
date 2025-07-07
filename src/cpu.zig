@@ -32,6 +32,8 @@ fn splitSpace(spec: []const u8) struct { []const u8, []const u8 } {
     return .{ spec[0..space], spec[space + 1 ..] };
 }
 
+pub const InterruptState = enum(u8) { None, NMI, IRQ, MaskedIRQ };
+
 pub fn makeCPU(
     comptime InstructionSet: type,
     comptime AddressModes: type,
@@ -94,7 +96,11 @@ pub fn makeCPU(
             mem: Memory,
             int_source: InterruptSource,
             trap_handler: TrapHandler,
+
+            int_state: InterruptState = .None,
             stopped: bool = false,
+            sleeping: bool = false,
+
             A: u8 = 0,
             X: u8 = 0,
             Y: u8 = 0,
@@ -177,38 +183,54 @@ pub fn makeCPU(
                 return legal[opcode];
             }
 
-            fn interrupt(self: *Self, vector: u16) void {
+            fn handleInterrupt(self: *Self, vector: u16) void {
                 self.push16(self.PC);
                 self.push8(self.P.value());
                 self.PC = self.peek16(vector);
                 self.P.I = true; // Set interrupt disable
+                self.wake();
             }
 
-            pub fn handleIrq(self: *Self) void {
-                self.interrupt(IRQV);
+            pub fn handleIRQ(self: *Self) void {
+                self.handleInterrupt(IRQV);
                 self.P.B = false;
             }
 
-            pub fn handleNmi(self: *Self) void {
-                self.interrupt(NMIV);
+            pub fn handleNMI(self: *Self) void {
+                self.handleInterrupt(NMIV);
             }
 
             pub fn reset(self: *Self) void {
                 self.PC = self.peek16(RESETV);
                 self.P.I = true; // Set interrupt disable
+                self.stopped = false;
+                self.sleeping = false;
             }
 
-            fn handleInterrupts(self: *Self) void {
+            fn pollInterrupts(self: *Self) void {
                 if (self.int_source.poll_nmi()) {
                     self.int_source.ack_nmi();
-                    self.handleNmi();
-                } else if (!self.P.I and self.int_source.poll_irq()) {
-                    self.handleIrq();
+                    self.int_state = .NMI;
+                    self.handleNMI();
+                } else if (self.int_source.poll_irq()) {
+                    if (self.P.I) {
+                        self.int_state = .MaskedIRQ; // IRQ is masked
+                        self.wake();
+                    } else {
+                        self.int_state = .IRQ;
+                        self.handleIRQ();
+                    }
+                } else {
+                    self.int_state = .None; // No interrupt
                 }
             }
 
+            pub fn getInterruptState(self: *Self) InterruptState {
+                return self.int_state;
+            }
+
             pub fn step(self: *Self) void {
-                self.handleInterrupts();
+                self.pollInterrupts();
                 switch (self.fetch8()) {
                     inline 0...despatch.len - 1 => |op| despatch[op](self),
                 }
@@ -216,6 +238,14 @@ pub fn makeCPU(
 
             pub fn stop(self: *Self) void {
                 self.stopped = true;
+            }
+
+            pub fn sleep(self: *Self) void {
+                self.sleeping = true;
+            }
+
+            pub fn wake(self: *Self) void {
+                self.sleeping = false;
             }
 
             pub fn format(
