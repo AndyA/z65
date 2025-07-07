@@ -8,7 +8,7 @@ const Extra65C02 = enum(u8) {
     @"SBC (zpg)" = 0xF2,
     @"STA (zpg)" = 0x92,
 
-    @"BIT #" = 0x89,
+    @"BIT #" = 0x89, // is this actually BITA?
     @"BIT zpg, X" = 0x34,
     @"BIT abs, X" = 0x3C,
 
