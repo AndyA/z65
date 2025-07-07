@@ -12,7 +12,7 @@ pub const AddressModes = struct {
         return addr;
     }
 
-    pub fn @"X,ind"(cpu: anytype) u16 {
+    pub fn @"(zpg, X)"(cpu: anytype) u16 {
         const zp = cpu.fetch8();
         return Self.zp16(cpu, zp +% cpu.X);
     }
@@ -21,11 +21,11 @@ pub const AddressModes = struct {
         return cpu.fetch16();
     }
 
-    pub fn @"abs,X"(cpu: anytype) u16 {
+    pub fn @"abs, X"(cpu: anytype) u16 {
         return cpu.fetch16() +% cpu.X;
     }
 
-    pub fn @"abs,Y"(cpu: anytype) u16 {
+    pub fn @"abs, Y"(cpu: anytype) u16 {
         return cpu.fetch16() +% cpu.Y;
     }
 
@@ -46,7 +46,7 @@ pub const AddressModes = struct {
         return @as(u16, (hi << 8) | lo);
     }
 
-    pub fn @"ind,Y"(cpu: anytype) u16 {
+    pub fn @"(zpg), Y"(cpu: anytype) u16 {
         const zp = cpu.fetch8();
         return Self.zp16(cpu, zp) +% cpu.Y;
     }
@@ -61,11 +61,11 @@ pub const AddressModes = struct {
         return @intCast(cpu.fetch8());
     }
 
-    pub fn @"zpg,X"(cpu: anytype) u16 {
+    pub fn @"zpg, X"(cpu: anytype) u16 {
         return @intCast(cpu.fetch8() +% cpu.X);
     }
 
-    pub fn @"zpg,Y"(cpu: anytype) u16 {
+    pub fn @"zpg, Y"(cpu: anytype) u16 {
         return @intCast(cpu.fetch8() +% cpu.Y);
     }
 };
