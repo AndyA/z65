@@ -25,11 +25,11 @@ pub fn main() !void {
     mc.PC = 0x8000;
     mc.asmi8(.@"LDX #", 0x00);
     mc.asmi8(.@"LDY #", 0x00);
-    mc.asmi(.@"INY impl");
+    mc.asmi(.INY);
     mc.asmi8(.@"BNE rel", 0xfd);
-    mc.asmi(.@"INX impl");
+    mc.asmi(.INX);
     mc.asmi8(.@"BNE rel", 0xf8);
-    mc.asmi(.@"RTS impl");
+    mc.asmi(.RTS);
 
     mc.PC = 0x8000;
     std.debug.print("{s}\n", .{mc});

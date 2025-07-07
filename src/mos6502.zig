@@ -39,18 +39,18 @@ pub const InstructionSet6502 = enum(u8) {
     @"STY zpg, X" = 0x94,
 
     // Stack
-    @"PHA impl" = 0x48,
-    @"PLA impl" = 0x68,
-    @"PHP impl" = 0x08,
-    @"PLP impl" = 0x28,
+    PHA = 0x48,
+    PLA = 0x68,
+    PHP = 0x08,
+    PLP = 0x28,
 
     // Register transfers
-    @"TAX impl" = 0xaa,
-    @"TXA impl" = 0x8a,
-    @"TAY impl" = 0xa8,
-    @"TYA impl" = 0x98,
-    @"TSX impl" = 0xba,
-    @"TXS impl" = 0x9a,
+    TAX = 0xaa,
+    TXA = 0x8a,
+    TAY = 0xa8,
+    TYA = 0x98,
+    TSX = 0xba,
+    TXS = 0x9a,
 
     // Logic
     @"AND #" = 0x29,
@@ -125,25 +125,25 @@ pub const InstructionSet6502 = enum(u8) {
     @"ASL abs, X" = 0x1e,
     @"ASL zpg" = 0x06,
     @"ASL zpg, X" = 0x16,
-    @"ASLA impl" = 0x0a,
+    ASLA = 0x0a,
 
     @"LSR abs" = 0x4e,
     @"LSR abs, X" = 0x5e,
     @"LSR zpg" = 0x46,
     @"LSR zpg, X" = 0x56,
-    @"LSRA impl" = 0x4a,
+    LSRA = 0x4a,
 
     @"ROL abs" = 0x2e,
     @"ROL abs, X" = 0x3e,
     @"ROL zpg" = 0x26,
     @"ROL zpg, X" = 0x36,
-    @"ROLA impl" = 0x2a,
+    ROLA = 0x2a,
 
     @"ROR abs" = 0x6e,
     @"ROR abs, X" = 0x7e,
     @"ROR zpg" = 0x66,
     @"ROR zpg, X" = 0x76,
-    @"RORA impl" = 0x6a,
+    RORA = 0x6a,
 
     // Increment/Decrement
     @"DEC abs" = 0xce,
@@ -156,19 +156,19 @@ pub const InstructionSet6502 = enum(u8) {
     @"INC zpg" = 0xe6,
     @"INC zpg, X" = 0xf6,
 
-    @"DEX impl" = 0xca,
-    @"DEY impl" = 0x88,
-    @"INX impl" = 0xe8,
-    @"INY impl" = 0xc8,
+    DEX = 0xca,
+    DEY = 0x88,
+    INX = 0xe8,
+    INY = 0xc8,
 
     // Flags
-    @"CLC impl" = 0x18,
-    @"SEC impl" = 0x38,
-    @"CLI impl" = 0x58,
-    @"SEI impl" = 0x78,
-    @"CLV impl" = 0xb8,
-    @"CLD impl" = 0xd8,
-    @"SED impl" = 0xf8,
+    CLC = 0x18,
+    SEC = 0x38,
+    CLI = 0x58,
+    SEI = 0x78,
+    CLV = 0xb8,
+    CLD = 0xd8,
+    SED = 0xf8,
 
     // Branches
     @"BPL rel" = 0x10,
@@ -183,13 +183,13 @@ pub const InstructionSet6502 = enum(u8) {
     // Jumps and returns
     @"JSR abs" = 0x20,
     @"JMP abs" = 0x4c,
-    @"JMP ind*" = 0x6c,
-    @"RTS impl" = 0x60,
+    @"JMP (abs)*" = 0x6c,
+    RTS = 0x60,
 
     // Interrupts
-    @"BRK impl" = 0x00,
-    @"RTI impl" = 0x40,
+    BRK = 0x00,
+    RTI = 0x40,
 
     // NOP
-    @"NOP impl" = 0xea,
+    NOP = 0xea,
 };

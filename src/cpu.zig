@@ -59,13 +59,15 @@ pub fn makeCPU(
         switch (@typeInfo(InstructionSet)) {
             .@"enum" => |en| {
                 for (en.fields) |field| {
-                    const mnemonic, const addr_mode = splitSpace(field.name);
+                    const spec = field.name;
                     const opcode = field.value;
                     if (legal[opcode])
-                        @compileError("Duplicate opcode: " ++ mnemonic);
+                        @compileError("Duplicate opcode: " ++ spec);
                     legal[opcode] = true;
-                    const inst_fn = @field(Instructions, mnemonic);
-                    if (@hasDecl(AddressModes, addr_mode)) {
+                    if (std.mem.indexOfScalar(u8, spec, ' ')) |space| {
+                        const mnemonic = spec[0..space];
+                        const addr_mode = spec[space + 1 ..];
+                        const inst_fn = @field(Instructions, mnemonic);
                         const addr_fn = @field(AddressModes, addr_mode);
                         const shim = struct {
                             pub fn instr(cpu: anytype) void {
@@ -74,7 +76,7 @@ pub fn makeCPU(
                         };
                         despatch[opcode] = shim.instr;
                     } else {
-                        despatch[opcode] = inst_fn;
+                        despatch[opcode] = @field(Instructions, spec);
                     }
                 }
             },

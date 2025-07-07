@@ -29,12 +29,12 @@ pub const AddressModes = struct {
         return cpu.fetch16() +% cpu.Y;
     }
 
-    pub fn ind(cpu: anytype) u16 {
+    pub fn @"(abs)"(cpu: anytype) u16 {
         const addr = cpu.fetch16();
         return cpu.peek16(addr);
     }
 
-    pub fn @"ind*"(cpu: anytype) u16 {
+    pub fn @"(abs)*"(cpu: anytype) u16 {
         // Simulate JMP () bug
         const lo_addr = cpu.fetch16();
         var hi_addr: u16 = lo_addr +% 1;
