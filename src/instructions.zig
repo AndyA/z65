@@ -49,6 +49,7 @@ pub const Instructions = struct {
         return Self.set_nz(cpu, @intCast(result & 0xff));
     }
 
+    // This is wrong for 65c02
     fn adc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
         const c_in = carry(0x01, cpu);
         const bin_res: u8 = (lhs + rhs + c_in) & 0xff;

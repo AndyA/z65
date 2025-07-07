@@ -76,7 +76,7 @@ pub const AddressModes = struct {
     pub fn @"zpg, rel"(cpu: anytype) ZpgRel {
         const zp = cpu.fetch8();
         const ea = Self.rel(cpu);
-        return ZpgRel{ zp, ea };
+        return .{ zp, ea };
     }
 
     pub fn zpg(cpu: anytype) u16 {
