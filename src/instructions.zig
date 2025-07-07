@@ -149,8 +149,8 @@ pub const Instructions = struct {
     }
 
     pub fn BIT(cpu: anytype, ea: u16) void {
-        const byte = cpu.A & cpu.peek8(ea); // always A?
-        cpu.P.Z = byte == 0;
+        const byte = cpu.peek8(ea);
+        cpu.P.Z = (cpu.A & byte) == 0;
         cpu.P.N = (byte & 0x80) != 0;
         cpu.P.V = (byte & 0x40) != 0;
     }
