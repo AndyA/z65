@@ -12,17 +12,17 @@ pub const PanicTrapHandler = struct {
 pub const NullInterruptSource = struct {
     pub const Self = @This();
 
-    pub fn poll_irq(self: Self) bool {
+    pub fn pollIRQ(self: Self) bool {
         _ = self;
         return false; // No IRQ
     }
 
-    pub fn poll_nmi(self: Self) bool {
+    pub fn pollNMI(self: Self) bool {
         _ = self;
         return false; // No NMI
     }
 
-    pub fn ack_nmi(self: *Self) void {
+    pub fn ackNMI(self: *Self) void {
         _ = self; // No NMI to clear
     }
 };
@@ -179,7 +179,7 @@ pub fn makeCPU(
                 self.push8(@intCast(value & 0x00FF));
             }
 
-            pub fn is_legal(opcode: u8) bool {
+            pub fn isLegal(opcode: u8) bool {
                 return legal[opcode];
             }
 
@@ -208,11 +208,11 @@ pub fn makeCPU(
             }
 
             fn pollInterrupts(self: *Self) void {
-                if (self.int_source.poll_nmi()) {
-                    self.int_source.ack_nmi();
+                if (self.int_source.pollNMI()) {
+                    self.int_source.ackNMI();
                     self.int_state = .NMI;
                     self.handleNMI();
-                } else if (self.int_source.poll_irq()) {
+                } else if (self.int_source.pollIRQ()) {
                     if (self.P.I) {
                         self.int_state = .MaskedIRQ; // IRQ is masked
                         self.wake();
@@ -353,7 +353,7 @@ test "trap" {
         TestTrapHandler{},
     );
 
-    try expect(!M6502.is_legal(TRAP_OPCODE));
+    try expect(!M6502.isLegal(TRAP_OPCODE));
 
     mc.PC = 0x8000;
     mc.poke16(M6502.RESETV, mc.PC);
