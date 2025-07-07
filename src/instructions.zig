@@ -278,8 +278,9 @@ pub const Instructions = struct {
     }
 
     pub fn PHP(cpu: anytype) void {
-        cpu.P.Q = true;
-        cpu.push8(@bitCast(cpu.P));
+        var psr = cpu.P;
+        psr.Q = true;
+        cpu.push8(@bitCast(psr));
     }
 
     pub fn PLA(cpu: anytype) void {
