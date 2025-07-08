@@ -67,12 +67,14 @@ pub fn main() !void {
     );
 
     mc.PC = @intCast(start);
-    std.debug.print("{s}\n", .{mc});
+    // std.debug.print("{s}\n", .{mc});
 
     while (!mc.stopped) {
+        if (mc.PC >= 0x43db and mc.PC <= 0x43e0) {
+            std.debug.print("{s}\n", .{mc});
+        }
         mc.step();
     }
-    // std.debug.print("{s}\n", .{mc});
 }
 
 test {

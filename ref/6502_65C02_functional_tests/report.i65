@@ -75,7 +75,6 @@ rabs    jsr rspace
         inx
         cpx #(data_bss-data_segment)
         bne rabs
-        beq rcont ; tmp
 ;ask to continue
         rprt rmsg_cont
 rerr1   jsr rget

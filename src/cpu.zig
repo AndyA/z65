@@ -185,15 +185,27 @@ pub fn makeCPU(
 
             fn handleInterrupt(self: *Self, vector: u16) void {
                 self.push16(self.PC);
-                self.push8(self.P.value());
+                var psr = self.P;
+                psr.Q = true;
+                psr.B = false;
+                self.push8(psr.value());
                 self.PC = self.peek16(vector);
                 self.P.I = true; // Set interrupt disable
                 self.wake();
             }
 
+            pub fn handleBRK(self: *Self) void {
+                self.push16(self.PC);
+                var psr = self.P;
+                psr.Q = true;
+                psr.B = true;
+                self.push8(psr.value());
+                self.PC = self.peek16(IRQV);
+                self.P.I = true; // Set interrupt disable
+            }
+
             pub fn handleIRQ(self: *Self) void {
                 self.handleInterrupt(IRQV);
-                self.P.B = false;
             }
 
             pub fn handleNMI(self: *Self) void {

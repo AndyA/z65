@@ -52,7 +52,7 @@ pub const Instructions = struct {
     // This is wrong for 65c02
     fn adc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
         const c_in = carry(0x01, cpu);
-        const bin_res: u8 = (lhs + rhs + c_in) & 0xff;
+        const bin_res: u16 = (@as(u16, lhs) + @as(u16, rhs) + @as(u16, c_in)) & 0xff;
 
         var dr_lo: u8 = (lhs & 0x0f) + (rhs & 0x0f) + c_in;
         var dr_hi: u8 = (lhs >> 4) + (rhs >> 4);
@@ -62,12 +62,12 @@ pub const Instructions = struct {
         }
 
         cpu.P.N = dr_hi & 0x08 != 0;
-        cpu.P.Z = bin_res == 0;
+        cpu.P.Z = (bin_res & 0xff) == 0;
         cpu.P.V = (lhs ^ rhs & 0x80 == 0) and ((lhs ^ (dr_hi << 4)) & 0x80 != 0);
         cpu.P.C = false;
 
         if (dr_hi > 9) {
-            dr_hi -= 10;
+            dr_hi -%= 10;
             dr_hi &= 0x0f;
             cpu.P.C = true;
         }
@@ -89,7 +89,7 @@ pub const Instructions = struct {
 
         if (dr_lo & 0x10 != 0) {
             dr_lo = (dr_lo -% 6) & 0x0f;
-            dr_hi -= 1;
+            dr_hi -%= 1;
         }
 
         if (dr_hi & 0x10 != 0) {
@@ -116,8 +116,9 @@ pub const Instructions = struct {
     }
 
     fn cmp(cpu: anytype, lhs: u8, rhs: u8) void {
-        cpu.P.C = true;
-        _ = Self.adc_binary(cpu, lhs, rhs ^ 0xff);
+        const result: u16 = @as(u16, lhs) + @as(u16, rhs ^ 0xff) + 1;
+        cpu.P.C = result & 0x100 != 0;
+        _ = Self.set_nz(cpu, @intCast(result & 0xff));
     }
 
     pub fn ADC(cpu: anytype, ea: u16) void {
@@ -168,8 +169,7 @@ pub const Instructions = struct {
     }
 
     pub fn BRK(cpu: anytype) void {
-        cpu.handleIRQ();
-        cpu.P.B = true;
+        cpu.handleBRK();
     }
 
     pub fn BVC(cpu: anytype, ea: u16) void {
@@ -280,6 +280,7 @@ pub const Instructions = struct {
     pub fn PHP(cpu: anytype) void {
         var psr = cpu.P;
         psr.Q = true;
+        psr.B = true; // Set B bit for BRK instruction
         cpu.push8(@bitCast(psr));
     }
 
