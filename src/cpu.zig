@@ -216,7 +216,7 @@ pub fn makeCPU(
                 self.PC = self.peek16(RESETV);
                 self.P.I = true; // Set interrupt disable
                 self.stopped = false;
-                self.sleeping = false;
+                self.wake();
             }
 
             fn pollInterrupts(self: *Self) void {
