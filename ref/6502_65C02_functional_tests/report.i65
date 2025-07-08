@@ -142,6 +142,7 @@ report_success
         jsr rhex
     endif
         rprt rmsg_success
+        db $bb, $03     ; halt CPU
 rsuc1   jsr rget
         cmp #'R'
         bne rsuc1        

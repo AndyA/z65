@@ -14,20 +14,26 @@ const TestTrapHandler = struct {
         _ = self;
         if (opcode == TRAP_OPCODE) {
             const signal: u8 = cpu.fetch8();
+            const stdin = std.io.getStdIn().reader();
             switch (signal) {
                 1 => {
                     std.debug.print("{c}", .{cpu.A});
                 },
                 2 => {
                     var buf: [256]u8 = undefined;
-                    const res = std.io.getStdIn().reader().readUntilDelimiterOrEof(&buf, '\n') catch |err| {
+                    const res = stdin.readUntilDelimiterOrEof(&buf, '\n') catch |err| {
                         std.debug.print("Error reading input: {s}\n", .{@errorName(err)});
                         return;
                     };
                     if (res) |in| {
-                        std.debug.print("{s}\n", .{in});
-                        cpu.A = in[0];
+                        if (in.len > 0) {
+                            cpu.A = in[0];
+                        }
                     }
+                },
+                3 => {
+                    std.debug.print("Trap signal 3 received, halting CPU\n", .{});
+                    cpu.stopped = true;
                 },
                 else => |sig| {
                     std.debug.print("Trap signal {d} received\n", .{sig});
@@ -47,6 +53,7 @@ const Vanilla65C02 = machine.makeCPU(
     machine.NullInterruptSource,
     TestTrapHandler,
 );
+
 const test_code = @embedFile("test/data/6502_functional_test.s19");
 
 pub fn main() !void {

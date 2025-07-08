@@ -99,7 +99,7 @@ pub const Instructions = struct {
         return 0;
     }
 
-    fn adc(cpu: anytype, lhs: u8, rhs: u8) u8 {
+    pub fn adc(cpu: anytype, lhs: u8, rhs: u8) u8 {
         if (cpu.P.D) {
             return Self.adc_decimal(cpu, lhs, rhs);
         } else {
@@ -107,7 +107,7 @@ pub const Instructions = struct {
         }
     }
 
-    fn sbc(cpu: anytype, lhs: u8, rhs: u8) u8 {
+    pub fn sbc(cpu: anytype, lhs: u8, rhs: u8) u8 {
         if (cpu.P.D) {
             return Self.sbc_decimal(cpu, lhs, rhs);
         } else {
@@ -549,3 +549,97 @@ pub const Instructions = struct {
         }
     }
 };
+
+fn loadTestData(comptime name: []const u8, comptime kind: []const u8) []const u8 {
+    const base = name ++ "/W." ++ kind;
+    const data = @embedFile(base ++ "0") ++
+        @embedFile(base ++ "1") ++
+        @embedFile(base ++ "2") ++
+        @embedFile(base ++ "3") ++
+        @embedFile(base ++ "4") ++
+        @embedFile(base ++ "5") ++
+        @embedFile(base ++ "6") ++
+        @embedFile(base ++ "7");
+
+    return data;
+}
+
+const TestVector = struct { res: []const u8, psr: []const u8 };
+
+fn loadTestVector(comptime name: []const u8) TestVector {
+    const res = loadTestData(name, "RES");
+    const psr = loadTestData(name, "PST");
+    return .{ .res = res, .psr = psr };
+}
+
+const Op = enum(u8) { ADC, SBC };
+
+fn test6502Decimal(vector: TestVector, op: Op, carry: bool) !void {
+    const expect = std.testing.expect;
+
+    const TestCPU = struct {
+        const PSR = @import("status_reg.zig").PSR;
+        P: PSR = PSR{},
+    };
+
+    try expect(vector.res.len == 65536);
+    var res_error: usize = 0;
+    var psr_error: usize = 0;
+    for (0..256) |rhs| {
+        for (0..256) |lhs| {
+            var cpu = TestCPU{};
+            cpu.P.D = true;
+            cpu.P.C = carry;
+            cpu.P.B = true;
+            cpu.P.Q = true; // Q bit is always set to 1
+            const res_got = switch (op) {
+                .ADC => Instructions.adc(&cpu, @intCast(lhs), @intCast(rhs)),
+                .SBC => Instructions.sbc(&cpu, @intCast(lhs), @intCast(rhs)),
+            };
+            cpu.P.D = false;
+            const psr_got = cpu.P.value();
+            const slot = (lhs << 8) | rhs;
+
+            if (res_got != vector.res[slot] or psr_got != vector.psr[slot]) {
+                std.debug.print("Bad result at {x:0>2}, {x:0>2}", .{ lhs, rhs });
+                if (res_got != vector.res[slot]) {
+                    std.debug.print(" RES: {x:0>2} != {x:0>2}", .{ res_got, vector.res[slot] });
+                    res_error += 1;
+                }
+
+                if (psr_got != vector.psr[slot]) {
+                    std.debug.print(" PSR: {x:0>2} != {x:0>2}", .{ psr_got, vector.psr[slot] });
+                    psr_error += 1;
+                }
+                std.debug.print("\n", .{});
+            }
+        }
+    }
+
+    if (res_error > 0 or psr_error > 0) {
+        std.debug.print("{d} RES errors, {d} PSR errors\n", .{ res_error, psr_error });
+    }
+
+    try expect(res_error == 0);
+    try expect(psr_error == 0);
+}
+
+const ADC_CC = loadTestVector("test/data/decimal/adc_cc");
+test "decimal adc_cc" {
+    try test6502Decimal(ADC_CC, .ADC, false);
+}
+
+const ADC_CS = loadTestVector("test/data/decimal/adc_cs");
+test "decimal adc_cs" {
+    try test6502Decimal(ADC_CS, .ADC, true);
+}
+
+// const SBC_CC = loadTestVector("test/data/decimal/sbc_cc");
+// test "decimal sbc_cc" {
+//     try test6502Decimal(SBC_CC, .SBC, false);
+// }
+
+// const SBC_CS = loadTestVector("test/data/decimal/sbc_cs");
+// test "decimal sbc_cs" {
+//     try test6502Decimal(SBC_CS, .SBC, true);
+// }
