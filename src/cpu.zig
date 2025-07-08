@@ -195,7 +195,7 @@ pub fn makeCPU(
             }
 
             pub fn handleBRK(self: *Self) void {
-                self.push16(self.PC);
+                self.push16(self.PC +% 1); // BRK skips the next instruction
                 var psr = self.P;
                 psr.Q = true;
                 psr.B = true;

@@ -56,7 +56,6 @@ pub fn main() !void {
     defer sr.deinit();
 
     const start = sr.startAddr() orelse @panic("No start address found in SRec file");
-    std.debug.print("Start address: {x}\n", .{start});
 
     try sr.materialize(&ram);
 
@@ -70,9 +69,7 @@ pub fn main() !void {
     // std.debug.print("{s}\n", .{mc});
 
     while (!mc.stopped) {
-        if (mc.PC >= 0x43db and mc.PC <= 0x43e0) {
-            std.debug.print("{s}\n", .{mc});
-        }
+        // std.debug.print("{s}\n", .{mc});
         mc.step();
     }
 }
