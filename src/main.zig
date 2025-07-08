@@ -3,7 +3,7 @@ const cpu = @import("cpu.zig");
 const memory = @import("memory.zig");
 const tt = @import("type_tools.zig");
 
-const Vanilla6502 = cpu.makeCPU(
+const Vanilla65C02 = cpu.makeCPU(
     @import("wdc65c02.zig").InstructionSet65C02,
     @import("address_modes.zig").AddressModes,
     @import("instructions.zig").Instructions,
@@ -15,7 +15,7 @@ const Vanilla6502 = cpu.makeCPU(
 pub fn main() !void {
     var ram: [0x10000]u8 = @splat(0);
 
-    var mc = Vanilla6502.init(
+    var mc = Vanilla65C02.init(
         memory.FlatMemory{ .ram = &ram },
         cpu.NullInterruptSource{},
         cpu.PanicTrapHandler{},
