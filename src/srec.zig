@@ -188,9 +188,9 @@ test "SRecFile" {
     const file = @embedFile("test/data/srec.s19");
     var sr = try SRecFile.init(std.testing.allocator, file);
     defer sr.deinit();
-    for (sr.records.items) |rec| {
-        std.debug.print("Record: S{c}: {x}\n", .{ @intFromEnum(rec.kind), rec.addr() });
-    }
+    // for (sr.records.items) |rec| {
+    //     std.debug.print("Record: S{c}: {x}\n", .{ @intFromEnum(rec.kind), rec.addr() });
+    // }
     try expect(sr.startAddr() == 0x0400);
 
     var buf: [0x10000]u8 = @splat(0x00);
