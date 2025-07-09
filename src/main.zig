@@ -136,7 +136,7 @@ const TubeTrapHandler = struct {
     }
 };
 
-const Vanilla65C02 = machine.makeCPU(
+const Tube65C02 = machine.makeCPU(
     @import("wdc65c02.zig").InstructionSet65C02,
     @import("address_modes.zig").AddressModes,
     @import("instructions.zig").Instructions,
@@ -147,7 +147,7 @@ const Vanilla65C02 = machine.makeCPU(
     .{ .clear_decimal_on_int = true },
 );
 
-fn buildTubeOS(mc: *Vanilla65C02) void {
+fn buildTubeOS(mc: *Tube65C02) void {
     mc.PC = 0xff00; // traps
     const STUB_START = 0xffca;
 
@@ -190,7 +190,7 @@ fn buildTubeOS(mc: *Vanilla65C02) void {
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BYTEV));
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.CLIV));
     std.debug.assert(mc.PC == 0xfffa);
-    mc.poke16(Vanilla65C02.IRQV, irq_addr);
+    mc.poke16(Tube65C02.IRQV, irq_addr);
 }
 
 const HI_BASIC = @embedFile("roms/HiBASIC.rom");
@@ -201,7 +201,7 @@ pub fn main() !void {
 
     var trapper = TubeTrapHandler{ .base_time_ms = std.time.milliTimestamp() };
 
-    var mc = Vanilla65C02.init(
+    var mc = Tube65C02.init(
         memory.FlatMemory{ .ram = &ram },
         machine.NullInterruptSource{},
         &trapper,
