@@ -100,6 +100,78 @@ pub const ALU6502 = struct {
     }
 };
 
+pub const ALU65C02 = struct {
+    const Self = @This();
+
+    fn adc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
+        const c_in = carry(0x01, cpu);
+
+        var dr_lo: u8 = (lhs & 0x0f) + (rhs & 0x0f) + c_in;
+        var dr_hi: u8 = (lhs >> 4) + (rhs >> 4);
+        if (dr_lo > 9) {
+            dr_lo -= 10;
+            dr_hi += 1;
+        }
+
+        cpu.P.C = false;
+
+        if (dr_hi > 9) {
+            dr_hi -%= 10;
+            cpu.P.C = true;
+        }
+        const result: u8 = @intCast((dr_lo & 0x0f) | (dr_hi & 0x0f) << 4);
+        return set_nz(cpu, result);
+    }
+
+    fn sbc_decimal(cpu: anytype, lh: u8, rh: u8) u8 {
+        const c_in: u16 = 1 - carry(1, cpu);
+        const lhs = @as(u16, lh);
+        const rhs = @as(u16, rh);
+        var dr_lo = (lhs & 0x0f) -% (rhs & 0x0f) -% c_in;
+        var dr_hi = (lhs >> 4) -% (rhs >> 4);
+
+        if (dr_lo & 0x10 != 0) {
+            dr_lo -= 6;
+            dr_hi -%= 1;
+        }
+
+        const bin_res: u16 = lhs -% rhs -% c_in;
+        cpu.P.C = (bin_res & 0x100) == 0;
+
+        if (dr_hi & 0x10 != 0) {
+            dr_hi -= 6;
+        }
+
+        const result: u8 = @intCast((dr_lo & 0x0f) | (dr_hi & 0x0f) << 4);
+        return set_nz(cpu, result);
+    }
+
+    pub fn adc(self: Self, cpu: anytype, lhs: u8, rhs: u8) u8 {
+        _ = self;
+        if (cpu.P.D) {
+            return Self.adc_decimal(cpu, lhs, rhs);
+        } else {
+            return adc_binary(cpu, lhs, rhs);
+        }
+    }
+
+    pub fn sbc(self: Self, cpu: anytype, lhs: u8, rhs: u8) u8 {
+        _ = self;
+        if (cpu.P.D) {
+            return Self.sbc_decimal(cpu, lhs, rhs);
+        } else {
+            return adc_binary(cpu, lhs, rhs ^ 0xff);
+        }
+    }
+
+    pub fn cmp(self: Self, cpu: anytype, lhs: u8, rhs: u8) void {
+        _ = self;
+        const result: u16 = @as(u16, lhs) + @as(u16, rhs ^ 0xff) + 1;
+        cpu.P.C = result & 0x100 != 0;
+        _ = set_nz(cpu, @intCast(result & 0xff));
+    }
+};
+
 fn loadTestData(comptime name: []const u8, comptime kind: []const u8) []const u8 {
     const base = name ++ "/W." ++ kind;
     const data = @embedFile(base ++ "0") ++
