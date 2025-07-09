@@ -34,6 +34,10 @@ fn splitSpace(spec: []const u8) struct { []const u8, []const u8 } {
 
 pub const InterruptState = enum(u8) { None, NMI, IRQ, MaskedIRQ };
 
+pub const CPUOptions = struct {
+    clear_decimal_on_int: bool = false,
+};
+
 pub fn makeCPU(
     comptime InstructionSet: type,
     comptime AddressModes: type,
@@ -42,6 +46,7 @@ pub fn makeCPU(
     comptime Memory: type,
     comptime InterruptSource: type,
     comptime TrapHandler: type,
+    comptime options: CPUOptions,
 ) type {
     const constants = @import("constants.zig");
 
@@ -185,25 +190,27 @@ pub fn makeCPU(
                 return legal[opcode];
             }
 
-            fn handleInterrupt(self: *Self, vector: u16) void {
+            fn interruptCommon(self: *Self, vector: u16, comptime is_brk: bool) void {
                 self.push16(self.PC);
                 var psr = self.P;
                 psr.Q = true;
-                psr.B = false;
+                psr.B = is_brk;
                 self.push8(psr.value());
                 self.PC = self.peek16(vector);
                 self.P.I = true; // Set interrupt disable
+                if (options.clear_decimal_on_int) {
+                    self.P.D = false; // Clear decimal mode on interrupt
+                }
+            }
+
+            fn handleInterrupt(self: *Self, vector: u16) void {
+                self.interruptCommon(vector, false);
                 self.wake();
             }
 
             pub fn handleBRK(self: *Self) void {
-                self.push16(self.PC +% 1); // BRK skips the next instruction
-                var psr = self.P;
-                psr.Q = true;
-                psr.B = true;
-                self.push8(psr.value());
-                self.PC = self.peek16(IRQV);
-                self.P.I = true; // Set interrupt disable
+                _ = self.fetch8(); // BRK skips the next instruction
+                self.interruptCommon(IRQV, true);
             }
 
             pub fn handleIRQ(self: *Self) void {
@@ -265,11 +272,11 @@ pub fn makeCPU(
             pub fn format(
                 self: Self,
                 comptime fmt: []const u8,
-                options: std.fmt.FormatOptions,
+                opt: std.fmt.FormatOptions,
                 writer: anytype,
             ) !void {
                 _ = fmt;
-                _ = options;
+                _ = opt;
                 try writer.print(
                     \\PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}
                 , .{ self.PC, self.P, self.A, self.X, self.Y, self.S });
@@ -309,6 +316,7 @@ test "cpu" {
         memory.FlatMemory,
         NullInterruptSource,
         PanicTrapHandler,
+        .{},
     );
 
     var trapper = PanicTrapHandler{};
@@ -364,6 +372,7 @@ test "trap" {
         memory.FlatMemory,
         NullInterruptSource,
         TestTrapHandler,
+        .{},
     );
 
     var trap_handler = TestTrapHandler{};

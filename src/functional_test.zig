@@ -1,10 +1,12 @@
+const machine = @import("cpu.zig");
+
 pub fn runFunctionalTest(
     comptime InstructionSet: type,
     comptime ALU: type,
+    comptime options: machine.CPUOptions,
     test_code: []const u8,
 ) !void {
     const std = @import("std");
-    const machine = @import("cpu.zig");
     const memory = @import("memory.zig");
     const srec = @import("srec.zig");
     const expect = std.testing.expect;
@@ -55,6 +57,7 @@ pub fn runFunctionalTest(
         memory.FlatMemory,
         machine.NullInterruptSource,
         TestTrapHandler,
+        options,
     );
     var ram: [0x10000]u8 = @splat(0);
 

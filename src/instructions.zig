@@ -76,7 +76,7 @@ pub const Instructions = struct {
         cpu.P.V = (byte & 0x40) != 0;
     }
 
-    pub fn BITimm(cpu: anytype, ea: u16) void {
+    pub fn BITA(cpu: anytype, ea: u16) void {
         const byte = cpu.peek8(ea);
         cpu.P.Z = (cpu.A & byte) == 0;
     }
@@ -94,11 +94,6 @@ pub const Instructions = struct {
     }
 
     pub fn BRK(cpu: anytype) void {
-        cpu.handleBRK();
-        cpu.P.D = false;
-    }
-
-    pub fn @"BRK*"(cpu: anytype) void {
         cpu.handleBRK();
     }
 

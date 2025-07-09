@@ -8,7 +8,7 @@ const Extra65C02 = enum(u8) {
     @"SBC (zpg)" = 0xF2,
     @"STA (zpg)" = 0x92,
 
-    @"BITimm #" = 0x89, // is this actually BITA?
+    @"BITA #" = 0x89, // is this actually BITA?
     @"BIT zpg, X" = 0x34,
     @"BIT abs, X" = 0x3C,
 
@@ -71,7 +71,6 @@ const Extra65C02 = enum(u8) {
 
     @"JMP (abs)" = 0x6c,
     @"JMP (abs, X)" = 0x7c,
-    BRK = 0x00,
 
     STP = 0xDB,
     WAI = 0xCB,
@@ -91,6 +90,7 @@ test "6502 functional test" {
     try ft.runFunctionalTest(
         InstructionSet65C02,
         @import("alu.zig").ALU6502,
+        .{ .clear_decimal_on_int = true },
         test_code,
     );
 }
@@ -101,6 +101,7 @@ test "65C02 functional test" {
     try ft.runFunctionalTest(
         InstructionSet65C02,
         @import("alu.zig").ALU65C02,
+        .{ .clear_decimal_on_int = true },
         test_code,
     );
 }

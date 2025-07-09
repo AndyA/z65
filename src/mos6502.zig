@@ -187,7 +187,7 @@ pub const InstructionSet6502 = enum(u8) {
     RTS = 0x60,
 
     // Interrupts
-    @"BRK*" = 0x00,
+    BRK = 0x00,
     RTI = 0x40,
 
     // NOP
@@ -200,6 +200,7 @@ test "6502 functional test" {
     try ft.runFunctionalTest(
         InstructionSet6502,
         @import("alu.zig").ALU6502,
+        .{},
         test_code,
     );
 }
