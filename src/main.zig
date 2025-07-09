@@ -51,8 +51,9 @@ fn getXY(cpu: anytype) u16 {
 
 const TubeTrapHandler = struct {
     pub const Self = @This();
-    pub fn trap(self: Self, cpu: anytype, opcode: u8) void {
-        _ = self;
+    base_time_ms: i64,
+
+    pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
         const stdout = std.io.getStdOut().writer();
         const stdin = std.io.getStdIn().reader();
 
@@ -86,6 +87,19 @@ const TubeTrapHandler = struct {
                                 buf_addr += 1;
                             }
                             cpu.poke8(buf_addr, 0x0d);
+                        },
+                        0x01 => {
+                            const delta_ms = std.time.milliTimestamp() - self.base_time_ms;
+                            const delta_cs: u40 = @intCast(@divTrunc(delta_ms, 10));
+                            cpu.poke16(addr + 0, @intCast(delta_cs & 0xffff));
+                            cpu.poke16(addr + 2, @intCast((delta_cs >> 16) & 0xffff));
+                            cpu.poke8(addr + 4, @intCast((delta_cs >> 32) & 0xff));
+                        },
+                        0x02 => {
+                            const new_time_cs: u40 = cpu.peek16(addr + 0) |
+                                @as(u40, cpu.peek16(addr + 2)) << 16 |
+                                @as(u40, cpu.peek8(addr + 4)) << 32;
+                            self.base_time_ms = std.time.milliTimestamp() - new_time_cs * 10;
                         },
                         else => std.debug.print("OSWORD {x} not implemented\n", .{cpu.A}),
                     }
@@ -184,7 +198,7 @@ pub fn main() !void {
     var ram: [0x10000]u8 = @splat(0);
     @memcpy(ram[HIMEM .. HIMEM + HI_BASIC.len], HI_BASIC);
 
-    var trapper = TubeTrapHandler{};
+    var trapper = TubeTrapHandler{ .base_time_ms = std.time.milliTimestamp() };
 
     var mc = Vanilla65C02.init(
         memory.FlatMemory{ .ram = &ram },
