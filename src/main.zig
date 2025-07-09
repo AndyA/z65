@@ -4,62 +4,187 @@ const memory = @import("memory.zig");
 const tt = @import("type_tools.zig");
 const srec = @import("srec.zig");
 
-pub const PORTAL_OP = 0xbb;
-
 const TRAP_OPCODE: u8 = 0xBB;
 
-const TestTrapHandler = struct {
+const MOSFunction = enum(u8) {
+    OSCLI = 1, // OSCLI
+    OSBYTE,
+    OSWORD,
+    OSWRCH, // Write character
+    OSRDCH, // Read character
+    OSFILE,
+    OSARGS,
+    OSBGET,
+    OSBPUT,
+    OSGBPB, // Get Block, Put Block
+    OSFIND, // Open file
+};
+
+const MOSVectors = enum(u16) {
+    BRKV = 0x0202,
+    IRQV = 0x0204,
+    CLIV = 0x0208,
+    BYTEV = 0x020A,
+    WORDV = 0x020C,
+    WRCHV = 0x020E,
+    RDCHV = 0x0210,
+    FILEV = 0x0212,
+    ARGSV = 0x0214,
+    BGETV = 0x0216,
+    BPUTV = 0x0218,
+    GBPBV = 0x021A,
+    FINDV = 0x021C,
+};
+
+const PAGE = 0x800;
+const HIMEM = 0xb800;
+const MACHINE = 0x0000;
+
+fn setXY(cpu: anytype, xy: u16) void {
+    cpu.X = @intCast(xy & 0xff);
+    cpu.Y = @intCast(xy >> 8);
+}
+
+fn getXY(cpu: anytype) u16 {
+    return @as(u16, cpu.Y) << 8 | @as(u16, cpu.X);
+}
+
+const TubeTrapHandler = struct {
     pub const Self = @This();
     pub fn trap(self: Self, cpu: anytype, opcode: u8) void {
         _ = self;
+        const stdout = std.io.getStdOut().writer();
+        const stdin = std.io.getStdIn().reader();
+
         if (opcode == TRAP_OPCODE) {
-            const signal: u8 = cpu.fetch8();
-            const stdin = std.io.getStdIn().reader();
-            switch (signal) {
-                1 => {
-                    std.debug.print("{c}", .{cpu.A});
+            const osfn: MOSFunction = @enumFromInt(cpu.fetch8());
+            switch (osfn) {
+                .OSCLI => {
+                    std.debug.print("OSCLI {s}\n", .{cpu});
                 },
-                2 => {
-                    var buf: [256]u8 = undefined;
-                    const res = stdin.readUntilDelimiterOrEof(&buf, '\n') catch |err| {
-                        std.debug.print("Error reading input: {s}\n", .{@errorName(err)});
-                        return;
-                    };
-                    if (res) |in| {
-                        if (in.len > 0) {
-                            cpu.A = in[0];
-                        }
+                .OSBYTE => {
+                    switch (cpu.A) {
+                        0x82 => setXY(cpu, MACHINE),
+                        0x83 => setXY(cpu, PAGE),
+                        0x84 => setXY(cpu, HIMEM),
+                        else => std.debug.print("OSBYTE {x} not implemented\n", .{cpu.A}),
                     }
                 },
-                3 => {
-                    std.debug.print("Trap signal 3 received, halting CPU\n", .{});
-                    cpu.stopped = true;
+                .OSWORD => {
+                    const addr = getXY(cpu);
+                    switch (cpu.A) {
+                        0x00 => {
+                            var buf: [256]u8 = undefined;
+                            const res = stdin.readUntilDelimiter(&buf, '\n') catch unreachable;
+                            var buf_addr = cpu.peek16(addr);
+                            const max_len = cpu.peek8(addr + 2);
+                            cpu.Y = @as(u8, @min(res.len, max_len));
+                            cpu.P.C = false;
+                            for (res, 0..) |c, i| {
+                                if (i >= max_len) break;
+                                cpu.poke8(buf_addr, c);
+                                buf_addr += 1;
+                            }
+                            cpu.poke8(buf_addr, 0x0d);
+                        },
+                        else => std.debug.print("OSWORD {x} not implemented\n", .{cpu.A}),
+                    }
                 },
-                else => |sig| {
-                    std.debug.print("Trap signal {d} received\n", .{sig});
+                .OSWRCH => {
+                    stdout.print("{c}", .{cpu.A}) catch unreachable;
+                },
+                .OSRDCH => {
+                    std.debug.print("OSRDCH {s}\n", .{cpu});
+                },
+                .OSFILE => {
+                    std.debug.print("OSFILE {s}\n", .{cpu});
+                },
+                .OSARGS => {
+                    std.debug.print("OSARGS {s}\n", .{cpu});
+                },
+                .OSBGET => {
+                    std.debug.print("OSBGET {s}\n", .{cpu});
+                },
+                .OSBPUT => {
+                    std.debug.print("OSBPUT {s}\n", .{cpu});
+                },
+                .OSGBPB => {
+                    std.debug.print("OSGBPB {s}\n", .{cpu});
+                },
+                .OSFIND => {
+                    std.debug.print("OSFIND {s}\n", .{cpu});
                 },
             }
         } else {
+            std.debug.print("Illegal instruction: {x} at {s}\n", .{ opcode, cpu });
             @panic("Illegal instruction");
         }
     }
 };
 
-const Vanilla65C02 = machine.makeCPU(@import("wdc65c02.zig").InstructionSet65C02, @import("address_modes.zig").AddressModes, @import("instructions.zig").Instructions, @import("alu.zig").ALU6502, memory.FlatMemory, machine.NullInterruptSource, TestTrapHandler, .{});
+const Vanilla65C02 = machine.makeCPU(
+    @import("wdc65c02.zig").InstructionSet65C02,
+    @import("address_modes.zig").AddressModes,
+    @import("instructions.zig").Instructions,
+    @import("alu.zig").ALU65C02,
+    memory.FlatMemory,
+    machine.NullInterruptSource,
+    TubeTrapHandler,
+    .{ .clear_decimal_on_int = true },
+);
 
-const test_code = @embedFile("test/data/6502_functional_test.s19");
+fn buildTubeOS(mc: *Vanilla65C02) void {
+    mc.PC = 0xff00; // traps
+    const STUB_START = 0xffcb;
+
+    // Build traps and populate vectors
+    switch (@typeInfo(MOSFunction)) {
+        .@"enum" => |info| {
+            inline for (info.fields) |field| {
+                const vec_name = field.name[2..] ++ "V";
+                const vec_addr: u16 = @intFromEnum(@field(MOSVectors, vec_name));
+                const trap_addr = mc.PC;
+                mc.asm8(TRAP_OPCODE);
+                mc.asm8(@intCast(field.value));
+                mc.asmi(.RTS);
+                mc.poke16(vec_addr, trap_addr);
+            }
+        },
+        else => @panic("Invalid MOSFunction type"),
+    }
+
+    std.debug.assert(mc.PC <= STUB_START);
+    mc.PC = STUB_START;
+    const irq_addr = mc.PC;
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BRKV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FINDV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.GBPBV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BPUTV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BGETV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.ARGSV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FILEV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.RDCHV));
+    std.debug.assert(mc.PC == 0xffe3);
+    mc.asmi8(.@"CMP #", 0x0d);
+    mc.asmi8(.@"BNE rel", 0x07); // 7 bytes to LFFEE
+    mc.asmi8(.@"LDA #", 0x0a);
+    mc.asmi16(.@"JSR abs", 0xffee);
+    mc.asmi8(.@"LDA #", 0x0d);
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.WRCHV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.WORDV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BYTEV));
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.CLIV));
+    std.debug.assert(mc.PC == 0xfffa);
+    mc.poke16(Vanilla65C02.IRQV, irq_addr);
+}
+
+const HI_BASIC = @embedFile("roms/HiBASIC.rom");
 
 pub fn main() !void {
     var ram: [0x10000]u8 = @splat(0);
+    @memcpy(ram[HIMEM .. HIMEM + HI_BASIC.len], HI_BASIC);
 
-    var sr = try srec.SRecFile.init(std.heap.page_allocator, test_code);
-    defer sr.deinit();
-
-    const start = sr.startAddr() orelse @panic("No start address found in SRec file");
-
-    try sr.materialize(&ram);
-
-    var trapper = TestTrapHandler{};
+    var trapper = TubeTrapHandler{};
 
     var mc = Vanilla65C02.init(
         memory.FlatMemory{ .ram = &ram },
@@ -67,12 +192,15 @@ pub fn main() !void {
         &trapper,
     );
 
-    mc.PC = @intCast(start);
-    // std.debug.print("{s}\n", .{mc});
+    buildTubeOS(&mc);
+
+    mc.PC = @intCast(HIMEM);
+    mc.A = 0x01;
+    std.debug.print("{s}\n", .{mc});
 
     while (!mc.stopped) {
-        // std.debug.print("{s}\n", .{mc});
         mc.step();
+        // std.debug.print("{s}\n", .{mc});
     }
 }
 

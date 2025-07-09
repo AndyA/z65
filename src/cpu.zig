@@ -93,10 +93,10 @@ pub fn makeCPU(
 
         return struct {
             const Self = @This();
-            const STACK = constants.STACK;
-            const IRQV = constants.IRQV;
-            const RESETV = constants.RESETV;
-            const NMIV = constants.NMIV;
+            pub const STACK = constants.STACK;
+            pub const IRQV = constants.IRQV;
+            pub const RESETV = constants.RESETV;
+            pub const NMIV = constants.NMIV;
             const PSR = @import("status_reg.zig").PSR;
 
             alu: ALU = ALU{},
