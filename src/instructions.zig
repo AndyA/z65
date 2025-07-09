@@ -656,3 +656,79 @@ const SBC_CS = loadTestVector("test/data/decimal/sbc_cs");
 test "decimal sbc_cs" {
     try test6502Decimal(SBC_CS, .SBC, true);
 }
+
+const test_code = @embedFile("test/data/6502_functional_test.s19");
+test "functional test" {
+    const TRAP_OPCODE: u8 = 0xBB;
+
+    const TestTrapHandler = struct {
+        pub const Self = @This();
+        output: std.ArrayList(u8),
+        failed: bool = false,
+
+        pub fn init(alloc: std.mem.Allocator) !Self {
+            var output = try std.ArrayList(u8).initCapacity(alloc, 16384);
+            errdefer output.deinit();
+            return Self{ .output = output };
+        }
+
+        pub fn deinit(self: *Self) void {
+            self.output.deinit();
+        }
+
+        pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
+            if (opcode == TRAP_OPCODE) {
+                const signal: u8 = cpu.fetch8();
+                switch (signal) {
+                    1 => self.output.append(cpu.A) catch unreachable,
+                    2 => {
+                        std.debug.print("Test failure:\n{s}\n", .{self.output.items});
+                        cpu.stop();
+                        self.failed = true;
+                    },
+                    3 => cpu.stop(),
+                    else => |sig| std.debug.print("Trap signal {d} received\n", .{sig}),
+                }
+            } else {
+                @panic("Illegal instruction");
+            }
+        }
+    };
+
+    const machine = @import("cpu.zig");
+    const memory = @import("memory.zig");
+    const srec = @import("srec.zig");
+    const expect = std.testing.expect;
+
+    const Vanilla6502 = machine.makeCPU(
+        @import("mos6502.zig").InstructionSet6502,
+        @import("address_modes.zig").AddressModes,
+        Instructions,
+        memory.FlatMemory,
+        machine.NullInterruptSource,
+        TestTrapHandler,
+    );
+    var ram: [0x10000]u8 = @splat(0);
+
+    var sr = try srec.SRecFile.init(std.heap.page_allocator, test_code);
+    defer sr.deinit();
+
+    const start = sr.startAddr() orelse @panic("No start address found in SRec file");
+    try sr.materialize(&ram);
+
+    var trapper = try TestTrapHandler.init(std.testing.allocator);
+    defer trapper.deinit();
+
+    var mc = Vanilla6502.init(
+        memory.FlatMemory{ .ram = &ram },
+        machine.NullInterruptSource{},
+        trapper,
+    );
+
+    mc.PC = @intCast(start);
+    while (!mc.stopped) {
+        mc.step();
+    }
+
+    try expect(!mc.trap_handler.failed);
+}
