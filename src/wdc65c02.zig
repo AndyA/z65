@@ -8,7 +8,7 @@ const Extra65C02 = enum(u8) {
     @"SBC (zpg)" = 0xF2,
     @"STA (zpg)" = 0x92,
 
-    @"BITA #" = 0x89, // is this actually BITA?
+    @"BITA #" = 0x89,
     @"BIT zpg, X" = 0x34,
     @"BIT abs, X" = 0x3C,
 
@@ -86,7 +86,7 @@ pub const InstructionSet65C02 = tt.mergeInstructionSets(
 test "6502 functional test" {
     const test_code = @embedFile("test/data/6502_functional_test.s19");
     const ft = @import("functional_test.zig");
-    // Test with a 6502 ALU because otherwise decimal mode will fail
+    // Test with a 6502 ALU else decimal mode will fail
     try ft.runFunctionalTest(
         InstructionSet65C02,
         @import("alu.zig").ALU6502,

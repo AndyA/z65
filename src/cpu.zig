@@ -225,6 +225,9 @@ pub fn makeCPU(
                 self.PC = self.peek16(RESETV);
                 self.P.I = true; // Set interrupt disable
                 self.stopped = false;
+                if (options.clear_decimal_on_int) {
+                    self.P.D = false; // Clear decimal mode on interrupt
+                }
                 self.wake();
             }
 
