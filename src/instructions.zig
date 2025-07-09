@@ -722,7 +722,7 @@ test "functional test" {
     var mc = Vanilla6502.init(
         memory.FlatMemory{ .ram = &ram },
         machine.NullInterruptSource{},
-        trapper,
+        &trapper,
     );
 
     mc.PC = @intCast(start);
@@ -730,5 +730,5 @@ test "functional test" {
         mc.step();
     }
 
-    try expect(!mc.trap_handler.failed);
+    try expect(!trapper.failed);
 }

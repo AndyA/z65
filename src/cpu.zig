@@ -95,7 +95,7 @@ pub fn makeCPU(
 
             mem: Memory,
             int_source: InterruptSource,
-            trap_handler: TrapHandler,
+            trap_handler: *TrapHandler,
 
             int_state: InterruptState = .None,
             stopped: bool = false,
@@ -108,7 +108,7 @@ pub fn makeCPU(
             P: PSR = PSR{},
             PC: u16 = 0,
 
-            pub fn init(mem: Memory, int_source: InterruptSource, trap_handler: TrapHandler) Self {
+            pub fn init(mem: Memory, int_source: InterruptSource, trap_handler: *TrapHandler) Self {
                 return Self{
                     .mem = mem,
                     .int_source = int_source,
@@ -308,10 +308,12 @@ test "cpu" {
         PanicTrapHandler,
     );
 
+    var trapper = PanicTrapHandler{};
+
     var mc = M6502.init(
         memory.FlatMemory{ .ram = &ram },
         NullInterruptSource{},
-        PanicTrapHandler{},
+        &trapper,
     );
 
     // stack stuff
@@ -359,10 +361,12 @@ test "trap" {
         TestTrapHandler,
     );
 
+    var trap_handler = TestTrapHandler{};
+
     var mc = M6502.init(
         memory.FlatMemory{ .ram = &ram },
         NullInterruptSource{},
-        TestTrapHandler{},
+        &trap_handler,
     );
 
     try expect(!M6502.isLegal(TRAP_OPCODE));

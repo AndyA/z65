@@ -66,10 +66,12 @@ pub fn main() !void {
 
     try sr.materialize(&ram);
 
+    var trapper = TestTrapHandler{};
+
     var mc = Vanilla65C02.init(
         memory.FlatMemory{ .ram = &ram },
         machine.NullInterruptSource{},
-        TestTrapHandler{},
+        &trapper,
     );
 
     mc.PC = @intCast(start);
