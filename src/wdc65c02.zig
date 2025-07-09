@@ -8,7 +8,7 @@ const Extra65C02 = enum(u8) {
     @"SBC (zpg)" = 0xF2,
     @"STA (zpg)" = 0x92,
 
-    @"BIT #" = 0x89, // is this actually BITA?
+    @"BITimm #" = 0x89, // is this actually BITA?
     @"BIT zpg, X" = 0x34,
     @"BIT abs, X" = 0x3C,
 
@@ -71,6 +71,7 @@ const Extra65C02 = enum(u8) {
 
     @"JMP (abs)" = 0x6c,
     @"JMP (abs, X)" = 0x7c,
+    BRK = 0x00,
 
     STP = 0xDB,
     WAI = 0xCB,
@@ -82,3 +83,15 @@ pub const InstructionSet65C02 = tt.mergeInstructionSets(
     @import("mos6502.zig").InstructionSet6502,
     Extra65C02,
 );
+
+test "6502 functional test" {
+    const test_code = @embedFile("test/data/6502_functional_test.s19");
+    const ft = @import("functional_test.zig");
+    try ft.runFunctionalTest(InstructionSet65C02, test_code);
+}
+
+// test "65C02 functional test" {
+//     const test_code = @embedFile("test/data/65C02_extended_opcodes_test.s19");
+//     const ft = @import("functional_test.zig");
+//     try ft.runFunctionalTest(InstructionSet65C02, test_code);
+// }

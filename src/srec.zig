@@ -2,13 +2,14 @@
 
 const std = @import("std");
 
-pub const SRecMetaKind = enum(u8) { Header, Data, Count, NonStandard, StartAddress };
+pub const SRecMetaKind = enum(u8) { Header, Data, Count, NonStandard, StartAddress, Undefined };
 
 pub const SRecKind = enum(u8) {
     S0 = '0',
     S1 = '1',
     S2 = '2',
     S3 = '3',
+    S4 = '4',
     S5 = '5',
     S6 = '6',
     S7 = '7',
@@ -33,6 +34,7 @@ pub const SRecKind = enum(u8) {
             .S5 => .Count,
             .S6 => .NonStandard,
             .S7, .S8, .S9 => .StartAddress,
+            else => .Undefined,
         };
     }
 };
