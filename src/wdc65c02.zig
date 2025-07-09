@@ -87,11 +87,19 @@ pub const InstructionSet65C02 = tt.mergeInstructionSets(
 test "6502 functional test" {
     const test_code = @embedFile("test/data/6502_functional_test.s19");
     const ft = @import("functional_test.zig");
-    try ft.runFunctionalTest(InstructionSet65C02, test_code);
+    try ft.runFunctionalTest(
+        InstructionSet65C02,
+        @import("alu.zig").ALU6502,
+        test_code,
+    );
 }
 
 // test "65C02 functional test" {
 //     const test_code = @embedFile("test/data/65C02_extended_opcodes_test.s19");
 //     const ft = @import("functional_test.zig");
-//     try ft.runFunctionalTest(InstructionSet65C02, test_code);
+//     try ft.runFunctionalTest(
+//         InstructionSet65C02,
+//         @import("alu.zig").ALU65C02,
+//         test_code,
+//     );
 // }

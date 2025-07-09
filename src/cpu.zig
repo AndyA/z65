@@ -38,6 +38,7 @@ pub fn makeCPU(
     comptime InstructionSet: type,
     comptime AddressModes: type,
     comptime Instructions: type,
+    comptime ALU: type,
     comptime Memory: type,
     comptime InterruptSource: type,
     comptime TrapHandler: type,
@@ -93,6 +94,7 @@ pub fn makeCPU(
             const NMIV = constants.NMIV;
             const PSR = @import("status_reg.zig").PSR;
 
+            alu: ALU = ALU{},
             mem: Memory,
             int_source: InterruptSource,
             trap_handler: *TrapHandler,
@@ -303,6 +305,7 @@ test "cpu" {
         @import("mos6502.zig").InstructionSet6502,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,
+        @import("alu.zig").ALU6502,
         memory.FlatMemory,
         NullInterruptSource,
         PanicTrapHandler,
@@ -356,6 +359,8 @@ test "trap" {
         @import("mos6502.zig").InstructionSet6502,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,
+        @import("alu.zig").ALU6502,
+
         memory.FlatMemory,
         NullInterruptSource,
         TestTrapHandler,

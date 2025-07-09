@@ -1,5 +1,6 @@
 pub fn runFunctionalTest(
     comptime InstructionSet: type,
+    comptime ALU: type,
     test_code: []const u8,
 ) !void {
     const std = @import("std");
@@ -50,6 +51,7 @@ pub fn runFunctionalTest(
         InstructionSet,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,
+        ALU,
         memory.FlatMemory,
         machine.NullInterruptSource,
         TestTrapHandler,

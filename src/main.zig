@@ -49,6 +49,7 @@ const Vanilla65C02 = machine.makeCPU(
     @import("wdc65c02.zig").InstructionSet65C02,
     @import("address_modes.zig").AddressModes,
     @import("instructions.zig").Instructions,
+    @import("alu.zig").ALU6502,
     memory.FlatMemory,
     machine.NullInterruptSource,
     TestTrapHandler,
