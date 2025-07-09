@@ -68,7 +68,7 @@ const TubeTrapHandler = struct {
                         0x82 => setXY(cpu, MACHINE),
                         0x83 => setXY(cpu, PAGE),
                         0x84 => setXY(cpu, HIMEM),
-                        else => std.debug.print("OSBYTE {x} not implemented\n", .{cpu.A}),
+                        else => std.debug.print("OSBYTE {x} not implemented {s}\n", .{ cpu.A, cpu }),
                     }
                 },
                 .OSWORD => {
@@ -149,7 +149,7 @@ const Vanilla65C02 = machine.makeCPU(
 
 fn buildTubeOS(mc: *Vanilla65C02) void {
     mc.PC = 0xff00; // traps
-    const STUB_START = 0xffcb;
+    const STUB_START = 0xffca;
 
     // Build traps and populate vectors
     switch (@typeInfo(MOSFunction)) {
@@ -170,6 +170,7 @@ fn buildTubeOS(mc: *Vanilla65C02) void {
     std.debug.assert(mc.PC <= STUB_START);
     mc.PC = STUB_START;
     const irq_addr = mc.PC;
+    mc.asmi(.CLI);
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BRKV));
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FINDV));
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.GBPBV));
