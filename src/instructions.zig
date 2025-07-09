@@ -57,7 +57,7 @@ pub const Instructions = struct {
         var dr_lo: u8 = (lhs & 0x0f) + (rhs & 0x0f) + c_in;
         var dr_hi: u8 = (lhs >> 4) + (rhs >> 4);
         if (dr_lo > 9) {
-            dr_lo = (dr_lo - 10) & 0x0f;
+            dr_lo -= 10;
             dr_hi += 1;
         }
 
@@ -68,35 +68,35 @@ pub const Instructions = struct {
 
         if (dr_hi > 9) {
             dr_hi -%= 10;
-            dr_hi &= 0x0f;
             cpu.P.C = true;
         }
 
-        return @as(u8, (dr_hi << 4) | dr_lo);
+        return @intCast((dr_lo & 0x0f) | (dr_hi & 0x0f) << 4);
     }
 
-    fn sbc_decimal(cpu: anytype, lhs: u8, rhs: u8) u8 {
-        const c_in = carry(0x01, cpu);
-        const bin_res: u16 = (@as(u16, lhs) -% @as(u16, rhs) -% 1 +% @as(u16, c_in));
-
-        cpu.P.N = (bin_res & 0x80) != 0;
-        cpu.P.Z = (bin_res & 0xff) == 0;
-        cpu.P.V = ((lhs ^ bin_res) & (rhs ^ bin_res) & 0x80) != 0;
-        cpu.P.C = bin_res & 0x100 != 0;
-
-        var dr_lo: u8 = (lhs & 0x0f) -% (rhs & 0x0f) -% 1 +% c_in;
-        var dr_hi: u8 = (lhs >> 4) -% (rhs >> 4);
+    fn sbc_decimal(cpu: anytype, lh: u8, rh: u8) u8 {
+        const c_in: u16 = 1 - carry(1, cpu);
+        const lhs = @as(u16, lh);
+        const rhs = @as(u16, rh);
+        var dr_lo = (lhs & 0x0f) -% (rhs & 0x0f) -% c_in;
+        var dr_hi = (lhs >> 4) -% (rhs >> 4);
 
         if (dr_lo & 0x10 != 0) {
-            dr_lo = (dr_lo -% 6) & 0x0f;
+            dr_lo -= 6;
             dr_hi -%= 1;
         }
 
+        const bin_res: u16 = lhs -% rhs -% c_in;
+        cpu.P.N = (bin_res & 0x80) != 0;
+        cpu.P.Z = (bin_res & 0xff) == 0;
+        cpu.P.V = (lhs ^ rhs & 0x80 != 0) and ((lhs ^ (dr_hi << 4)) & 0x80 != 0);
+        cpu.P.C = (bin_res & 0x100) == 0;
+
         if (dr_hi & 0x10 != 0) {
-            dr_hi = (dr_hi -% 6) & 0x0f;
+            dr_hi -= 6;
         }
 
-        return 0;
+        return @intCast((dr_lo & 0x0f) | (dr_hi & 0x0f) << 4);
     }
 
     pub fn adc(cpu: anytype, lhs: u8, rhs: u8) u8 {
@@ -577,14 +577,15 @@ const Op = enum(u8) { ADC, SBC };
 fn test6502Decimal(vector: TestVector, op: Op, carry: bool) !void {
     const expect = std.testing.expect;
 
+    const PSR = @import("status_reg.zig").PSR;
     const TestCPU = struct {
-        const PSR = @import("status_reg.zig").PSR;
         P: PSR = PSR{},
     };
 
     try expect(vector.res.len == 65536);
     var res_error: usize = 0;
     var psr_error: usize = 0;
+    var printing = true;
     for (0..256) |rhs| {
         for (0..256) |lhs| {
             var cpu = TestCPU{};
@@ -598,20 +599,32 @@ fn test6502Decimal(vector: TestVector, op: Op, carry: bool) !void {
             };
             cpu.P.D = false;
             const psr_got = cpu.P.value();
-            const slot = (lhs << 8) | rhs;
+            const slot = (rhs << 8) | lhs;
 
-            if (res_got != vector.res[slot] or psr_got != vector.psr[slot]) {
-                std.debug.print("Bad result at {x:0>2}, {x:0>2}", .{ lhs, rhs });
-                if (res_got != vector.res[slot]) {
-                    std.debug.print(" RES: {x:0>2} != {x:0>2}", .{ res_got, vector.res[slot] });
-                    res_error += 1;
-                }
+            if (res_got != vector.res[slot])
+                res_error += 1;
 
-                if (psr_got != vector.psr[slot]) {
-                    std.debug.print(" PSR: {x:0>2} != {x:0>2}", .{ psr_got, vector.psr[slot] });
-                    psr_error += 1;
+            if (psr_got != vector.psr[slot])
+                psr_error += 1;
+
+            if (printing) {
+                if (res_got != vector.res[slot] or psr_got != vector.psr[slot]) {
+                    std.debug.print("Bad result at {x:0>2}, {x:0>2}", .{ lhs, rhs });
+                    if (res_got != vector.res[slot]) {
+                        std.debug.print(" RES: {x:0>2} != {x:0>2}", .{ res_got, vector.res[slot] });
+                    }
+
+                    if (psr_got != vector.psr[slot]) {
+                        const p_got: PSR = @bitCast(psr_got);
+                        const p_want: PSR = @bitCast(vector.psr[slot]);
+                        std.debug.print(" PSR: {s} != {s}", .{ p_got, p_want });
+                    }
+                    std.debug.print("\n", .{});
                 }
-                std.debug.print("\n", .{});
+                if (res_error + psr_error > 100) {
+                    std.debug.print("Too many errors\n", .{});
+                    printing = false;
+                }
             }
         }
     }
@@ -634,12 +647,12 @@ test "decimal adc_cs" {
     try test6502Decimal(ADC_CS, .ADC, true);
 }
 
-// const SBC_CC = loadTestVector("test/data/decimal/sbc_cc");
-// test "decimal sbc_cc" {
-//     try test6502Decimal(SBC_CC, .SBC, false);
-// }
+const SBC_CC = loadTestVector("test/data/decimal/sbc_cc");
+test "decimal sbc_cc" {
+    try test6502Decimal(SBC_CC, .SBC, false);
+}
 
-// const SBC_CS = loadTestVector("test/data/decimal/sbc_cs");
-// test "decimal sbc_cs" {
-//     try test6502Decimal(SBC_CS, .SBC, true);
-// }
+const SBC_CS = loadTestVector("test/data/decimal/sbc_cs");
+test "decimal sbc_cs" {
+    try test6502Decimal(SBC_CS, .SBC, true);
+}
