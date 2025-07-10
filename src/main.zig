@@ -237,9 +237,14 @@ const TubeTrapHandler = struct {
                 },
                 .OSBYTE => {
                     switch (cpu.A) {
+                        0x7e => {
+                            cpu.X = cpu.peek8(0xff) & 0x80;
+                            cpu.poke8(0xff, 0x00); // clear Escape
+                        },
                         0x82 => setXY(cpu, MACHINE),
                         0x83 => setXY(cpu, PAGE),
                         0x84 => setXY(cpu, HIMEM),
+                        0xda => {}, // set VDU queue length
                         else => std.debug.print("OSBYTE {x} not implemented {s}\n", .{ cpu.A, cpu }),
                     }
                 },
@@ -321,7 +326,7 @@ const Tube65C02 = machine.makeCPU(
 
 fn buildTubeOS(mc: *Tube65C02) void {
     mc.PC = 0xff00; // traps
-    const STUB_START = 0xffca;
+    const STUB_START = 0xffca + 4;
 
     // Build traps and populate vectors
     switch (@typeInfo(MOSFunction)) {
@@ -339,11 +344,35 @@ fn buildTubeOS(mc: *Tube65C02) void {
         else => @panic("Invalid MOSFunction type"),
     }
 
-    std.debug.assert(mc.PC <= STUB_START);
-    mc.PC = STUB_START;
     const irq_addr = mc.PC;
+
+    mc.asmi8(.@"STA zpg", 0xFC);
+    mc.asmi(.PLA);
+    mc.asmi(.PHA);
+    mc.asmi8(.@"AND #", 0x10);
+    mc.asmi8(.@"BNE rel", 3);
+    mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.IRQV));
+
+    // BRK
+    mc.asmi(.PHX);
+    mc.asmi(.TSX);
+    mc.asmi16(.@"LDA abs, X", 0x0103);
+    mc.asmi(.CLD);
+    mc.asmi(.SEC);
+    mc.asmi8(.@"SBC #", 0x01);
+    mc.asmi8(.@"STA zpg", 0xFD);
+    mc.asmi16(.@"LDA abs, X", 0x0104);
+    mc.asmi8(.@"SBC #", 0x00);
+    mc.asmi8(.@"STA zpg", 0xFE);
+    mc.asmi8(.@"STX zpg", 0xF0);
+    mc.asmi(.PLX);
+    mc.asmi8(.@"LDA zpg", 0xFC);
     mc.asmi(.CLI);
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BRKV));
+
+    std.debug.assert(mc.PC <= STUB_START);
+
+    mc.PC = STUB_START;
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FINDV));
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.GBPBV));
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BPUTV));
