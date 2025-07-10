@@ -1,8 +1,6 @@
 const std = @import("std");
 const machine = @import("cpu.zig");
 const memory = @import("memory.zig");
-const tt = @import("type_tools.zig");
-const srec = @import("srec.zig");
 
 const TRAP_OPCODE: u8 = 0xBB;
 
@@ -36,10 +34,12 @@ const MOSVectors = enum(u16) {
     FINDV = 0x021C,
 };
 
-const PAGE = 0x800;
-const HIMEM = 0xb800;
-const MACHINE = 0x0000;
-const TRACE = 0xfe90;
+const Symbols = enum(u16) {
+    PAGE = 0x800,
+    HIMEM = 0xb800,
+    MACHINE = 0x0000,
+    TRACE = 0xfe90,
+};
 
 fn setXY(cpu: anytype, xy: u16) void {
     cpu.X = @intCast(xy & 0xff);
@@ -220,7 +220,7 @@ const OSFILE_CB = struct {
 const F_u40 = furnace(u40);
 const F_OSFILE = furnace(OSFILE_CB);
 
-const TubeTrapHandler = struct {
+const TubeOS = struct {
     const Self = @This();
     base_time_ms: i64,
     alloc: std.mem.Allocator,
@@ -233,7 +233,10 @@ const TubeTrapHandler = struct {
             const osfn: MOSFunction = @enumFromInt(cpu.fetch8());
             switch (osfn) {
                 .OSCLI => {
-                    std.debug.print("OSCLI {s}\n", .{cpu});
+                    var cmd_line = peekString(self.alloc, cpu, getXY(cpu), 0x0D) catch
+                        unreachable;
+                    defer cmd_line.deinit();
+                    std.debug.print("OSCLI \"{s}\"\n", .{cmd_line.items});
                 },
                 .OSBYTE => {
                     switch (cpu.A) {
@@ -241,9 +244,9 @@ const TubeTrapHandler = struct {
                             cpu.X = cpu.peek8(0xff) & 0x80;
                             cpu.poke8(0xff, 0x00); // clear Escape
                         },
-                        0x82 => setXY(cpu, MACHINE),
-                        0x83 => setXY(cpu, PAGE),
-                        0x84 => setXY(cpu, HIMEM),
+                        0x82 => setXY(cpu, @intFromEnum(Symbols.MACHINE)),
+                        0x83 => setXY(cpu, @intFromEnum(Symbols.PAGE)),
+                        0x84 => setXY(cpu, @intFromEnum(Symbols.HIMEM)),
                         0xda => {}, // set VDU queue length
                         else => std.debug.print("OSBYTE {x} not implemented {s}\n", .{ cpu.A, cpu }),
                     }
@@ -253,14 +256,15 @@ const TubeTrapHandler = struct {
                     switch (cpu.A) {
                         0x00 => {
                             var buf: [256]u8 = undefined;
-                            const res = stdin.readUntilDelimiterOrEof(&buf, '\n') catch unreachable;
+                            const res = stdin.readUntilDelimiterOrEof(&buf, '\n') catch
+                                unreachable;
                             if (res) |ln| {
                                 const buf_addr = cpu.peek16(addr);
                                 const max_len = cpu.peek8(addr + 2);
                                 cpu.Y = @as(u8, @min(ln.len, max_len));
                                 cpu.P.C = false;
                                 pokeBytes(cpu, buf_addr, ln);
-                                cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // null-terminate
+                                cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate
                             } else {
                                 std.debug.print("\nBye!\n", .{});
                                 cpu.stop();
@@ -320,13 +324,13 @@ const Tube65C02 = machine.makeCPU(
     @import("alu.zig").ALU65C02,
     memory.FlatMemory,
     machine.NullInterruptSource,
-    TubeTrapHandler,
+    TubeOS,
     .{ .clear_decimal_on_int = true },
 );
 
 fn buildTubeOS(mc: *Tube65C02) void {
     mc.PC = 0xff00; // traps
-    const STUB_START = 0xffca + 4;
+    const STUB_START = 0xffce;
 
     // Build traps and populate vectors
     switch (@typeInfo(MOSFunction)) {
@@ -346,25 +350,26 @@ fn buildTubeOS(mc: *Tube65C02) void {
 
     const irq_addr = mc.PC;
 
+    // IRQ
     mc.asmi8(.@"STA zpg", 0xFC);
     mc.asmi(.PLA);
     mc.asmi(.PHA);
     mc.asmi8(.@"AND #", 0x10);
-    mc.asmi8(.@"BNE rel", 3);
+    mc.asmi8(.@"BNE rel", 5);
+    mc.asmi8(.@"LDA zpg", 0xFC);
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.IRQV));
 
     // BRK
     mc.asmi(.PHX);
     mc.asmi(.TSX);
+    mc.asmi8(.@"STX zpg", 0xF0);
     mc.asmi16(.@"LDA abs, X", 0x0103);
-    mc.asmi(.CLD);
     mc.asmi(.SEC);
     mc.asmi8(.@"SBC #", 0x01);
     mc.asmi8(.@"STA zpg", 0xFD);
     mc.asmi16(.@"LDA abs, X", 0x0104);
     mc.asmi8(.@"SBC #", 0x00);
     mc.asmi8(.@"STA zpg", 0xFE);
-    mc.asmi8(.@"STX zpg", 0xF0);
     mc.asmi(.PLX);
     mc.asmi8(.@"LDA zpg", 0xFC);
     mc.asmi(.CLI);
@@ -381,9 +386,9 @@ fn buildTubeOS(mc: *Tube65C02) void {
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FILEV));
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.RDCHV));
     std.debug.assert(mc.PC == 0xffe3);
-    mc.asmi8(.@"CMP #", 0x0d);
+    mc.asmi8(.@"CMP #", 0x0d); // OSASCI
     mc.asmi8(.@"BNE rel", 0x07); // 7 bytes to LFFEE
-    mc.asmi8(.@"LDA #", 0x0a);
+    mc.asmi8(.@"LDA #", 0x0a); // OSNEWL
     mc.asmi16(.@"JSR abs", 0xffee);
     mc.asmi8(.@"LDA #", 0x0d);
     mc.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.WRCHV));
@@ -398,9 +403,10 @@ const HI_BASIC = @embedFile("roms/HiBASIC.rom");
 
 pub fn main() !void {
     var ram: [0x10000]u8 = @splat(0);
-    @memcpy(ram[HIMEM .. HIMEM + HI_BASIC.len], HI_BASIC);
+    const load_addr = @intFromEnum(Symbols.HIMEM);
+    @memcpy(ram[load_addr .. load_addr + HI_BASIC.len], HI_BASIC);
 
-    var trapper = TubeTrapHandler{
+    var trapper = TubeOS{
         .base_time_ms = std.time.milliTimestamp(),
         .alloc = std.heap.page_allocator,
     };
@@ -413,13 +419,13 @@ pub fn main() !void {
 
     buildTubeOS(&mc);
 
-    mc.PC = @intCast(HIMEM);
+    mc.PC = @intCast(load_addr);
     mc.A = 0x01;
-    mc.poke8(TRACE, 0x00); // disable tracing
+    mc.poke8(@intFromEnum(Symbols.TRACE), 0x00); // disable tracing
 
     while (!mc.stopped) {
         mc.step();
-        switch (mc.peek8(TRACE)) {
+        switch (mc.peek8(@intFromEnum(Symbols.TRACE))) {
             0x00 => {},
             0x01 => std.debug.print("{s!j}\n", .{mc}),
             0x02 => std.debug.print("{s}\n", .{mc}),
