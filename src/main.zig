@@ -65,13 +65,9 @@ fn peekBytes(cpu: anytype, addr: u16, bytes: []u8) void {
 }
 
 fn peekBytesAlloc(alloc: std.mem.Allocator, cpu: anytype, addr: u16, size: usize) ![]u8 {
-    var buf = try alloc.alloc(u8, size);
+    const buf = try alloc.alloc(u8, size);
     errdefer alloc.free(buf);
-
-    for (0..size) |i| {
-        buf[i] = cpu.peek8(@intCast(addr + i));
-    }
-
+    peekBytes(cpu, addr, buf);
     return buf;
 }
 
