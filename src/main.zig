@@ -49,8 +49,113 @@ fn getXY(cpu: anytype) u16 {
     return @as(u16, cpu.Y) << 8 | @as(u16, cpu.X);
 }
 
+fn pokeBytes(cpu: anytype, addr: u16, bytes: []const u8) void {
+    for (bytes, 0..) |byte, i| {
+        const offset: u16 = @intCast(i);
+        cpu.poke8(addr + offset, byte);
+    }
+}
+
+fn peekBytes(cpu: anytype, addr: u16, bytes: []u8) void {
+    for (0..bytes.len) |i| {
+        const offset: u16 = @intCast(i);
+        bytes[i] = cpu.peek8(addr + offset);
+    }
+}
+
+fn furnace(comptime T: type) type {
+    comptime {
+        switch (@typeInfo(T)) {
+            .@"struct" => |info| {
+                var f: [info.fields.len]type = undefined;
+                var bytes = 0;
+                for (info.fields, 0..) |field, i| {
+                    f[i] = furnace(field.type);
+                    bytes += f[i].byteSize;
+                }
+
+                return struct {
+                    pub const bytesSize = bytes;
+                    const ff = f;
+
+                    pub fn read(cpu: anytype, addr: u16) T {
+                        var ret: T = undefined;
+                        var offset: u16 = 0;
+                        inline for (info.fields, 0..) |field, i| {
+                            @field(ret, field.name) = ff[i].read(cpu, addr + offset);
+                            offset += ff[i].byteSize;
+                        }
+                        return ret;
+                    }
+
+                    pub fn write(cpu: anytype, addr: u16, value: T) void {
+                        var offset: u16 = 0;
+                        inline for (info.fields, 0..) |field, i| {
+                            ff[i].write(cpu, addr + offset, @field(value, field.name));
+                            offset += ff[i].byteSize;
+                        }
+                    }
+                };
+            },
+            .int => |info| {
+                if (info.bits & 0x03 != 0) {
+                    @compileError("Furnace can only be used with multiples of 8 bits");
+                }
+
+                return struct {
+                    pub const byteSize = @divFloor(info.bits, 8);
+
+                    pub fn read(cpu: anytype, addr: u16) T {
+                        var raw_value: [byteSize]u8 = undefined;
+                        peekBytes(cpu, addr, &raw_value);
+                        return std.mem.littleToNative(T, @bitCast(raw_value));
+                    }
+
+                    pub fn write(cpu: anytype, addr: u16, value: T) void {
+                        const raw_value: [byteSize]u8 = @bitCast(std.mem.nativeToLittle(T, value));
+                        pokeBytes(cpu, addr, &raw_value);
+                    }
+                };
+            },
+            else => @compileError("Furnace can only be used with structs or integers"),
+        }
+    }
+}
+
+const OSFILE_CB = struct {
+    const Self = @This();
+
+    filename: u16,
+    load_addr: u32,
+    exec_addr: u32,
+    start_addr: u32,
+    end_addr: u32,
+
+    pub fn format(
+        self: Self,
+        comptime fmt: []const u8,
+        opt: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = fmt;
+        _ = opt;
+        try writer.print(
+            \\filename: {x:0>4} load: {x:0>8} exec: {x:0>8} start: {x:0>8} end: {x:0>8}
+        , .{
+            self.filename,
+            self.load_addr,
+            self.exec_addr,
+            self.start_addr,
+            self.end_addr,
+        });
+    }
+};
+
+const F_u40 = furnace(u40);
+const F_OSFILE = furnace(OSFILE_CB);
+
 const TubeTrapHandler = struct {
-    pub const Self = @This();
+    const Self = @This();
     base_time_ms: i64,
 
     pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
@@ -91,14 +196,10 @@ const TubeTrapHandler = struct {
                         0x01 => {
                             const delta_ms = std.time.milliTimestamp() - self.base_time_ms;
                             const delta_cs: u40 = @intCast(@divTrunc(delta_ms, 10));
-                            cpu.poke16(addr + 0, @intCast(delta_cs & 0xffff));
-                            cpu.poke16(addr + 2, @intCast((delta_cs >> 16) & 0xffff));
-                            cpu.poke8(addr + 4, @intCast((delta_cs >> 32) & 0xff));
+                            F_u40.write(cpu, addr, delta_cs);
                         },
                         0x02 => {
-                            const new_time_cs: u40 = cpu.peek16(addr + 0) |
-                                @as(u40, cpu.peek16(addr + 2)) << 16 |
-                                @as(u40, cpu.peek8(addr + 4)) << 32;
+                            const new_time_cs = F_u40.read(cpu, addr);
                             self.base_time_ms = std.time.milliTimestamp() - new_time_cs * 10;
                         },
                         else => std.debug.print("OSWORD {x} not implemented\n", .{cpu.A}),
@@ -111,7 +212,8 @@ const TubeTrapHandler = struct {
                     std.debug.print("OSRDCH {s}\n", .{cpu});
                 },
                 .OSFILE => {
-                    std.debug.print("OSFILE {s}\n", .{cpu});
+                    const cb: OSFILE_CB = F_OSFILE.read(cpu, getXY(cpu));
+                    std.debug.print("OSFILE {s}\n  {s}\n", .{ cpu, cb });
                 },
                 .OSARGS => {
                     std.debug.print("OSARGS {s}\n", .{cpu});
