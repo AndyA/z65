@@ -278,11 +278,18 @@ pub fn makeCPU(
                 opt: std.fmt.FormatOptions,
                 writer: anytype,
             ) !void {
-                _ = fmt;
+                // _ = fmt;
                 _ = opt;
-                try writer.print(
-                    \\PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}
-                , .{ self.PC, self.P, self.A, self.X, self.Y, self.S });
+                const args = .{ self.PC, self.P, self.A, self.X, self.Y, self.S };
+                if (std.mem.eql(u8, fmt, "s!j")) {
+                    try writer.print(
+                        \\{{"pc":{d},"p":"{s}","a":{d},"x":{d},"y":{d},"s":{d}}}
+                    , args);
+                } else {
+                    try writer.print(
+                        \\PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}
+                    , args);
+                }
             }
 
             pub fn asmi(self: *Self, instr: InstructionSet) void {

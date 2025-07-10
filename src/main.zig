@@ -39,6 +39,7 @@ const MOSVectors = enum(u16) {
 const PAGE = 0x800;
 const HIMEM = 0xb800;
 const MACHINE = 0x0000;
+const TRACE = 0xfe90;
 
 fn setXY(cpu: anytype, xy: u16) void {
     cpu.X = @intCast(xy & 0xff);
@@ -385,11 +386,16 @@ pub fn main() !void {
 
     mc.PC = @intCast(HIMEM);
     mc.A = 0x01;
-    std.debug.print("{s}\n", .{mc});
+    mc.poke8(TRACE, 0x00); // disable tracing
 
     while (!mc.stopped) {
         mc.step();
-        // std.debug.print("{s}\n", .{mc});
+        switch (mc.peek8(TRACE)) {
+            0x00 => {},
+            0x01 => std.debug.print("{s!j}\n", .{mc}),
+            0x02 => std.debug.print("{s}\n", .{mc}),
+            else => {},
+        }
     }
 }
 
