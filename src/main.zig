@@ -63,6 +63,32 @@ fn peekBytes(cpu: anytype, addr: u16, bytes: []u8) void {
     }
 }
 
+fn peekBytesAlloc(alloc: std.mem.Allocator, cpu: anytype, addr: u16, size: usize) ![]u8 {
+    var buf = try alloc.alloc(u8, size);
+    errdefer alloc.free(buf);
+
+    for (0..size) |i| {
+        buf[i] = cpu.peek8(@intCast(addr + i));
+    }
+
+    return buf;
+}
+
+fn peekString(alloc: std.mem.Allocator, cpu: anytype, addr: u16, sentinel: u8) !std.ArrayList(u8) {
+    var buf = try std.ArrayList(u8).initCapacity(alloc, 256);
+    errdefer buf.deinit();
+
+    var offset: u16 = 0;
+    while (true) {
+        const byte = cpu.peek8(@intCast(addr + offset));
+        if (byte == sentinel) break;
+        try buf.append(byte);
+        offset += 1;
+    }
+
+    return buf;
+}
+
 fn furnace(comptime T: type) type {
     comptime {
         switch (@typeInfo(T)) {
@@ -143,6 +169,51 @@ const OSFILE_CB = struct {
         _ = fmt;
         _ = opt;
     }
+
+    fn save(self: Self, alloc: std.mem.Allocator, cpu: anytype) !void {
+        var file_name = try peekString(alloc, cpu, self.filename, 0x0D);
+        defer file_name.deinit();
+
+        const size: u16 = @intCast(self.end_addr - self.start_addr);
+        const bytes = try peekBytesAlloc(alloc, cpu, @intCast(self.start_addr), size);
+        defer alloc.free(bytes);
+
+        // std.debug.print("Saving {s} \"{s}\"\n", .{ self, file_name.items });
+
+        const file = try std.fs.cwd().createFile(file_name.items, .{ .truncate = true });
+        defer file.close();
+        try file.writeAll(bytes);
+        cpu.A = 0x01;
+    }
+
+    fn load(self: Self, alloc: std.mem.Allocator, cpu: anytype) !void {
+        var file_name = try peekString(alloc, cpu, self.filename, 0x0D);
+        defer file_name.deinit();
+
+        const file = try std.fs.cwd().openFile(file_name.items, .{});
+        defer file.close();
+
+        var buffer: [1024]u8 = undefined;
+        var offset: u16 = 0;
+
+        // std.debug.print("Loading {s} \"{s}\"\n", .{ self, file_name.items });
+
+        while (true) {
+            const read_size = try file.read(&buffer);
+            if (read_size == 0) break; // EOF
+            pokeBytes(cpu, @intCast(self.load_addr + offset), buffer[0..read_size]);
+            offset += @intCast(read_size);
+        }
+        cpu.A = 0x01;
+    }
+
+    pub fn despatch(self: Self, alloc: std.mem.Allocator, cpu: anytype) !void {
+        switch (cpu.A) {
+            0x00 => try self.save(alloc, cpu),
+            0xFF => try self.load(alloc, cpu),
+            else => std.debug.print("Unknown OSFILE operation: {x}\n", .{cpu.A}),
+        }
+    }
 };
 
 const F_u40 = furnace(u40);
@@ -151,6 +222,7 @@ const F_OSFILE = furnace(OSFILE_CB);
 const TubeTrapHandler = struct {
     const Self = @This();
     base_time_ms: i64,
+    alloc: std.mem.Allocator,
 
     pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
         const stdout = std.io.getStdOut().writer();
@@ -177,16 +249,12 @@ const TubeTrapHandler = struct {
                             var buf: [256]u8 = undefined;
                             const res = stdin.readUntilDelimiterOrEof(&buf, '\n') catch unreachable;
                             if (res) |ln| {
-                                var buf_addr = cpu.peek16(addr);
+                                const buf_addr = cpu.peek16(addr);
                                 const max_len = cpu.peek8(addr + 2);
                                 cpu.Y = @as(u8, @min(ln.len, max_len));
                                 cpu.P.C = false;
-                                for (ln, 0..) |c, i| {
-                                    if (i >= max_len) break;
-                                    cpu.poke8(buf_addr, c);
-                                    buf_addr += 1;
-                                }
-                                cpu.poke8(buf_addr, 0x0d);
+                                pokeBytes(cpu, buf_addr, ln);
+                                cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // null-terminate
                             } else {
                                 std.debug.print("\nBye!\n", .{});
                                 cpu.stop();
@@ -212,7 +280,9 @@ const TubeTrapHandler = struct {
                 },
                 .OSFILE => {
                     const cb: OSFILE_CB = F_OSFILE.read(cpu, getXY(cpu));
-                    std.debug.print("OSFILE {s}\n  {s}\n", .{ cpu, cb });
+                    cb.despatch(self.alloc, cpu) catch |err| {
+                        std.debug.print("Error in OSFILE: {s}\n", .{@errorName(err)});
+                    };
                 },
                 .OSARGS => {
                     std.debug.print("OSARGS {s}\n", .{cpu});
@@ -300,7 +370,10 @@ pub fn main() !void {
     var ram: [0x10000]u8 = @splat(0);
     @memcpy(ram[HIMEM .. HIMEM + HI_BASIC.len], HI_BASIC);
 
-    var trapper = TubeTrapHandler{ .base_time_ms = std.time.milliTimestamp() };
+    var trapper = TubeTrapHandler{
+        .base_time_ms = std.time.milliTimestamp(),
+        .alloc = std.heap.page_allocator,
+    };
 
     var mc = Tube65C02.init(
         memory.FlatMemory{ .ram = &ram },
