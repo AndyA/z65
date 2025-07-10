@@ -67,23 +67,23 @@ fn furnace(comptime T: type) type {
     comptime {
         switch (@typeInfo(T)) {
             .@"struct" => |info| {
-                var f: [info.fields.len]type = undefined;
+                var furnaces: [info.fields.len]type = undefined;
                 var bytes = 0;
                 for (info.fields, 0..) |field, i| {
-                    f[i] = furnace(field.type);
-                    bytes += f[i].byteSize;
+                    furnaces[i] = furnace(field.type);
+                    bytes += furnaces[i].byteSize;
                 }
 
                 return struct {
                     pub const bytesSize = bytes;
-                    const ff = f;
+                    const f = furnaces;
 
                     pub fn read(cpu: anytype, addr: u16) T {
                         var ret: T = undefined;
                         var offset: u16 = 0;
                         inline for (info.fields, 0..) |field, i| {
-                            @field(ret, field.name) = ff[i].read(cpu, addr + offset);
-                            offset += ff[i].byteSize;
+                            @field(ret, field.name) = f[i].read(cpu, addr + offset);
+                            offset += f[i].byteSize;
                         }
                         return ret;
                     }
@@ -91,8 +91,8 @@ fn furnace(comptime T: type) type {
                     pub fn write(cpu: anytype, addr: u16, value: T) void {
                         var offset: u16 = 0;
                         inline for (info.fields, 0..) |field, i| {
-                            ff[i].write(cpu, addr + offset, @field(value, field.name));
-                            offset += ff[i].byteSize;
+                            f[i].write(cpu, addr + offset, @field(value, field.name));
+                            offset += f[i].byteSize;
                         }
                     }
                 };
@@ -137,17 +137,11 @@ const OSFILE_CB = struct {
         opt: std.fmt.FormatOptions,
         writer: anytype,
     ) !void {
-        _ = fmt;
-        _ = opt;
         try writer.print(
             \\filename: {x:0>4} load: {x:0>8} exec: {x:0>8} start: {x:0>8} end: {x:0>8}
-        , .{
-            self.filename,
-            self.load_addr,
-            self.exec_addr,
-            self.start_addr,
-            self.end_addr,
-        });
+        , .{ self.filename, self.load_addr, self.exec_addr, self.start_addr, self.end_addr });
+        _ = fmt;
+        _ = opt;
     }
 };
 
@@ -181,17 +175,22 @@ const TubeTrapHandler = struct {
                     switch (cpu.A) {
                         0x00 => {
                             var buf: [256]u8 = undefined;
-                            const res = stdin.readUntilDelimiter(&buf, '\n') catch unreachable;
-                            var buf_addr = cpu.peek16(addr);
-                            const max_len = cpu.peek8(addr + 2);
-                            cpu.Y = @as(u8, @min(res.len, max_len));
-                            cpu.P.C = false;
-                            for (res, 0..) |c, i| {
-                                if (i >= max_len) break;
-                                cpu.poke8(buf_addr, c);
-                                buf_addr += 1;
+                            const res = stdin.readUntilDelimiterOrEof(&buf, '\n') catch unreachable;
+                            if (res) |ln| {
+                                var buf_addr = cpu.peek16(addr);
+                                const max_len = cpu.peek8(addr + 2);
+                                cpu.Y = @as(u8, @min(ln.len, max_len));
+                                cpu.P.C = false;
+                                for (ln, 0..) |c, i| {
+                                    if (i >= max_len) break;
+                                    cpu.poke8(buf_addr, c);
+                                    buf_addr += 1;
+                                }
+                                cpu.poke8(buf_addr, 0x0d);
+                            } else {
+                                std.debug.print("\nBye!\n", .{});
+                                cpu.stop();
                             }
-                            cpu.poke8(buf_addr, 0x0d);
                         },
                         0x01 => {
                             const delta_ms = std.time.milliTimestamp() - self.base_time_ms;
