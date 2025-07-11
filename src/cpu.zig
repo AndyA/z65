@@ -48,8 +48,6 @@ pub fn makeCPU(
     comptime TrapHandler: type,
     comptime options: CPUOptions,
 ) type {
-    const constants = @import("constants.zig");
-
     comptime {
         @setEvalBranchQuota(4000);
         var despatch: [0x100]fn (cpu: anytype) void = undefined;
@@ -93,10 +91,10 @@ pub fn makeCPU(
 
         return struct {
             const Self = @This();
-            pub const STACK = constants.STACK;
-            pub const IRQV = constants.IRQV;
-            pub const RESETV = constants.RESETV;
-            pub const NMIV = constants.NMIV;
+            pub const STACK: u16 = 0x0100;
+            pub const IRQV: u16 = 0xfffe;
+            pub const RESETV: u16 = 0xfffc;
+            pub const NMIV: u16 = 0xfffa;
             const PSR = @import("status_reg.zig").PSR;
 
             alu: ALU = ALU{},

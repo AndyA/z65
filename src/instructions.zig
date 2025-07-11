@@ -1,5 +1,4 @@
 const std = @import("std");
-const constants = @import("constants.zig");
 const ZpgRel = @import("address_modes.zig").ZpgRel;
 
 pub const Instructions = struct {
