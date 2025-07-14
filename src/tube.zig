@@ -38,7 +38,6 @@ pub const Symbols = enum(u16) {
     PAGE = 0x800,
     HIMEM = 0xb800,
     MACHINE = 0x0000,
-    TRACE = 0xfe90,
 };
 
 pub const OSFILE_CB = struct {

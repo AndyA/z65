@@ -49,20 +49,22 @@ const HiBasic = struct {
     }
 };
 
+const TRACE: u16 = 0xfe90;
+
 pub fn main() !void {
     var r_buf: [256]u8 = undefined;
     var w_buf: [0]u8 = undefined;
     var r = std.fs.File.stdin().reader(&r_buf);
     var w = std.fs.File.stdout().writer(&w_buf);
     var ram: [0x10000]u8 = @splat(0);
-    const hi_basic = try HiBasic.init(&ram, &r.interface, &w.interface);
+    const mc = try HiBasic.init(&ram, &r.interface, &w.interface);
 
-    var cpu = hi_basic.cpu;
-    cpu.poke8(@intFromEnum(tube.Symbols.TRACE), 0x00); // disable tracing
+    var cpu = mc.cpu;
+    cpu.poke8(TRACE, 0x00); // disable tracing
 
     while (!cpu.stopped) {
         cpu.step();
-        switch (cpu.peek8(@intFromEnum(tube.Symbols.TRACE))) {
+        switch (cpu.peek8(TRACE)) {
             0x00 => {},
             0x01 => std.debug.print("{f}\n", .{cpu}),
             else => {},
