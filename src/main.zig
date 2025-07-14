@@ -154,7 +154,7 @@ const OSFILE_CB = struct {
     start_addr: u32,
     end_addr: u32,
 
-    pub fn format(self: Self, writer: std.Io.Writer) std.Io.Writer.Error!void {
+    pub fn format(self: Self, writer: std.io.Writer) std.io.Writer.Error!void {
         try writer.print(
             \\filename: {x:0>4} load: {x:0>8} exec: {x:0>8} start: {x:0>8} end: {x:0>8}
         , .{ self.filename, self.load_addr, self.exec_addr, self.start_addr, self.end_addr });
@@ -213,13 +213,17 @@ const TubeOS = struct {
     const Self = @This();
     base_time_ms: i64,
     alloc: std.mem.Allocator,
+    const stdin: std.fs.File = .stdin();
+    const stdout: std.fs.File = .stdout();
+
+    pub fn init(alloc: std.mem.Allocator) !Self {
+        return Self{
+            .base_time_ms = std.time.milliTimestamp(),
+            .alloc = alloc,
+        };
+    }
 
     pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
-        const stdout: std.fs.File = .stdout();
-        // const stdin: std.fs.File = .stdin();
-        // const in_reader = std.io.Reader.init(stdin);
-        // const in_reader = stdin.reader(&buf);
-
         if (opcode == TRAP_OPCODE) {
             const osfn: MOSFunction = @enumFromInt(cpu.fetch8());
             switch (osfn) {
@@ -246,22 +250,24 @@ const TubeOS = struct {
                     const addr = getXY(cpu);
                     switch (cpu.A) {
                         0x00 => {
-                            // var buf: [256]u8 = undefined;
-
-                            // const rdr = stdin.reader(&buf);
-                            // const res = rdr.takeDelimiterExclusive('\n') catch
-                            //     unreachable;
-                            // if (res) |ln| {
-                            //     const buf_addr = cpu.peek16(addr);
-                            //     const max_len = cpu.peek8(addr + 2);
-                            //     cpu.Y = @as(u8, @min(ln.len, max_len));
-                            //     cpu.P.C = false;
-                            //     pokeBytes(cpu, buf_addr, ln);
-                            //     cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate
-                            // } else {
-                            //     std.debug.print("\nBye!\n", .{});
-                            //     cpu.stop();
-                            // }
+                            var buf: [256]u8 = undefined;
+                            var rdr = stdin.reader(&buf);
+                            const ln = rdr.interface.takeDelimiterExclusive('\n') catch |err| {
+                                switch (err) {
+                                    error.EndOfStream => {
+                                        std.debug.print("\nBye!\n", .{});
+                                        cpu.stop();
+                                        return;
+                                    },
+                                    else => unreachable,
+                                }
+                            };
+                            const buf_addr = cpu.peek16(addr);
+                            const max_len = cpu.peek8(addr + 2);
+                            cpu.Y = @as(u8, @min(ln.len, max_len));
+                            cpu.P.C = false;
+                            pokeBytes(cpu, buf_addr, ln);
+                            cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate
                         },
                         0x01 => {
                             const delta_ms = std.time.milliTimestamp() - self.base_time_ms;
@@ -400,10 +406,7 @@ pub fn main() !void {
     const load_addr = @intFromEnum(Symbols.HIMEM);
     @memcpy(ram[load_addr .. load_addr + HI_BASIC.len], HI_BASIC);
 
-    var trapper = TubeOS{
-        .base_time_ms = std.time.milliTimestamp(),
-        .alloc = std.heap.page_allocator,
-    };
+    var trapper = try TubeOS.init(std.heap.page_allocator);
 
     var mc = Tube65C02.init(
         memory.FlatMemory{ .ram = &ram },
