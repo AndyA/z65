@@ -270,24 +270,11 @@ pub fn makeCPU(
                 self.sleeping = false;
             }
 
-            pub fn format(
-                self: Self,
-                comptime fmt: []const u8,
-                opt: std.fmt.FormatOptions,
-                writer: anytype,
-            ) !void {
-                // _ = fmt;
-                _ = opt;
+            pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
                 const args = .{ self.PC, self.P, self.A, self.X, self.Y, self.S };
-                if (std.mem.eql(u8, fmt, "s!j")) {
-                    try writer.print(
-                        \\{{"pc":{d},"p":"{s}","a":{d},"x":{d},"y":{d},"s":{d}}}
-                    , args);
-                } else {
-                    try writer.print(
-                        \\PC: {x:0>4} P: {s} A: {x:0>2} X: {x:0>2} Y: {x:0>2} S: {x:0>2}
-                    , args);
-                }
+                try writer.print(
+                    \\{{"pc":{d},"p":"{f}","a":{d},"x":{d},"y":{d},"s":{d}}}
+                , args);
             }
 
             pub fn asmi(self: *Self, instr: InstructionSet) void {

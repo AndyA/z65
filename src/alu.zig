@@ -240,7 +240,7 @@ fn test6502Decimal(vector: TestVector, op: Op, carry_in: bool) !void {
                     if (psr_got != vector.psr[slot]) {
                         const p_got: PSR = @bitCast(psr_got);
                         const p_want: PSR = @bitCast(vector.psr[slot]);
-                        std.debug.print(" PSR: {s} != {s}", .{ p_got, p_want });
+                        std.debug.print(" PSR: {f} != {f}", .{ p_got, p_want });
                     }
                     std.debug.print("\n", .{});
                 }

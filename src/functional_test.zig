@@ -43,7 +43,7 @@ pub fn runFunctionalTest(
                     else => |sig| std.debug.print("Trap signal {d} received\n", .{sig}),
                 }
             } else {
-                std.debug.print("Illegal instruction: {x} at {s}\n", .{ opcode, cpu });
+                std.debug.print("Illegal instruction: {x} at {f}\n", .{ opcode, cpu });
                 @panic("Illegal instruction");
             }
         }

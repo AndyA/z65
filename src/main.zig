@@ -154,17 +154,10 @@ const OSFILE_CB = struct {
     start_addr: u32,
     end_addr: u32,
 
-    pub fn format(
-        self: Self,
-        comptime fmt: []const u8,
-        opt: std.fmt.FormatOptions,
-        writer: anytype,
-    ) !void {
+    pub fn format(self: Self, writer: std.Io.Writer) std.Io.Writer.Error!void {
         try writer.print(
             \\filename: {x:0>4} load: {x:0>8} exec: {x:0>8} start: {x:0>8} end: {x:0>8}
         , .{ self.filename, self.load_addr, self.exec_addr, self.start_addr, self.end_addr });
-        _ = fmt;
-        _ = opt;
     }
 
     fn save(self: Self, alloc: std.mem.Allocator, cpu: anytype) !void {
@@ -222,8 +215,10 @@ const TubeOS = struct {
     alloc: std.mem.Allocator,
 
     pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
-        const stdout = std.io.getStdOut().writer();
-        const stdin = std.io.getStdIn().reader();
+        const stdout: std.fs.File = .stdout();
+        // const stdin: std.fs.File = .stdin();
+        // const in_reader = std.io.Reader.init(stdin);
+        // const in_reader = stdin.reader(&buf);
 
         if (opcode == TRAP_OPCODE) {
             const osfn: MOSFunction = @enumFromInt(cpu.fetch8());
@@ -244,27 +239,29 @@ const TubeOS = struct {
                         0x83 => setXY(cpu, @intFromEnum(Symbols.PAGE)),
                         0x84 => setXY(cpu, @intFromEnum(Symbols.HIMEM)),
                         0xda => {}, // set VDU queue length
-                        else => std.debug.print("OSBYTE {x} not implemented {s}\n", .{ cpu.A, cpu }),
+                        else => std.debug.print("OSBYTE {x} not implemented {f}\n", .{ cpu.A, cpu }),
                     }
                 },
                 .OSWORD => {
                     const addr = getXY(cpu);
                     switch (cpu.A) {
                         0x00 => {
-                            var buf: [256]u8 = undefined;
-                            const res = stdin.readUntilDelimiterOrEof(&buf, '\n') catch
-                                unreachable;
-                            if (res) |ln| {
-                                const buf_addr = cpu.peek16(addr);
-                                const max_len = cpu.peek8(addr + 2);
-                                cpu.Y = @as(u8, @min(ln.len, max_len));
-                                cpu.P.C = false;
-                                pokeBytes(cpu, buf_addr, ln);
-                                cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate
-                            } else {
-                                std.debug.print("\nBye!\n", .{});
-                                cpu.stop();
-                            }
+                            // var buf: [256]u8 = undefined;
+
+                            // const rdr = stdin.reader(&buf);
+                            // const res = rdr.takeDelimiterExclusive('\n') catch
+                            //     unreachable;
+                            // if (res) |ln| {
+                            //     const buf_addr = cpu.peek16(addr);
+                            //     const max_len = cpu.peek8(addr + 2);
+                            //     cpu.Y = @as(u8, @min(ln.len, max_len));
+                            //     cpu.P.C = false;
+                            //     pokeBytes(cpu, buf_addr, ln);
+                            //     cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate
+                            // } else {
+                            //     std.debug.print("\nBye!\n", .{});
+                            //     cpu.stop();
+                            // }
                         },
                         0x01 => {
                             const delta_ms = std.time.milliTimestamp() - self.base_time_ms;
@@ -279,10 +276,11 @@ const TubeOS = struct {
                     }
                 },
                 .OSWRCH => {
-                    stdout.print("{c}", .{cpu.A}) catch unreachable;
+                    const char: [1]u8 = @bitCast(cpu.A);
+                    _ = stdout.write(&char) catch unreachable;
                 },
                 .OSRDCH => {
-                    std.debug.print("OSRDCH {s}\n", .{cpu});
+                    std.debug.print("OSRDCH {f}\n", .{cpu});
                 },
                 .OSFILE => {
                     const cb: OSFILE_CB = F_OSFILE.read(cpu, getXY(cpu));
@@ -291,23 +289,23 @@ const TubeOS = struct {
                     };
                 },
                 .OSARGS => {
-                    std.debug.print("OSARGS {s}\n", .{cpu});
+                    std.debug.print("OSARGS {f}\n", .{cpu});
                 },
                 .OSBGET => {
-                    std.debug.print("OSBGET {s}\n", .{cpu});
+                    std.debug.print("OSBGET {f}\n", .{cpu});
                 },
                 .OSBPUT => {
-                    std.debug.print("OSBPUT {s}\n", .{cpu});
+                    std.debug.print("OSBPUT {f}\n", .{cpu});
                 },
                 .OSGBPB => {
-                    std.debug.print("OSGBPB {s}\n", .{cpu});
+                    std.debug.print("OSGBPB {f}\n", .{cpu});
                 },
                 .OSFIND => {
-                    std.debug.print("OSFIND {s}\n", .{cpu});
+                    std.debug.print("OSFIND {f}\n", .{cpu});
                 },
             }
         } else {
-            std.debug.print("Illegal instruction: {x} at {s}\n", .{ opcode, cpu });
+            std.debug.print("Illegal instruction: {x} at {f}\n", .{ opcode, cpu });
             @panic("Illegal instruction");
         }
     }
@@ -423,8 +421,7 @@ pub fn main() !void {
         mc.step();
         switch (mc.peek8(@intFromEnum(Symbols.TRACE))) {
             0x00 => {},
-            0x01 => std.debug.print("{s!j}\n", .{mc}),
-            0x02 => std.debug.print("{s}\n", .{mc}),
+            0x01 => std.debug.print("{f}\n", .{mc}),
             else => {},
         }
     }
