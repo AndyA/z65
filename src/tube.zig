@@ -1,6 +1,7 @@
 const std = @import("std");
 const ct = @import("cpu_tools.zig");
 const serde = @import("serde.zig").serde;
+const oscli = @import("oscli.zig");
 
 const TRAP_OPCODE: u8 = 0xBB;
 
@@ -16,6 +17,22 @@ const MOSFunction = enum(u8) {
     OSBPUT,
     OSGBPB, // Get Block, Put Block
     OSFIND, // Open file
+};
+
+pub const MOSEntry = enum(u16) {
+    OSCLI = 0xFFF7,
+    OSBYTE = 0xFFF4,
+    OSWORD = 0xFFF1,
+    OSWRCH = 0xFFEE,
+    OSNEWL = 0xFFE7,
+    OSASCI = 0xFFE3,
+    OSRDCH = 0xFFE0,
+    OSFILE = 0xFFDD,
+    OSARGS = 0xFFDA,
+    OSBGET = 0xFFD7,
+    OSBPUT = 0xFFD4,
+    OSGBPB = 0xFFD1,
+    OSFIND = 0xFFCE,
 };
 
 pub const MOSVectors = enum(u16) {
@@ -55,7 +72,7 @@ pub const OSFILE_CB = struct {
         , .{ self.filename, self.load_addr, self.exec_addr, self.start_addr, self.end_addr });
     }
 
-    fn save(self: Self, alloc: std.mem.Allocator, cpu: anytype) !void {
+    fn save(self: Self, alloc: std.mem.Allocator, cpu: anytype) !u8 {
         var file_name = try ct.peekString(alloc, cpu, self.filename, 0x0D);
         defer file_name.deinit();
 
@@ -68,10 +85,10 @@ pub const OSFILE_CB = struct {
         const file = try std.fs.cwd().createFile(file_name.items, .{ .truncate = true });
         defer file.close();
         try file.writeAll(bytes);
-        cpu.A = 0x01;
+        return 0x01;
     }
 
-    fn load(self: Self, alloc: std.mem.Allocator, cpu: anytype) !void {
+    fn load(self: Self, alloc: std.mem.Allocator, cpu: anytype) !u8 {
         var file_name = try ct.peekString(alloc, cpu, self.filename, 0x0D);
         defer file_name.deinit();
 
@@ -89,17 +106,59 @@ pub const OSFILE_CB = struct {
             ct.pokeBytes(cpu, @intCast(self.load_addr + offset), buffer[0..read_size]);
             offset += @intCast(read_size);
         }
-        cpu.A = 0x01;
+        return 0x01;
     }
 
     pub fn despatch(self: Self, alloc: std.mem.Allocator, cpu: anytype) !void {
         switch (cpu.A) {
-            0x00 => try self.save(alloc, cpu),
-            0xFF => try self.load(alloc, cpu),
+            0x00 => cpu.A = try self.save(alloc, cpu),
+            0xFF => cpu.A = try self.load(alloc, cpu),
             else => std.debug.print("Unknown OSFILE operation: {x}\n", .{cpu.A}),
         }
     }
 };
+
+const StarCommands = struct {
+    pub fn @"*CAT"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
+        _ = cpu;
+        _ = args;
+        std.debug.print("*CAT\n", .{});
+    }
+
+    pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
+        cpu.A = args.A;
+        cpu.X = args.X orelse 0;
+        cpu.Y = args.Y orelse 0;
+        cpu.PC = @intFromEnum(MOSEntry.OSBYTE);
+    }
+
+    pub fn @"*SAVE <name:[]u8> <start:u16x> <end:u16xr> [<exec:u16x>]"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
+        _ = cpu;
+        std.debug.print("*SAVE \"{s}\" {x} {x}\n", .{
+            args.name,
+            args.start,
+            args.end.resolve(args.start),
+        });
+    }
+
+    pub fn @"*!<shell:[]u8*>"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
+        _ = cpu;
+        std.debug.print("shell {s}\n", .{args.shell});
+    }
+};
+const OSCLI = oscli.makeHandler(StarCommands);
 
 const RW_u40 = serde(u40);
 const RW_OSFILE = serde(OSFILE_CB);
@@ -204,7 +263,12 @@ pub const TubeOS = struct {
                     var cmd_line = ct.peekString(self.alloc, cpu, ct.getXY(cpu), 0x0D) catch
                         unreachable;
                     defer cmd_line.deinit();
-                    std.debug.print("OSCLI \"{s}\"\n", .{cmd_line.items});
+                    const res = OSCLI.handle(cmd_line.items, cpu) catch |err| {
+                        std.debug.print("Error: {s}\n", .{@errorName(err)});
+                        return;
+                    };
+                    if (!res)
+                        std.debug.print("Bad command {s}\n", .{cmd_line.items});
                 },
                 .OSBYTE => {
                     switch (cpu.A) {

@@ -102,7 +102,7 @@ const Scanner = struct {
             self.advance();
     }
 
-    pub fn takeWhile(self: *Self, checker: Checker) []const u8 {
+    pub fn takeWhile(self: *Self, comptime checker: Checker) []const u8 {
         const start = self.pos;
         while (!self.eot() and checker(self.src[self.pos]))
             self.advance();
@@ -115,7 +115,7 @@ const Scanner = struct {
         return self.src[start..];
     }
 
-    pub fn span(self: *Self, checker: Checker) ![]const u8 {
+    pub fn span(self: *Self, comptime checker: Checker) ![]const u8 {
         const frag = self.takeWhile(checker);
         if (frag.len == 0)
             return ParseError.BadSyntax;
@@ -353,7 +353,7 @@ test Source {
     });
 }
 
-pub fn paramType(self: Source, comptime Decoder: type) !type {
+fn paramType(self: Source, comptime Decoder: type) !type {
     const n_fields = try self.paramCount();
     var fields: [n_fields]std.builtin.Type.StructField = undefined;
     var i = self.paramIter();
@@ -382,7 +382,7 @@ pub fn paramType(self: Source, comptime Decoder: type) !type {
     });
 }
 
-pub fn makeCommand(comptime source: Source) !type {
+fn makeCommand(comptime source: Source) !type {
     comptime {
         @setEvalBranchQuota(40000);
         const PT = try paramType(source, ParamDecoder);
