@@ -373,37 +373,34 @@ pub fn makeCommand(comptime source: Source) !type {
                 inline for (tokens) |token| {
                     scanner.skipSpace();
                     if (scanner.eot()) {
-                        if (token.optional) continue;
-                        return null;
-                    }
-                    switch (token.token) {
-                        .Literal => |l| {
-                            const v = scanner.one();
-                            if (!std.mem.eql(u8, v, l.value)) {
-                                if (token.optional) continue;
-                                return null;
-                            }
-                        },
-                        .Word => |w| {
-                            const v = scanner.takeWhile(std.ascii.isAlphanumeric);
-                            // Allow . abbrevation
-                            if (!scanner.eot() and scanner.peek() == '.') {
-                                scanner.advance();
-                                if (!std.ascii.startsWithIgnoreCase(w.value[0..v.len], v)) {
-                                    if (token.optional) continue;
-                                    return null;
+                        if (!token.optional) return null;
+                    } else {
+                        switch (token.token) {
+                            .Literal => |l| {
+                                const v = scanner.one();
+                                if (!std.mem.eql(u8, v, l.value)) {
+                                    if (!token.optional) return null;
                                 }
-                            } else {
-                                if (!std.ascii.eqlIgnoreCase(w.value, v)) {
-                                    if (token.optional) continue;
-                                    return null;
+                            },
+                            .Word => |w| {
+                                const v = scanner.takeWhile(std.ascii.isAlphanumeric);
+                                // Allow . abbrevation
+                                if (!scanner.eot() and scanner.peek() == '.') {
+                                    scanner.advance();
+                                    if (!std.ascii.startsWithIgnoreCase(w.value[0..v.len], v)) {
+                                        if (!token.optional) return null;
+                                    }
+                                } else {
+                                    if (!std.ascii.eqlIgnoreCase(w.value, v)) {
+                                        if (!token.optional) return null;
+                                    }
                                 }
-                            }
-                        },
-                        .Parameter => |param| {
-                            const decoder = @field(ParamDecoder, param.type_name);
-                            @field(res, param.name) = try decoder(&scanner);
-                        },
+                            },
+                            .Parameter => |param| {
+                                const decoder = @field(ParamDecoder, param.type_name);
+                                @field(res, param.name) = try decoder(&scanner);
+                            },
+                        }
                     }
                 }
 
@@ -487,7 +484,6 @@ pub fn makeHandler(comptime Commands: type) type {
 }
 
 test makeHandler {
-    // comptime {
     const Commands = struct {
         pub fn @"*CAT"(
             context: anytype,
@@ -505,28 +501,27 @@ test makeHandler {
             _ = params;
         }
 
-        // pub fn @"*SAVE <fn:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]"(
-        //     context: anytype,
-        //     params: anytype,
-        // ) !void {
-        //     _ = context;
-        //     _ = params;
-        // }
+        pub fn @"*SAVE <fn:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]"(
+            context: anytype,
+            params: anytype,
+        ) !void {
+            _ = context;
+            _ = params;
+        }
 
-        // pub fn @"*!<shell:[]u8*>"(
-        //     context: anytype,
-        //     params: anytype,
-        // ) !void {
-        //     _ = context;
-        //     _ = params;
-        // }
+        pub fn @"*!<shell:[]u8*>"(
+            context: anytype,
+            params: anytype,
+        ) !void {
+            _ = context;
+            _ = params;
+        }
     };
     const Handler = makeHandler(Commands);
-    // _ = Handler;
+
     try std.testing.expect(try Handler.handle("*.", null));
-    // try std.testing.expect(try Handler.handle("*FX 1, 2, 3", null));
-    // try std.testing.expect(try Handler.handle("*FX 1, 2", null));
-    // try std.testing.expect(try Handler.handle("save foo 800 900", null));
-    // try std.testing.expect(try Handler.handle("*!ls ..", null));
-    // }
+    try std.testing.expect(try Handler.handle("*FX 1, 2, 3", null));
+    try std.testing.expect(try Handler.handle("*FX 1, 2", null));
+    try std.testing.expect(try Handler.handle("save foo 800 900", null));
+    try std.testing.expect(try Handler.handle("*!ls ..", null));
 }
