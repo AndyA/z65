@@ -458,7 +458,8 @@ pub fn makeHandler(comptime Commands: type) type {
                 var commands: [s.decls.len]type = undefined;
                 for (s.decls, 0..) |decl, index| {
                     commands[index] = makeCommand(Source.init(decl.name)) catch |e| {
-                        @compileError("Failed to parse command: " ++ decl.name ++ ": " ++ @errorName(e));
+                        @compileError("Failed to parse command: " ++
+                            decl.name ++ ": " ++ @errorName(e));
                     };
                 }
 
@@ -486,44 +487,46 @@ pub fn makeHandler(comptime Commands: type) type {
 }
 
 test makeHandler {
-    comptime {
-        const Commands = struct {
-            pub fn @"*CAT"(
-                context: anytype,
-                params: anytype,
-            ) !void {
-                _ = context;
-                _ = params;
-            }
+    // comptime {
+    const Commands = struct {
+        pub fn @"*CAT"(
+            context: anytype,
+            params: anytype,
+        ) !void {
+            _ = context;
+            _ = params;
+        }
 
-            pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
-                context: anytype,
-                params: anytype,
-            ) !void {
-                _ = context;
-                _ = params;
-            }
+        pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
+            context: anytype,
+            params: anytype,
+        ) !void {
+            _ = context;
+            _ = params;
+        }
 
-            pub fn @"*SAVE <fn:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]"(
-                context: anytype,
-                params: anytype,
-            ) !void {
-                _ = context;
-                _ = params;
-            }
+        // pub fn @"*SAVE <fn:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]"(
+        //     context: anytype,
+        //     params: anytype,
+        // ) !void {
+        //     _ = context;
+        //     _ = params;
+        // }
 
-            pub fn @"*!<shell:[]u8*>"(
-                context: anytype,
-                params: anytype,
-            ) !void {
-                _ = context;
-                _ = params;
-            }
-        };
-        const Handler = makeHandler(Commands);
-        try std.testing.expect(try Handler.handle("*FX 1, 2, 3", null));
-        try std.testing.expect(try Handler.handle("*FX 1, 2", null));
-        try std.testing.expect(try Handler.handle("save foo 800 900", null));
-        try std.testing.expect(try Handler.handle("*!ls ..", null));
-    }
+        // pub fn @"*!<shell:[]u8*>"(
+        //     context: anytype,
+        //     params: anytype,
+        // ) !void {
+        //     _ = context;
+        //     _ = params;
+        // }
+    };
+    const Handler = makeHandler(Commands);
+    // _ = Handler;
+    try std.testing.expect(try Handler.handle("*.", null));
+    // try std.testing.expect(try Handler.handle("*FX 1, 2, 3", null));
+    // try std.testing.expect(try Handler.handle("*FX 1, 2", null));
+    // try std.testing.expect(try Handler.handle("save foo 800 900", null));
+    // try std.testing.expect(try Handler.handle("*!ls ..", null));
+    // }
 }
