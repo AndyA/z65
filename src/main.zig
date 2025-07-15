@@ -49,6 +49,7 @@ pub const HiBasic = struct {
 
         var self = Self{ .cpu = cpu, .ram = ram };
         self.reset();
+        try writer.print("BASIC\n", .{});
 
         return self;
     }
@@ -78,11 +79,21 @@ pub const HiBasic = struct {
 
 const TRACE: u16 = 0xfe90;
 
+pub fn initInterface(buffer: []u8) std.io.Writer {
+    return .{
+        .vtable = &.{
+            .drain = std.fs.File.Writer.drain,
+            .sendFile = std.fs.File.Writer.sendFile,
+        },
+        .buffer = buffer,
+    };
+}
+
 pub fn main() !void {
     var r_buf: [256]u8 = undefined;
     var w_buf: [0]u8 = undefined;
-    var r = std.fs.File.stdin().reader(&r_buf);
-    var w = std.fs.File.stdout().writer(&w_buf);
+    var r = std.fs.File.stdin().readerStreaming(&r_buf);
+    var w = std.fs.File.stdout().writerStreaming(&w_buf);
     var ram: [0x10000]u8 = @splat(0);
     const mc = try HiBasic.init(&ram, &r.interface, &w.interface);
 

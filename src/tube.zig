@@ -179,6 +179,7 @@ pub const TubeOS = struct {
         reader: *std.io.Reader,
         writer: *std.io.Writer,
     ) !Self {
+        try writer.print("TubeOS initialized\n", .{});
         return Self{
             .base_time_ms = std.time.milliTimestamp(),
             .alloc = alloc,
