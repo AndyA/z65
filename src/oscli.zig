@@ -450,14 +450,16 @@ test makeCommand {
     }
 }
 
-pub fn makeHandler(comptime Commands: type) !type {
+pub fn makeHandler(comptime Commands: type) type {
     comptime {
         const info = @typeInfo(Commands);
         switch (info) {
             .@"struct" => |s| {
                 var commands: [s.decls.len]type = undefined;
                 for (s.decls, 0..) |decl, index| {
-                    commands[index] = try makeCommand(Source.init(decl.name));
+                    commands[index] = makeCommand(Source.init(decl.name)) catch |e| {
+                        @compileError("Failed to parse command: " ++ decl.name ++ ": " ++ @errorName(e));
+                    };
                 }
 
                 return struct {
@@ -518,7 +520,7 @@ test makeHandler {
                 _ = params;
             }
         };
-        const Handler = try makeHandler(Commands);
+        const Handler = makeHandler(Commands);
         try std.testing.expect(try Handler.handle("*FX 1, 2, 3", null));
         try std.testing.expect(try Handler.handle("*FX 1, 2", null));
         try std.testing.expect(try Handler.handle("save foo 800 900", null));
