@@ -30,13 +30,11 @@ pub fn makeHandler(comptime Commands: type) type {
 
 test {
     const CoreCommands = struct {
-        const Self = @This();
-        pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(self: Self, cpu: anytype, args: anytype) !void {
+        pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(cpu: anytype, args: anytype) !void {
             std.debug.print("Executing *fx command\n", .{});
             cpu.A = args.A;
             cpu.X = args.X orelse 0;
             cpu.Y = args.Y orelse 0;
-            _ = self;
         }
     };
 
