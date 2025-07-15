@@ -18,6 +18,7 @@ const ParseError = error{
     MissingColon,
     BadParameter,
     BadSyntax,
+    MissingQuote,
 };
 
 fn cleanCommand(cmd: []const u8) []const u8 {
@@ -122,6 +123,19 @@ const Scanner = struct {
     }
 };
 
+// Would have been a tagged union - but they can't be zero filled ATM.
+const AbsRel = struct {
+    addr: u16,
+    rel: bool,
+
+    pub fn resolve(self: @This(), base: u16) u16 {
+        return switch (self.rel) {
+            false => self.addr,
+            true => @intCast(base + self.addr),
+        };
+    }
+};
+
 const ParamDecoder = struct {
     const Self = @This();
 
@@ -130,6 +144,14 @@ const ParamDecoder = struct {
     }
 
     pub fn @"[]u8"(src: *Scanner) ![]const u8 {
+        if (!src.eot() and src.peek() == '"') {
+            src.advance();
+            const str = src.span(sentinelChecker('"'));
+            if (src.eot() or src.peek() != '"')
+                return ParseError.MissingQuote;
+            src.advance();
+            return str;
+        }
         return src.span(notWhitespace);
     }
 
@@ -142,14 +164,23 @@ const ParamDecoder = struct {
         return std.fmt.parseInt(u8, num, 10);
     }
 
-    pub fn @"u32"(src: *Scanner) !u32 {
+    pub fn @"u16"(src: *Scanner) !u16 {
         const num = try src.span(std.ascii.isDigit);
-        return std.fmt.parseInt(u32, num, 10);
+        return std.fmt.parseInt(u16, num, 10);
     }
 
-    pub fn u32x(src: *Scanner) !u32 {
+    pub fn u16x(src: *Scanner) !u16 {
         const num = try src.span(std.ascii.isHex);
-        return std.fmt.parseInt(u32, num, 16);
+        return std.fmt.parseInt(u16, num, 16);
+    }
+
+    pub fn u16xr(src: *Scanner) !AbsRel {
+        if (!src.eot() and src.peek() == '+') {
+            src.advance();
+            src.skipSpace();
+            return .{ .addr = try Self.u16x(src), .rel = true };
+        }
+        return .{ .addr = try Self.u16x(src), .rel = false };
     }
 };
 
@@ -375,11 +406,13 @@ pub fn makeCommand(comptime source: Source) !type {
                     if (scanner.eot()) {
                         if (!token.optional) return null;
                     } else {
+                        const pos = scanner.pos;
                         switch (token.token) {
                             .Literal => |l| {
                                 const v = scanner.one();
                                 if (!std.mem.eql(u8, v, l.value)) {
                                     if (!token.optional) return null;
+                                    scanner.pos = pos;
                                 }
                             },
                             .Word => |w| {
@@ -389,10 +422,12 @@ pub fn makeCommand(comptime source: Source) !type {
                                     scanner.advance();
                                     if (!std.ascii.startsWithIgnoreCase(w.value[0..v.len], v)) {
                                         if (!token.optional) return null;
+                                        scanner.pos = pos;
                                     }
                                 } else {
                                     if (!std.ascii.eqlIgnoreCase(w.value, v)) {
                                         if (!token.optional) return null;
+                                        scanner.pos = pos;
                                     }
                                 }
                             },
@@ -404,7 +439,10 @@ pub fn makeCommand(comptime source: Source) !type {
                     }
                 }
 
-                return res;
+                scanner.skipSpace();
+                if (scanner.eot()) return res;
+
+                return null;
             }
         };
     }
@@ -425,7 +463,7 @@ test makeCommand {
     }
     comptime {
         const source = Source.init(
-            \\SAVE <filename:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]
+            \\SAVE <filename:[]u8> <start:u16x> <end:u16x> [<load:u16x> [<exec:u16x>]]
         );
         const command = try makeCommand(source);
         const res1 = try command.match("save foo 800 900");
@@ -454,10 +492,9 @@ pub fn makeHandler(comptime Commands: type) type {
             .@"struct" => |s| {
                 var commands: [s.decls.len]type = undefined;
                 for (s.decls, 0..) |decl, index| {
-                    commands[index] = makeCommand(Source.init(decl.name)) catch |e| {
+                    commands[index] = makeCommand(Source.init(decl.name)) catch |e|
                         @compileError("Failed to parse command: " ++
                             decl.name ++ ": " ++ @errorName(e));
-                    };
                 }
 
                 return struct {
@@ -484,6 +521,7 @@ pub fn makeHandler(comptime Commands: type) type {
 }
 
 test makeHandler {
+    const echo = true;
     const Commands = struct {
         pub fn @"*CAT"(
             context: anytype,
@@ -491,6 +529,7 @@ test makeHandler {
         ) !void {
             _ = context;
             _ = params;
+            if (echo) std.debug.print("*CAT\n", .{});
         }
 
         pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
@@ -498,15 +537,24 @@ test makeHandler {
             params: anytype,
         ) !void {
             _ = context;
-            _ = params;
+            if (echo) {
+                std.debug.print("*FX {d}", .{params.A});
+                if (params.X) |x| std.debug.print(", {d}", .{x});
+                if (params.Y) |y| std.debug.print(", {d}", .{y});
+                std.debug.print("\n", .{});
+            }
         }
 
-        pub fn @"*SAVE <fn:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]"(
+        pub fn @"*SAVE <name:[]u8> <start:u16x> <end:u16xr> [<exec:u16x>]"(
             context: anytype,
             params: anytype,
         ) !void {
             _ = context;
-            _ = params;
+            if (echo) std.debug.print("*SAVE \"{s}\" {x} {x}\n", .{
+                params.name,
+                params.start,
+                params.end.resolve(params.start),
+            });
         }
 
         pub fn @"*!<shell:[]u8*>"(
@@ -514,14 +562,15 @@ test makeHandler {
             params: anytype,
         ) !void {
             _ = context;
-            _ = params;
+            if (echo) std.debug.print("shell {s}\n", .{params.shell});
         }
     };
     const Handler = makeHandler(Commands);
 
     try std.testing.expect(try Handler.handle("*.", null));
     try std.testing.expect(try Handler.handle("*FX 1, 2, 3", null));
-    try std.testing.expect(try Handler.handle("*FX 1, 2", null));
-    try std.testing.expect(try Handler.handle("save foo 800 900", null));
+    try std.testing.expect(try Handler.handle("*f.1,2", null));
+    try std.testing.expect(try Handler.handle("save foo 800 +300", null));
+    try std.testing.expect(try Handler.handle("sa. \"foo bar\" e00 1234", null));
     try std.testing.expect(try Handler.handle("*!ls ..", null));
 }
