@@ -59,6 +59,7 @@ pub const AddressModes = struct {
         const lo_addr = cpu.fetch16();
         var hi_addr: u16 = lo_addr +% 1;
         if (hi_addr & 0x00FF == 0x0000) {
+            @branchHint(.unlikely);
             hi_addr -= 0x0100;
         }
         const lo: u16 = cpu.peek8(lo_addr);
