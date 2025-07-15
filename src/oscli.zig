@@ -101,13 +101,24 @@ const Scanner = struct {
             self.advance();
     }
 
-    pub fn span(self: *Self, checker: Checker) ![]const u8 {
+    pub fn takeWhile(self: *Self, checker: Checker) []const u8 {
         const start = self.pos;
         while (!self.eot() and checker(self.src[self.pos]))
             self.advance();
-        if (start == self.pos)
-            return ParseError.BadSyntax;
         return self.src[start..self.pos];
+    }
+
+    pub fn takeTail(self: *Self) []const u8 {
+        const start = self.pos;
+        self.pos = self.src.len;
+        return self.src[start..];
+    }
+
+    pub fn span(self: *Self, checker: Checker) ![]const u8 {
+        const frag = self.takeWhile(checker);
+        if (frag.len == 0)
+            return ParseError.BadSyntax;
+        return frag;
     }
 };
 
@@ -122,6 +133,10 @@ const ParamDecoder = struct {
         return src.span(notWhitespace);
     }
 
+    pub fn @"[]u8*"(src: *Scanner) ![]const u8 {
+        return src.takeTail();
+    }
+
     pub fn @"u8"(src: *Scanner) !u8 {
         const num = try src.span(std.ascii.isDigit);
         return std.fmt.parseInt(u8, num, 10);
@@ -130,6 +145,11 @@ const ParamDecoder = struct {
     pub fn @"u32"(src: *Scanner) !u32 {
         const num = try src.span(std.ascii.isDigit);
         return std.fmt.parseInt(u32, num, 10);
+    }
+
+    pub fn u32x(src: *Scanner) !u32 {
+        const num = try src.span(std.ascii.isHex);
+        return std.fmt.parseInt(u32, num, 16);
     }
 };
 
@@ -333,7 +353,7 @@ pub fn paramType(self: Source, comptime Decoder: type) !type {
 
 pub fn makeCommand(comptime source: Source) !type {
     comptime {
-        @setEvalBranchQuota(4000);
+        @setEvalBranchQuota(40000);
         const PT = try paramType(source, ParamDecoder);
         const token_count = try source.count();
         var tokens: [token_count]OptionalToken = undefined;
@@ -365,10 +385,19 @@ pub fn makeCommand(comptime source: Source) !type {
                             }
                         },
                         .Word => |w| {
-                            const v = try scanner.span(std.ascii.isAlphanumeric);
-                            if (!std.ascii.eqlIgnoreCase(w.value, v)) {
-                                if (token.optional) continue;
-                                return null;
+                            const v = scanner.takeWhile(std.ascii.isAlphanumeric);
+                            // Allow . abbrevation
+                            if (!scanner.eot() and scanner.peek() == '.') {
+                                scanner.advance();
+                                if (!std.ascii.startsWithIgnoreCase(w.value[0..v.len], v)) {
+                                    if (token.optional) continue;
+                                    return null;
+                                }
+                            } else {
+                                if (!std.ascii.eqlIgnoreCase(w.value, v)) {
+                                    if (token.optional) continue;
+                                    return null;
+                                }
                             }
                         },
                         .Parameter => |param| {
@@ -386,7 +415,9 @@ pub fn makeCommand(comptime source: Source) !type {
 
 test makeCommand {
     comptime {
-        const source = Source.init("*FX <A:u8> [,<X:u8> [,<Y:u8>]]");
+        const source = Source.init(
+            \\*FX <A:u8> [,<X:u8> [,<Y:u8>]]
+        );
         const command = try makeCommand(source);
         const res1 = try command.match("*FX 1, 2, 3");
         try std.testing.expectEqualDeep(command.ParamType{ .A = 1, .X = 2, .Y = 3 }, res1);
@@ -395,41 +426,102 @@ test makeCommand {
         const res3 = try command.match("f x 1 , 2");
         try std.testing.expectEqualDeep(null, res3);
     }
-}
-
-pub fn makeHandler(comptime Commands: type) type {
     comptime {
-        const info = @typeInfo(Commands);
-        if (info != .@"struct")
-            @compileError("Expected a struct type for Commands");
-        return struct {
-            const Self = @This();
-
-            pub fn handle(self: Self, cpu: anytype, command: []const u8) !bool {
-                _ = self;
-                _ = cpu;
-                _ = command;
-                return false;
-            }
-        };
+        const source = Source.init(
+            \\SAVE <filename:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]
+        );
+        const command = try makeCommand(source);
+        const res1 = try command.match("save foo 800 900");
+        try std.testing.expectEqualDeep(command.ParamType{
+            .filename = "foo",
+            .start = 0x800,
+            .end = 0x900,
+            .load = null,
+            .exec = null,
+        }, res1);
+        const res2 = try command.match("sa. foo 800 900 a00 b00");
+        try std.testing.expectEqualDeep(command.ParamType{
+            .filename = "foo",
+            .start = 0x800,
+            .end = 0x900,
+            .load = 0xa00,
+            .exec = 0xb00,
+        }, res2);
     }
 }
 
-test "OSCLI" {
-    const CoreCommands = struct {
-        pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(cpu: anytype, args: anytype) !void {
-            std.debug.print("Executing *fx command\n", .{});
-            cpu.A = args.A;
-            cpu.X = args.X orelse 0;
-            cpu.Y = args.Y orelse 0;
-        }
-    };
+pub fn makeHandler(comptime Commands: type) !type {
+    comptime {
+        const info = @typeInfo(Commands);
+        switch (info) {
+            .@"struct" => |s| {
+                var commands: [s.decls.len]type = undefined;
+                for (s.decls, 0..) |decl, index| {
+                    commands[index] = try makeCommand(Source.init(decl.name));
+                }
 
-    const CoreHandler = makeHandler(CoreCommands);
-    _ = CoreHandler;
-    const tok = Token{ .Parameter = .{
-        .name = "A",
-        .type_name = "u8",
-    } };
-    _ = tok;
+                return struct {
+                    const Self = @This();
+
+                    pub fn handle(cmd: []const u8, context: anytype) !bool {
+                        inline for (commands, 0..) |command, i| {
+                            const params = try command.match(cmd);
+                            if (params) |p| {
+                                const method = @field(Commands, s.decls[i].name);
+                                try method(context, p);
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                };
+            },
+            else => {
+                @compileError("Expected a struct type for Commands");
+            },
+        }
+    }
+}
+
+test makeHandler {
+    comptime {
+        const Commands = struct {
+            pub fn @"*CAT"(
+                context: anytype,
+                params: anytype,
+            ) !void {
+                _ = context;
+                _ = params;
+            }
+
+            pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
+                context: anytype,
+                params: anytype,
+            ) !void {
+                _ = context;
+                _ = params;
+            }
+
+            pub fn @"*SAVE <fn:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]"(
+                context: anytype,
+                params: anytype,
+            ) !void {
+                _ = context;
+                _ = params;
+            }
+
+            pub fn @"*!<shell:[]u8*>"(
+                context: anytype,
+                params: anytype,
+            ) !void {
+                _ = context;
+                _ = params;
+            }
+        };
+        const Handler = try makeHandler(Commands);
+        try std.testing.expect(try Handler.handle("*FX 1, 2, 3", null));
+        try std.testing.expect(try Handler.handle("*FX 1, 2", null));
+        try std.testing.expect(try Handler.handle("save foo 800 900", null));
+        try std.testing.expect(try Handler.handle("*!ls ..", null));
+    }
 }
