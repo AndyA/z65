@@ -84,6 +84,7 @@ pub const OSFILE_CB = struct {
 
         const file = try std.fs.cwd().createFile(file_name.items, .{ .truncate = true });
         defer file.close();
+
         try file.writeAll(bytes);
         return 0x01;
     }
@@ -119,19 +120,13 @@ pub const OSFILE_CB = struct {
 };
 
 const StarCommands = struct {
-    pub fn @"*CAT"(
-        cpu: anytype,
-        args: anytype,
-    ) !void {
+    pub fn @"*CAT"(cpu: anytype, args: anytype) !void {
         _ = cpu;
         _ = args;
-        std.debug.print("*CAT\n", .{});
+        std.debug.print("Meow!\n", .{});
     }
 
-    pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
-        cpu: anytype,
-        args: anytype,
-    ) !void {
+    pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(cpu: anytype, args: anytype) !void {
         cpu.A = args.A;
         cpu.X = args.X orelse 0;
         cpu.Y = args.Y orelse 0;
@@ -150,14 +145,23 @@ const StarCommands = struct {
         });
     }
 
-    pub fn @"*!<shell:[]u8*>"(
+    pub fn @"*LOAD <name:[]u8> [<start:u16x>]"(
         cpu: anytype,
         args: anytype,
     ) !void {
         _ = cpu;
+        std.debug.print("*LOAD \"{s}\" {x}\n", .{
+            args.name,
+            args.start orelse 0x800,
+        });
+    }
+
+    pub fn @"*!<shell:[]u8*>"(cpu: anytype, args: anytype) !void {
+        _ = cpu;
         std.debug.print("shell {s}\n", .{args.shell});
     }
 };
+
 const OSCLI = oscli.makeHandler(StarCommands);
 
 const RW_u40 = serde(u40);
