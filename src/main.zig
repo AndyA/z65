@@ -15,14 +15,19 @@ const Tube65C02 = machine.makeCPU(
     .{ .clear_decimal_on_int = true },
 );
 
-const HiBasic = struct {
-    const Self = @This();
-    cpu: Tube65C02,
+pub const HiBasicError = error{
+    ProgramTooLarge,
+};
 
-    const ZP = enum(u8) {
-        TOP = 0x12,
-        PAGE_HI = 0x18,
-    };
+pub const HiBasic = struct {
+    const Self = @This();
+    const load_addr = @intFromEnum(tube.Symbols.HIMEM);
+    cpu: Tube65C02,
+    ram: *[0x10000]u8,
+
+    const HIMEM = 0x06;
+    const TOP = 0x12;
+    const PAGE_HI = 0x18;
 
     pub fn init(ram: *[0x10000]u8, reader: *std.io.Reader, writer: *std.io.Writer) !Self {
         var trapper = try tube.TubeOS.init(
@@ -32,7 +37,6 @@ const HiBasic = struct {
         );
 
         const rom_image = @embedFile("roms/HiBASIC.rom");
-        const load_addr = @intFromEnum(tube.Symbols.HIMEM);
         @memcpy(ram[load_addr .. load_addr + rom_image.len], rom_image);
 
         var cpu = Tube65C02.init(
@@ -43,9 +47,32 @@ const HiBasic = struct {
 
         tube.TubeOS.installInHost(&cpu);
 
-        cpu.PC = @intCast(load_addr);
-        cpu.A = 0x01;
-        return Self{ .cpu = cpu };
+        var self = Self{ .cpu = cpu, .ram = ram };
+        self.reset();
+
+        return self;
+    }
+
+    pub fn reset(self: *Self) void {
+        self.cpu.reset();
+        self.cpu.PC = @intCast(load_addr);
+        self.cpu.A = 0x01;
+    }
+
+    pub fn getProgram(self: Self) []const u8 {
+        const page: u16 = @intCast(self.cpu.peek8(PAGE_HI) << 8);
+        const top: u16 = self.cpu.peek16(TOP);
+        return self.ram[page..top];
+    }
+
+    pub fn setProgram(self: *Self, prog: []const u8) !void {
+        const page: u16 = @intCast(self.cpu.peek8(PAGE_HI) << 8);
+        const top: u16 = @intCast(page + prog.len);
+        const himem: u16 = self.cpu.peek16(HIMEM);
+        if (top > himem)
+            return HiBasicError.ProgramTooLarge;
+        @memcpy(self.ram[page..top], prog);
+        self.cpu.poke16(TOP, top);
     }
 };
 
