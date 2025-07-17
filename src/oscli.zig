@@ -229,6 +229,8 @@ const Parser = struct {
                 },
             }
         }
+        if (self.opt_depth > 0)
+            return ParseError.MissingBracket;
         return null;
     }
 };
