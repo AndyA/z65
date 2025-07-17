@@ -29,27 +29,20 @@ pub const HiBasic = struct {
     const TOP = 0x12;
     const PAGE_HI = 0x18;
 
-    pub fn init(ram: *[0x10000]u8, reader: *std.io.Reader, writer: *std.io.Writer) !Self {
-        var trapper = try tube.TubeOS.init(
-            std.heap.page_allocator,
-            reader,
-            writer,
-        );
-
+    pub fn init(ram: *[0x10000]u8, trapper: *tube.TubeOS) !Self {
         const rom_image = @embedFile("roms/HiBASIC.rom");
         @memcpy(ram[load_addr .. load_addr + rom_image.len], rom_image);
 
         var cpu = Tube65C02.init(
             memory.FlatMemory{ .ram = ram },
             machine.NullInterruptSource{},
-            &trapper,
+            trapper,
         );
 
         tube.TubeOS.installInHost(&cpu);
 
         var self = Self{ .cpu = cpu, .ram = ram };
         self.reset();
-        try writer.print("BASIC\n", .{});
 
         return self;
     }
@@ -94,12 +87,18 @@ pub fn main() !void {
     var w_buf: [0]u8 = undefined;
     var r = std.fs.File.stdin().readerStreaming(&r_buf);
     var w = std.fs.File.stdout().writerStreaming(&w_buf);
+
+    var trapper = try tube.TubeOS.init(
+        std.heap.page_allocator,
+        &r.interface,
+        &w.interface,
+    );
+
     var ram: [0x10000]u8 = @splat(0);
-    const mc = try HiBasic.init(&ram, &r.interface, &w.interface);
+    const mc = try HiBasic.init(&ram, &trapper);
 
     var cpu = mc.cpu;
     cpu.poke8(TRACE, 0x00); // disable tracing
-
     while (!cpu.stopped) {
         cpu.step();
         switch (cpu.peek8(TRACE)) {
