@@ -39,7 +39,7 @@ pub const HiBasic = struct {
             trapper,
         );
 
-        tube.TubeOS.installInHost(&cpu);
+        trapper.installInHost(&cpu);
 
         var self = Self{ .cpu = cpu, .ram = ram };
         self.reset();

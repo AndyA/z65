@@ -187,7 +187,8 @@ pub const TubeOS = struct {
         };
     }
 
-    pub fn installInHost(cpu: anytype) void {
+    pub fn installInHost(self: Self, cpu: anytype) void {
+        _ = self;
         const STUB_START: u16 = 0xffce;
         const IRQV: u16 = 0xfffe;
 
