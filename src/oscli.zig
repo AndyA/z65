@@ -500,8 +500,6 @@ pub fn makeHandler(comptime Commands: type) type {
                 }
 
                 return struct {
-                    const Self = @This();
-
                     pub fn handle(cmd: []const u8, context: anytype) !bool {
                         inline for (commands, 0..) |command, i| {
                             if (try command.match(cmd)) |params| {
