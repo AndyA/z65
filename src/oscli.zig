@@ -355,10 +355,10 @@ test Source {
     });
 }
 
-fn paramType(self: Source, comptime Decoder: type) !type {
-    const n_fields = try self.paramCount();
+fn paramType(source: Source, comptime Decoder: type) !type {
+    const n_fields = try source.paramCount();
     var fields: [n_fields]std.builtin.Type.StructField = undefined;
-    var i = self.paramIter();
+    var i = source.paramIter();
     var pos: usize = 0;
     while (try i.next()) |token| {
         switch (token.token) {
