@@ -330,7 +330,7 @@ fn testParser(comptime cmd: []const u8, comptime expect: []const ?OptionalToken)
         const token = try iter.next();
         try std.testing.expectEqualDeep(expected, token);
     }
-    // try std.testing.expect(try source.count() == expect_count);
+    try std.testing.expect(try source.count() == expect_count);
 }
 
 test Source {
