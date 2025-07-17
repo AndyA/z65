@@ -521,7 +521,7 @@ pub fn makeHandler(comptime Commands: type) type {
 }
 
 test makeHandler {
-    const echo = true;
+    const echo = false;
     const Commands = struct {
         pub fn @"*CAT"(
             context: anytype,

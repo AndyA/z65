@@ -85,8 +85,8 @@ pub fn initInterface(buffer: []u8) std.io.Writer {
 pub fn main() !void {
     var r_buf: [256]u8 = undefined;
     var w_buf: [0]u8 = undefined;
-    var r = std.fs.File.stdin().readerStreaming(&r_buf);
-    var w = std.fs.File.stdout().writerStreaming(&w_buf);
+    var r = std.fs.File.stdin().reader(&r_buf);
+    var w = std.fs.File.stdout().writer(&w_buf);
 
     var trapper = try tube.TubeOS.init(
         std.heap.page_allocator,

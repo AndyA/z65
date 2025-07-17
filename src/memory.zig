@@ -1,5 +1,5 @@
 pub const FlatMemory = struct {
-    ram: []u8,
+    ram: *[0x10000]u8,
     const Self = @This();
 
     pub fn poke8(self: *Self, addr: u16, value: u8) void {
