@@ -504,9 +504,9 @@ pub fn makeHandler(comptime Commands: type) type {
 
                     pub fn handle(cmd: []const u8, context: anytype) !bool {
                         inline for (commands, 0..) |command, i| {
-                            if (try command.match(cmd)) |p| {
+                            if (try command.match(cmd)) |params| {
                                 const method = @field(Commands, s.decls[i].name);
-                                try method(context, p);
+                                try method(context, params);
                                 return true;
                             }
                         }
