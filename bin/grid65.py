@@ -1,5 +1,14 @@
-from dataclasses import dataclass, field
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "tabulate",
+# ]
+# ///
+from dataclasses import dataclass
 from functools import cached_property
+from typing import Callable, Optional, Self
+
+from tabulate import tabulate
 
 M6502 = {
     "LDA #": 0xA9,
@@ -157,12 +166,78 @@ M6502 = {
 
 
 @dataclass(kw_only=True, frozen=True)
+class Instruction:
+    mnemonic: str
+    opcode: int
+    address_mode: str
+
+    @classmethod
+    def from_instr(cls, instr: str, opcode: int) -> "Instruction":
+        parts = instr.split(" ", 1)
+        if len(parts) == 1:
+            mnemonic = parts[0]
+            address_mode = "impl"
+        else:
+            mnemonic, address_mode = parts
+        return cls(mnemonic=mnemonic, opcode=opcode, address_mode=address_mode)
+
+
+@dataclass(kw_only=True, frozen=True)
 class InstructionSet:
-    instructions: dict[str, int] = field(default_factory=dict)  # type: ignore
+    instructions: list[Instruction]
+
+    def _index_by(
+        self, key: Callable[[Instruction], str]
+    ) -> dict[str, list[Instruction]]:
+        index: dict[str, list[Instruction]] = {}
+        for instr in self.instructions:
+            slot = index.setdefault(key(instr), [])  # type: ignore
+            slot.append(instr)  # type: ignore
+        return index
 
     @cached_property
-    def parsed(self) -> dict[int, str]:
-        return {value: key for key, value in self.instructions.items()}
+    def by_mnemonic(self) -> dict[str, list[Instruction]]:
+        return self._index_by(lambda instr: instr.mnemonic)
+
+    @cached_property
+    def by_address_mode(self) -> dict[str, list[Instruction]]:
+        return self._index_by(lambda instr: instr.address_mode or "none")
+
+    def for_mnemonic(self, mnem: str) -> Self:
+        return self.__class__(instructions=self.by_mnemonic[mnem])
+
+    def lookup(self, mnem: str, addr_mode: str) -> Optional[Instruction]:
+        return self.for_mnemonic(mnem).by_address_mode.get(addr_mode, [None])[0]
 
 
-machine = InstructionSet(instructions=M6502)
+def fmt_opcode(mnemonic: str, addr_mode: str) -> str:
+    """Format the opcode for display."""
+    instr = machine.lookup(mnemonic, addr_mode)
+    if instr is None:
+        return ""
+    return f"{instr.opcode:02X}"
+
+
+instruction_list = [
+    Instruction.from_instr(instr, opcode)
+    for instr, opcode in sorted(M6502.items(), key=lambda item: item[1])
+]
+
+machine = InstructionSet(instructions=instruction_list)
+
+sta = machine.by_mnemonic["STA"]
+addr_modes = {i.address_mode for i in sta}
+all_modes: set[str] = set()
+print(f"STA address modes: {addr_modes}")
+big64: list[str] = []
+for mnemonic, instrs in machine.by_mnemonic.items():
+    modes = {i.address_mode for i in instrs}
+    if modes & addr_modes == addr_modes:
+        big64.append(mnemonic)
+        all_modes |= modes
+
+table: list[list[str]] = [
+    [mnem, *[fmt_opcode(mnem, m) for m in all_modes]] for mnem in big64
+]
+
+print(tabulate(table, headers=["mnemonic", *list(all_modes)], tablefmt="rounded_grid"))
