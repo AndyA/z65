@@ -2,12 +2,31 @@ const std = @import("std");
 const machine = @import("cpu/cpu.zig");
 const memory = @import("cpu/memory.zig");
 const ct = @import("cpu/cpu_tools.zig");
-const tube = @import("tube.zig");
+const tube = @import("tube/os.zig");
 const hb = @import("hibasic.zig");
 
 const TRACE: u16 = 0xfe90;
+const SNAPSHOT = ".snapshot.bbc";
 
-fn saveSnapshot(mc: hb.HiBasic, file: []const u8) !void {
+const OLD = "OLD";
+
+const TubeHook = struct {
+    started: bool = false,
+    pub fn readlineHook(self: *TubeHook, os: anytype) !?[]const u8 {
+        _ = os;
+        if (!self.started) {
+            self.started = true;
+            // std.debug.print("TubeOS started {*}\n", .{os});
+            return OLD;
+        }
+        return null;
+    }
+};
+
+const TubeOS = tube.TubeOS(TubeHook);
+const HiBasic = hb.HiBasic(TubeOS);
+
+fn saveSnapshot(mc: HiBasic, file: []const u8) !void {
     const prog = mc.getProgram();
     const file_handle = try std.fs.cwd().createFile(file, .{ .truncate = true });
     defer file_handle.close();
@@ -15,7 +34,7 @@ fn saveSnapshot(mc: hb.HiBasic, file: []const u8) !void {
     std.debug.print("Saved snapshot to {s}\n", .{file});
 }
 
-fn loadSnapshot(mc: *hb.HiBasic, file: []const u8) !bool {
+fn loadSnapshot(mc: *HiBasic, file: []const u8) !bool {
     var buf: [0x10000]u8 = undefined;
     const prog = std.fs.cwd().readFile(file, buf[0..]) catch |err| {
         if (err == error.FileNotFound) return false;
@@ -23,7 +42,7 @@ fn loadSnapshot(mc: *hb.HiBasic, file: []const u8) !bool {
     };
     @memcpy(mc.ram[0x800 .. 0x800 + prog.len], prog);
     // try mc.setProgram(prog);
-    std.debug.print("Loaded snapshot from {s}. Type \"OLD\" to retrieve it.\n", .{file});
+    std.debug.print("Loaded snapshot from {s}.\n", .{file});
     return true;
 }
 
@@ -33,16 +52,19 @@ pub fn main() !void {
     var r = std.fs.File.stdin().reader(&r_buf);
     var w = std.fs.File.stdout().writer(&w_buf);
 
-    var trapper = try tube.TubeOS.init(
+    var hook = TubeHook{};
+
+    var trapper = try TubeOS.init(
         std.heap.page_allocator,
         &r.interface,
         &w.interface,
+        &hook,
     );
     defer trapper.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
-    var mc = try hb.HiBasic.init(&ram, &trapper);
-    _ = try loadSnapshot(&mc, "tmp/snapshot.bbc");
+    var mc = try HiBasic.init(&ram, &trapper);
+    _ = try loadSnapshot(&mc, SNAPSHOT);
 
     var cpu = mc.cpu;
     cpu.poke8(TRACE, 0x00); // disable tracing
@@ -56,7 +78,7 @@ pub fn main() !void {
     }
 
     std.debug.print("\nBye!\n", .{});
-    try saveSnapshot(mc, "tmp/snapshot.bbc");
+    try saveSnapshot(mc, SNAPSHOT);
 }
 
 test {
