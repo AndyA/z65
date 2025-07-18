@@ -1,14 +1,14 @@
 const std = @import("std");
-const machine = @import("cpu.zig");
-const memory = @import("memory.zig");
-const ct = @import("cpu_tools.zig");
+const machine = @import("cpu/cpu.zig");
+const memory = @import("cpu/memory.zig");
+const ct = @import("cpu/cpu_tools.zig");
 const tube = @import("tube.zig");
 
 const Tube65C02 = machine.makeCPU(
-    @import("wdc65c02.zig").InstructionSet65C02,
-    @import("address_modes.zig").AddressModes,
-    @import("instructions.zig").Instructions,
-    @import("alu.zig").ALU65C02,
+    @import("cpu/wdc65c02.zig").InstructionSet65C02,
+    @import("cpu/address_modes.zig").AddressModes,
+    @import("cpu/instructions.zig").Instructions,
+    @import("cpu/alu.zig").ALU65C02,
     memory.FlatMemory,
     machine.NullInterruptSource,
     tube.TubeOS,

@@ -1,5 +1,5 @@
 const std = @import("std");
-const ct = @import("cpu_tools.zig");
+const ct = @import("cpu/cpu_tools.zig");
 
 pub fn serde(comptime T: type) type {
     comptime {

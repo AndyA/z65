@@ -1,5 +1,5 @@
 const std = @import("std");
-const ct = @import("cpu_tools.zig");
+const ct = @import("cpu/cpu_tools.zig");
 const serde = @import("serde.zig").serde;
 const oscli = @import("oscli.zig");
 
