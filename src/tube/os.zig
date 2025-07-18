@@ -153,7 +153,10 @@ pub fn TubeOS(comptime TubeHookType: type) type {
                             0x83 => ct.setXY(cpu, @intFromEnum(Symbols.PAGE)),
                             0x84 => ct.setXY(cpu, @intFromEnum(Symbols.HIMEM)),
                             0xda => {}, // set VDU queue length
-                            else => std.debug.print("OSBYTE {x} not implemented {f}\n", .{ cpu.A, cpu }),
+                            else => std.debug.print(
+                                \\OSBYTE {x} not implemented {f}
+                                \\
+                            , .{ cpu.A, cpu }),
                         }
                     },
                     .OSWORD => {
