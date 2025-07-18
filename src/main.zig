@@ -12,6 +12,7 @@ fn saveSnapshot(mc: hb.HiBasic, file: []const u8) !void {
     const file_handle = try std.fs.cwd().createFile(file, .{ .truncate = true });
     defer file_handle.close();
     try file_handle.writeAll(prog);
+    std.debug.print("Saved snapshot to {s}\n", .{file});
 }
 
 fn loadSnapshot(mc: *hb.HiBasic, file: []const u8) !bool {
@@ -22,6 +23,7 @@ fn loadSnapshot(mc: *hb.HiBasic, file: []const u8) !bool {
     };
     @memcpy(mc.ram[0x800 .. 0x800 + prog.len], prog);
     // try mc.setProgram(prog);
+    std.debug.print("Loaded snapshot from {s}. Type \"OLD\" to retrieve it.\n", .{file});
     return true;
 }
 
