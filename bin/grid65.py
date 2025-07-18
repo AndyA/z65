@@ -227,17 +227,24 @@ machine = InstructionSet(instructions=instruction_list)
 
 sta = machine.by_mnemonic["STA"]
 addr_modes = {i.address_mode for i in sta}
-all_modes: set[str] = set()
-print(f"STA address modes: {addr_modes}")
+seen_modes: set[str] = set()
 big64: list[str] = []
 for mnemonic, instrs in machine.by_mnemonic.items():
     modes = {i.address_mode for i in instrs}
     if modes & addr_modes == addr_modes:
         big64.append(mnemonic)
-        all_modes |= modes
+        seen_modes |= modes
+
+all_modes = sorted(seen_modes)
 
 table: list[list[str]] = [
-    [mnem, *[fmt_opcode(mnem, m) for m in all_modes]] for mnem in big64
+    [mnem, *[fmt_opcode(mnem, m) for m in sorted(all_modes)]] for mnem in big64
 ]
 
-print(tabulate(table, headers=["mnemonic", *list(all_modes)], tablefmt="rounded_grid"))
+print(
+    tabulate(
+        table,
+        headers=["mnemonic", *all_modes],
+        tablefmt="rounded_grid",
+    )
+)
