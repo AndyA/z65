@@ -173,6 +173,7 @@ pub fn TubeOS(comptime TubeHookType: type) type {
                                         return;
                                     }
                                 }
+
                                 const ln = self.reader.takeDelimiterExclusive('\n') catch |err| {
                                     switch (err) {
                                         error.EndOfStream => {
