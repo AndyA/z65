@@ -27,9 +27,9 @@ const HiBasic = hb.HiBasic(TubeOS);
 
 fn saveSnapshot(mc: HiBasic, file: []const u8) !void {
     const prog = mc.getProgram();
-    const file_handle = try std.fs.cwd().createFile(file, .{ .truncate = true });
-    defer file_handle.close();
-    try file_handle.writeAll(prog);
+    const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
+    defer fh.close();
+    try fh.writeAll(prog);
     std.debug.print("Saved snapshot to {s}\n", .{file});
 }
 
