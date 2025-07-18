@@ -145,15 +145,12 @@ const StarCommands = struct {
         });
     }
 
-    pub fn @"*LOAD <name:[]u8> [<start:u16x>]"(
+    pub fn @"*LOAD <name:[]u8> <start:u16x>"(
         cpu: anytype,
         args: anytype,
     ) !void {
         _ = cpu;
-        std.debug.print("*LOAD \"{s}\" {x}\n", .{
-            args.name,
-            args.start orelse 0x800,
-        });
+        std.debug.print("*LOAD \"{s}\" {x}\n", .{ args.name, args.start });
     }
 
     pub fn @"*EXEC <name:[]u8>"(

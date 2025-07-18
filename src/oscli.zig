@@ -197,7 +197,7 @@ const Parser = struct {
         var s = &self.scanner;
         while (!s.eot()) {
             s.skipSpace();
-            if (s.eot()) return null;
+            if (s.eot()) break;
 
             const optional = self.opt_depth > 0;
             switch (s.peek()) {
