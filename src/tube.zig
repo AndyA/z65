@@ -295,7 +295,6 @@ pub const TubeOS = struct {
                             const ln = self.reader.takeDelimiterExclusive('\n') catch |err| {
                                 switch (err) {
                                     error.EndOfStream => {
-                                        std.debug.print("\nBye!\n", .{});
                                         cpu.stop();
                                         return;
                                     },
