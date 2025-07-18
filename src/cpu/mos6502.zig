@@ -1,4 +1,4 @@
-// This is the orthogonal core of the 6503 instruction set:
+// This is the orthogonal core of the 6502 instruction set:
 //
 // ╭──────────┬────┬─────┬────────┬──────────┬──────────┬─────┬────────┬────────╮
 // │ mnemonic │ #  │ zpg │ zpg, X │ (zpg, X) │ (zpg), Y │ abs │ abs, X │ abs, Y │
