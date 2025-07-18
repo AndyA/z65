@@ -8,16 +8,15 @@ const hb = @import("hibasic.zig");
 const TRACE: u16 = 0xfe90;
 const SNAPSHOT = ".snapshot.bbc";
 
-const OLD = "OLD";
-
 const TubeHook = struct {
+    const Self = @This();
     started: bool = false,
-    pub fn readlineHook(self: *TubeHook, os: anytype) !?[]const u8 {
+    pub fn @"hook:readline"(self: *Self, os: anytype) !?[]const u8 {
         _ = os;
         if (!self.started) {
             self.started = true;
             // std.debug.print("TubeOS started {*}\n", .{os});
-            return OLD;
+            return "OLD";
         }
         return null;
     }
@@ -41,7 +40,6 @@ fn loadSnapshot(mc: *HiBasic, file: []const u8) !bool {
         return err;
     };
     @memcpy(mc.ram[0x800 .. 0x800 + prog.len], prog);
-    // try mc.setProgram(prog);
     std.debug.print("Loaded snapshot from {s}.\n", .{file});
     return true;
 }
@@ -54,16 +52,16 @@ pub fn main() !void {
 
     var hook = TubeHook{};
 
-    var trapper = try TubeOS.init(
+    var os = try TubeOS.init(
         std.heap.page_allocator,
         &r.interface,
         &w.interface,
         &hook,
     );
-    defer trapper.deinit();
+    defer os.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
-    var mc = try HiBasic.init(&ram, &trapper);
+    var mc = try HiBasic.init(&ram, &os);
     _ = try loadSnapshot(&mc, SNAPSHOT);
 
     var cpu = mc.cpu;

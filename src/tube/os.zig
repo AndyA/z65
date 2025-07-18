@@ -160,10 +160,10 @@ pub fn TubeOS(comptime TubeHookType: type) type {
                         const addr = ct.getXY(cpu);
                         switch (cpu.A) {
                             0x00 => {
-                                if (@hasDecl(TubeHookType, "readlineHook")) {
-                                    const line = self.hook.readlineHook(self) catch |err| {
-                                        std.debug.print("Error in readlineHook: {s}\n", .{@errorName(err)});
-                                        @panic("readlineHook failed");
+                                if (@hasDecl(TubeHookType, "hook:readline")) {
+                                    const line = self.hook.@"hook:readline"(self) catch |err| {
+                                        std.debug.print("Error in hook:readline: {s}\n", .{@errorName(err)});
+                                        @panic("hook:readline failed");
                                     };
                                     if (line) |ln| {
                                         self.sendLine(cpu, addr, ln);

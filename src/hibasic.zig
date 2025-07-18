@@ -23,7 +23,7 @@ pub fn HiBasic(comptime TubeOS: type) type {
 
     return struct {
         const Self = @This();
-        const load_addr = @intFromEnum(Symbols.HIMEM);
+        const LOAD_ADDR = @intFromEnum(Symbols.HIMEM);
         cpu: Tube65C02,
         ram: *[0x10000]u8,
 
@@ -32,17 +32,17 @@ pub fn HiBasic(comptime TubeOS: type) type {
         const TOP = 0x12;
         const PAGE_HI = 0x18;
 
-        pub fn init(ram: *[0x10000]u8, trapper: *TubeOS) !Self {
+        pub fn init(ram: *[0x10000]u8, os: *TubeOS) !Self {
             const rom_image = @embedFile("roms/HiBASIC.rom");
-            @memcpy(ram[load_addr .. load_addr + rom_image.len], rom_image);
+            @memcpy(ram[LOAD_ADDR .. LOAD_ADDR + rom_image.len], rom_image);
 
             var cpu = Tube65C02.init(
                 memory.FlatMemory{ .ram = ram },
                 machine.NullInterruptSource{},
-                trapper,
+                os,
             );
 
-            trapper.installInHost(&cpu);
+            os.installInHost(&cpu);
 
             var self = Self{ .cpu = cpu, .ram = ram };
             self.reset();
@@ -52,7 +52,7 @@ pub fn HiBasic(comptime TubeOS: type) type {
 
         pub fn reset(self: *Self) void {
             self.cpu.reset();
-            self.cpu.PC = @intCast(load_addr);
+            self.cpu.PC = @intCast(LOAD_ADDR);
             self.cpu.A = 0x01;
         }
 

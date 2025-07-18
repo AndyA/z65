@@ -45,7 +45,7 @@ pub fn makeCPU(
     comptime ALU: type,
     comptime Memory: type,
     comptime InterruptSource: type,
-    comptime TrapHandler: type,
+    comptime OS: type,
     comptime options: CPUOptions,
 ) type {
     comptime {
@@ -56,7 +56,7 @@ pub fn makeCPU(
         for (despatch, 0..) |_, opcode| {
             const shim = struct {
                 pub fn instr(cpu: anytype) void {
-                    cpu.trap_handler.trap(cpu, opcode);
+                    cpu.os.trap(cpu, opcode);
                 }
             };
             despatch[opcode] = shim.instr;
@@ -100,7 +100,7 @@ pub fn makeCPU(
             alu: ALU = ALU{},
             mem: Memory,
             int_source: InterruptSource,
-            trap_handler: *TrapHandler,
+            os: *OS,
 
             int_state: InterruptState = .None,
             stopped: bool = false,
@@ -113,11 +113,11 @@ pub fn makeCPU(
             P: PSR = PSR{},
             PC: u16 = 0,
 
-            pub fn init(mem: Memory, int_source: InterruptSource, trap_handler: *TrapHandler) Self {
+            pub fn init(mem: Memory, int_source: InterruptSource, os: *OS) Self {
                 return Self{
                     .mem = mem,
                     .int_source = int_source,
-                    .trap_handler = trap_handler,
+                    .os = os,
                 };
             }
 
@@ -370,12 +370,12 @@ test "trap" {
         .{},
     );
 
-    var trap_handler = TestTrapHandler{};
+    var os = TestTrapHandler{};
 
     var mc = M6502.init(
         memory.FlatMemory{ .ram = &ram },
         NullInterruptSource{},
-        &trap_handler,
+        &os,
     );
 
     try expect(!M6502.isLegal(TRAP_OPCODE));
@@ -389,9 +389,9 @@ test "trap" {
 
     mc.reset();
     mc.step();
-    try expect(mc.trap_handler.trapped[0x01] == 1);
-    try expect(mc.trap_handler.trapped[0x11] == 0);
+    try expect(mc.os.trapped[0x01] == 1);
+    try expect(mc.os.trapped[0x11] == 0);
     mc.step();
-    try expect(mc.trap_handler.trapped[0x01] == 1);
-    try expect(mc.trap_handler.trapped[0x11] == 1);
+    try expect(mc.os.trapped[0x01] == 1);
+    try expect(mc.os.trapped[0x11] == 1);
 }
