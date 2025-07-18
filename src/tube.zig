@@ -156,6 +156,22 @@ const StarCommands = struct {
         });
     }
 
+    pub fn @"*EXEC <name:[]u8>"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
+        _ = cpu;
+        std.debug.print("*EXEC \"{s}\"\n", .{args.name});
+    }
+
+    pub fn @"*SPOOL <name:[]u8>"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
+        _ = cpu;
+        std.debug.print("*SPOOL \"{s}\"\n", .{args.name});
+    }
+
     pub fn @"*!<shell:[]u8*>"(cpu: anytype, args: anytype) !void {
         _ = cpu;
         std.debug.print("shell {s}\n", .{args.shell});
@@ -185,6 +201,10 @@ pub const TubeOS = struct {
             .reader = reader,
             .writer = writer,
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        _ = self;
     }
 
     pub fn installInHost(self: Self, cpu: anytype) void {

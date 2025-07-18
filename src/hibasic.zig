@@ -1,3 +1,4 @@
+const std = @import("std");
 const machine = @import("cpu/cpu.zig");
 const memory = @import("cpu/memory.zig");
 const ct = @import("cpu/cpu_tools.zig");
@@ -53,16 +54,23 @@ pub const HiBasic = struct {
         self.cpu.A = 0x01;
     }
 
+    pub fn getPage(self: Self) u16 {
+        const page_hi: u16 = @intCast(self.cpu.peek8(PAGE_HI));
+        const page: u16 = page_hi << 8;
+        return page;
+    }
+
     pub fn getProgram(self: Self) []const u8 {
-        const page: u16 = @intCast(self.cpu.peek8(PAGE_HI) << 8);
+        const page = self.getPage();
         const top: u16 = self.cpu.peek16(TOP);
         return self.ram[page..top];
     }
 
     pub fn setProgram(self: *Self, prog: []const u8) !void {
-        const page: u16 = @intCast(self.cpu.peek8(PAGE_HI) << 8);
+        const page = self.getPage();
         const top: u16 = @intCast(page + prog.len);
         const himem: u16 = self.cpu.peek16(HIMEM);
+        std.debug.print("page={x}, top={x}, himem={x}\n", .{ page, top, himem });
         if (top > himem)
             return HiBasicError.ProgramTooLarge;
         @memcpy(self.ram[page..top], prog);

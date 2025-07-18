@@ -121,7 +121,7 @@ pub fn makeCPU(
                 };
             }
 
-            pub fn peek8(self: *Self, addr: u16) u8 {
+            pub fn peek8(self: Self, addr: u16) u8 {
                 return self.mem.peek8(addr);
             }
 
@@ -129,7 +129,7 @@ pub fn makeCPU(
                 self.mem.poke8(addr, value);
             }
 
-            pub fn peek16(self: *Self, addr: u16) u16 {
+            pub fn peek16(self: Self, addr: u16) u16 {
                 const lo: u16 = self.peek8(addr);
                 const hi: u16 = self.peek8(addr +% 1);
                 return (hi << 8) | lo;

@@ -6,7 +6,7 @@ pub const FlatMemory = struct {
         self.ram[addr] = value;
     }
 
-    pub fn peek8(self: *Self, addr: u16) u8 {
+    pub fn peek8(self: Self, addr: u16) u8 {
         return self.ram[addr];
     }
 };
