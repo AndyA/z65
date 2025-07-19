@@ -60,17 +60,21 @@ pub const BBCBasicWriter = struct {
     source: []const u8,
     strip: bool = false,
 
+    pub fn uncookedIter(self: Self) LineIter {
+        return LineIter.init(self.source, false, 0);
+    }
+
     pub fn iter(self: Self) LineIter {
         if (self.strip) {
             const ls = self.findLeadingSpace();
             return LineIter.init(self.source, true, ls);
         } else {
-            return LineIter.init(self.source, false, 0);
+            return self.uncookedIter();
         }
     }
 
     fn findLeadingSpace(self: Self) usize {
-        var i = LineIter.init(self.source, false, 0);
+        var i = self.uncookedIter();
         var ls: usize = 256;
         while (i.next()) |line| {
             const clean = skipLineNumber(line);
@@ -79,5 +83,65 @@ pub const BBCBasicWriter = struct {
             ls = @min(ls, spc);
         }
         return ls;
+    }
+};
+
+pub const BBCBasicReader = struct {
+    const Self = @This();
+    source: []const u8,
+    alloc: std.mem.Allocator,
+    buf: std.ArrayList(u8),
+
+    pub fn init(source: []const u8, alloc: std.mem.Allocator) !Self {
+        return Self{
+            .source = source,
+            .alloc = alloc,
+            .buf = try std.ArrayList(u8).initCapacity(alloc, source.len * 2),
+        };
+    }
+
+    pub fn deinit(self: Self) void {
+        self.buf.deinit();
+    }
+
+    pub fn uncookedIter(self: Self) LineIter {
+        return LineIter.init(self.source, false, 0);
+    }
+
+    fn hasLineNumbers(self: Self) bool {
+        var i = self.uncookedIter();
+        while (i.next()) |line| {
+            const ls = leadingSpace(line);
+            if (ls == line.len) continue;
+            if (!std.ascii.isDigit(line[ls]))
+                return false;
+        }
+        return true;
+    }
+
+    fn write(self: Self, w: std.ArrayList(u8).Writer) !void {
+        var i = self.uncookedIter();
+        if (self.hasLineNumbers()) {
+            while (i.next()) |line| {
+                try w.print("{s}\n", .{line});
+            }
+        } else {
+            var ln: usize = 10;
+            while (i.next()) |line| : (ln += 10) {
+                if (line.len > 0)
+                    try w.print("{d} {s}\n", .{ ln, line });
+            }
+        }
+    }
+
+    fn render(self: *Self) !void {
+        if (self.buf.items.len == 0) {
+            try self.write(self.buf.writer());
+        }
+    }
+
+    pub fn iter(self: *Self) !LineIter {
+        try self.render();
+        return LineIter.init(self.buf.items, false, 0);
     }
 };

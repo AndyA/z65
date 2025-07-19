@@ -32,8 +32,8 @@ pub fn main() !void {
         &r.interface,
         &w.interface,
         &ram,
-        .{ .snapshot_file = SNAPSHOT ++ ".bbc", .auto_save = true },
-        .{ .snapshot_file = SNAPSHOT ++ ".bas", .auto_save = true, .auto_load = true },
+        .{ .file = SNAPSHOT ++ ".bbc", .auto_save = true },
+        .{ .file = SNAPSHOT ++ ".bas", .auto_save = true, .auto_load = true },
     );
     defer lang.deinit();
 
