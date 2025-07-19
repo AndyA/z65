@@ -15,6 +15,11 @@ pub const HiBasicError = error{
 
 pub const HiBasicAutoSave = enum { AutoSave, NoAutoSave };
 
+pub const HiBasicSnapshot = struct {
+    snapshot_file: ?[]const u8 = null,
+    auto_save: HiBasicAutoSave,
+};
+
 pub const HiBasic = struct {
     const Self = @This();
     const LOAD_ADDR = @intFromEnum(Symbols.HIMEM);
@@ -27,8 +32,8 @@ pub const HiBasic = struct {
     writer: *std.io.Writer,
 
     ram: *[0x10000]u8,
-    snapshot_file: ?[]const u8 = null,
-    auto_save: HiBasicAutoSave,
+    bin_snapshot: HiBasicSnapshot,
+    src_snapshot: HiBasicSnapshot,
     started: bool = false,
     interactive: bool = true,
     prog_hash: u256 = 0,
@@ -39,16 +44,16 @@ pub const HiBasic = struct {
         reader: *std.io.Reader,
         writer: *std.io.Writer,
         ram: *[0x10000]u8,
-        snapshot_file: ?[]const u8,
-        auto_save: HiBasicAutoSave,
+        bin_snapshot: HiBasicSnapshot,
+        src_snapshot: HiBasicSnapshot,
     ) !Self {
         return Self{
             .alloc = alloc,
             .reader = reader,
             .writer = writer,
             .ram = ram,
-            .snapshot_file = snapshot_file,
-            .auto_save = auto_save,
+            .bin_snapshot = bin_snapshot,
+            .src_snapshot = src_snapshot,
             .input_queue = try std.ArrayList([]const u8).initCapacity(alloc, 100),
         };
     }
@@ -102,26 +107,37 @@ pub const HiBasic = struct {
     }
 
     fn onStartup(self: *Self, cpu: anytype) !void {
-        if (self.snapshot_file) |file| {
-            if (try self.loadSnapshot(cpu, file)) {
+        if (self.bin_snapshot.snapshot_file) |file| {
+            if (try self.loadBinSnapshot(cpu, file)) {
                 try self.writer.print("Loaded {s}\n", .{file});
             }
         }
     }
 
     fn onCodeChange(self: *Self, cpu: anytype) !void {
-        if (self.auto_save == .AutoSave) {
-            if (self.snapshot_file) |file| {
-                try self.saveSnapshot(cpu, file);
+        if (self.bin_snapshot.auto_save == .AutoSave) {
+            if (self.bin_snapshot.snapshot_file) |file| {
+                try self.saveBinSnapshot(cpu, file);
             }
         }
 
-        try self.scheduleCommand("*CAT");
+        if (self.src_snapshot.auto_save == .AutoSave) {
+            try self.scheduleCommand("*LANGUAGE CALLBACK code_change");
+        }
     }
 
     fn onInteractive(self: *Self, cpu: anytype) !void {
         _ = self;
         _ = cpu;
+    }
+
+    pub fn onCallback(self: *Self, cpu: anytype, callback: []const u8) !void {
+        if (std.mem.eql(u8, callback, "code_change")) {
+            if (self.src_snapshot.snapshot_file) |file| {
+                try self.saveSrcSnapshot(cpu, file);
+            }
+            return;
+        }
     }
 
     pub fn runScript(self: *Self, cpu: anytype, script: []const []const u8) ![]const u8 {
@@ -144,8 +160,8 @@ pub const HiBasic = struct {
 
     pub fn shutDown(self: *Self, cpu: anytype) !void {
         try self.writer.print("\n", .{});
-        if (self.snapshot_file) |file| {
-            try self.saveSnapshot(cpu, file);
+        if (self.bin_snapshot.snapshot_file) |file| {
+            try self.saveBinSnapshot(cpu, file);
             try self.writer.print("Saved {s}\n", .{file});
         }
         try self.writer.print("Bye!\n", .{});
@@ -175,14 +191,24 @@ pub const HiBasic = struct {
         self.prog_hash = hashBytes(prog);
     }
 
-    fn saveSnapshot(self: Self, cpu: anytype, file: []const u8) !void {
+    fn saveSrcSnapshot(self: *Self, cpu: anytype, file: []const u8) !void {
+        const output = try self.runScript(cpu, &.{
+            "LIST",
+        });
+
+        const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
+        defer fh.close();
+        try fh.writeAll(output);
+    }
+
+    fn saveBinSnapshot(self: Self, cpu: anytype, file: []const u8) !void {
         const prog = self.getProgram(cpu);
         const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
         defer fh.close();
         try fh.writeAll(prog);
     }
 
-    fn loadSnapshot(self: *Self, cpu: anytype, file: []const u8) !bool {
+    fn loadBinSnapshot(self: *Self, cpu: anytype, file: []const u8) !bool {
         var buf: [0x10000]u8 = undefined;
         const prog = std.fs.cwd().readFile(file, buf[0..]) catch |err| {
             if (err == error.FileNotFound) return false;

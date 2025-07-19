@@ -226,7 +226,8 @@ pub fn TubeOS(comptime LangType: type) type {
 
         fn doOSWRCH(self: *Self, cpu: anytype) !void {
             if (self.capture) {
-                try self.output.append(cpu.A);
+                if (cpu.A != 0x0D)
+                    try self.output.append(cpu.A);
             } else {
                 try self.writer.print("{c}", .{cpu.A});
             }

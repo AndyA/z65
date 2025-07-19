@@ -5,7 +5,7 @@ const tube = @import("tube/os.zig");
 const hb = @import("hibasic.zig");
 
 const TRACE: u16 = 0xfe90;
-const SNAPSHOT = ".snapshot.bbc";
+const SNAPSHOT = ".snapshot";
 
 const TubeOS = tube.TubeOS(hb.HiBasic);
 
@@ -32,8 +32,14 @@ pub fn main() !void {
         &r.interface,
         &w.interface,
         &ram,
-        SNAPSHOT,
-        .AutoSave,
+        .{
+            .snapshot_file = SNAPSHOT ++ ".bbc",
+            .auto_save = hb.HiBasicAutoSave.AutoSave,
+        },
+        .{
+            .snapshot_file = SNAPSHOT ++ ".bas",
+            .auto_save = hb.HiBasicAutoSave.AutoSave,
+        },
     );
     defer lang.deinit();
 
