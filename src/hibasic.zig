@@ -32,7 +32,7 @@ pub const HiBasic = struct {
             self.started = true;
             if (self.snapshot_file) |file| {
                 if (try self.loadSnapshot(cpu, file)) {
-                    std.debug.print("\nLoaded snapshot from {s}.\n>", .{file});
+                    std.debug.print("\nLoaded {s}\n>", .{file});
                 }
             }
         }
@@ -41,7 +41,8 @@ pub const HiBasic = struct {
 
     pub fn installInHost(self: *Self, cpu: anytype) void {
         const rom_image = @embedFile("roms/HiBASIC.rom");
-        ct.pokeBytes(cpu, LOAD_ADDR, rom_image);
+        // ct.pokeBytes(cpu, LOAD_ADDR, rom_image);
+        @memcpy(self.ram[LOAD_ADDR .. LOAD_ADDR + rom_image.len], rom_image);
         self.reset(cpu);
     }
 
@@ -56,6 +57,7 @@ pub const HiBasic = struct {
         std.debug.print("\n", .{});
         if (self.snapshot_file) |file| {
             try self.saveSnapshot(cpu, file);
+            std.debug.print("Saved {s}\n", .{file});
         }
         std.debug.print("Bye!\n", .{});
     }
@@ -88,7 +90,6 @@ pub const HiBasic = struct {
         const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
         defer fh.close();
         try fh.writeAll(prog);
-        std.debug.print("Saved snapshot to {s}\n", .{file});
     }
 
     fn loadSnapshot(self: *Self, cpu: anytype, file: []const u8) !bool {
