@@ -117,7 +117,7 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.poke16(IRQV, irq_addr);
         }
 
-        fn sendLine(self: *Self, cpu: anytype, addr: u16, ln: []const u8) void {
+        fn sendBuffer(self: *Self, cpu: anytype, addr: u16, ln: []const u8) void {
             _ = self;
             const buf_addr = cpu.peek16(addr);
             const max_len = cpu.peek8(addr + 2);
@@ -125,6 +125,18 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.P.C = false;
             ct.pokeBytes(cpu, buf_addr, ln);
             cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate}
+        }
+
+        fn sendLine(self: *Self, cpu: anytype, addr: u16, ln: []const u8) void {
+            if (@hasDecl(LangType, "hook:sendline")) {
+                const replaced = self.lang.@"hook:sendline"(cpu, addr, ln) catch |err| {
+                    std.debug.print("Error in hook:sendline: {s}\n", .{@errorName(err)});
+                    @panic("hook:sendline failed");
+                };
+                self.sendBuffer(cpu, addr, replaced);
+            } else {
+                self.sendBuffer(cpu, addr, ln);
+            }
         }
 
         pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
