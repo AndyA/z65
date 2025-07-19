@@ -16,28 +16,27 @@ const OSCLI = @import("oscli.zig").OSCLI;
 const RW_u40 = serde(u40);
 const RW_OSFILE = serde(OSFILE);
 
-pub fn TubeOS(comptime TubeHookType: type) type {
+pub fn TubeOS(comptime LangType: type) type {
     return struct {
-        pub const TubeHook = TubeHookType;
         const Self = @This();
         base_time_ms: i64,
         alloc: std.mem.Allocator,
         reader: *std.io.Reader,
         writer: *std.io.Writer,
-        hook: *TubeHookType,
+        lang: *LangType,
 
         pub fn init(
             alloc: std.mem.Allocator,
             reader: *std.io.Reader,
             writer: *std.io.Writer,
-            hook: *TubeHookType,
+            lang: *LangType,
         ) !Self {
             return Self{
                 .base_time_ms = std.time.milliTimestamp(),
                 .alloc = alloc,
                 .reader = reader,
                 .writer = writer,
-                .hook = hook,
+                .lang = lang,
             };
         }
 
@@ -163,8 +162,8 @@ pub fn TubeOS(comptime TubeHookType: type) type {
                         const addr = ct.getXY(cpu);
                         switch (cpu.A) {
                             0x00 => {
-                                if (@hasDecl(TubeHookType, "hook:readline")) {
-                                    const line = self.hook.@"hook:readline"(self) catch |err| {
+                                if (@hasDecl(LangType, "hook:readline")) {
+                                    const line = self.lang.@"hook:readline"(self, cpu) catch |err| {
                                         std.debug.print("Error in hook:readline: {s}\n", .{@errorName(err)});
                                         @panic("hook:readline failed");
                                     };
