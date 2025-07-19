@@ -41,7 +41,7 @@ const LineIter = struct {
             if (line.len == 1 and line[0] == '\r')
                 continue;
             const clean = self.strip(std.mem.trim(u8, line, "\r"));
-            return clean[self.strip_space..];
+            return clean[@min(self.strip_space, clean.len)..];
         }
         return null;
     }

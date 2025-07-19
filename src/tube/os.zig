@@ -148,12 +148,11 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.P.C = false;
             ct.pokeBytes(cpu, buf_addr, ln);
             cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate}
-            cpu.poke8(0xff, 0x00);
         }
 
         fn sendLine(self: *Self, cpu: anytype, addr: u16, ln: []const u8) !void {
             if (@hasDecl(LangType, "hook:sendline")) {
-                const replaced = try self.lang.@"hook:sendline"(cpu, addr, ln);
+                const replaced = try self.lang.@"hook:sendline"(cpu, ln);
                 self.sendBuffer(cpu, addr, replaced);
             } else {
                 self.sendBuffer(cpu, addr, ln);

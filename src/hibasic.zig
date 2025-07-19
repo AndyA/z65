@@ -14,11 +14,10 @@ pub const HiBasicError = error{
     ProgramTooLarge,
 };
 
-pub const HiBasicAutoSave = enum { AutoSave, NoAutoSave };
-
 pub const HiBasicSnapshot = struct {
     snapshot_file: ?[]const u8 = null,
-    auto_save: HiBasicAutoSave,
+    auto_save: bool = false,
+    auto_load: bool = false,
 };
 
 pub const HiBasic = struct {
@@ -98,6 +97,13 @@ pub const HiBasic = struct {
         return null;
     }
 
+    pub fn @"hook:sendline"(self: *Self, cpu: anytype, line: []const u8) ![]const u8 {
+        _ = self;
+        _ = cpu;
+        // std.debug.print("Line: \"{s}\"\n", .{line});
+        return line;
+    }
+
     pub fn inputPending(self: Self) bool {
         return self.input_queue.items.len != 0;
     }
@@ -116,13 +122,13 @@ pub const HiBasic = struct {
     }
 
     fn onCodeChange(self: *Self, cpu: anytype) !void {
-        if (self.bin_snapshot.auto_save == .AutoSave) {
+        if (self.bin_snapshot.auto_save) {
             if (self.bin_snapshot.snapshot_file) |file| {
                 try self.saveBinSnapshot(cpu, file);
             }
         }
 
-        if (self.src_snapshot.auto_save == .AutoSave) {
+        if (self.src_snapshot.auto_save) {
             try self.scheduleCommand("*LANGUAGE CALLBACK code_change");
         }
     }
