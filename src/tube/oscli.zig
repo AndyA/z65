@@ -7,9 +7,8 @@ const StarCommands = struct {
         cpu: anytype,
         args: anytype,
     ) !void {
-        _ = cpu;
         _ = args;
-        std.debug.print("Meow!\n", .{});
+        try cpu.os.lang.scheduleCommand("LIST");
     }
 
     pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(

@@ -30,7 +30,9 @@ pub const HiBasic = struct {
     snapshot_file: ?[]const u8 = null,
     auto_save: HiBasicAutoSave,
     started: bool = false,
+    interactive: bool = true,
     prog_hash: u256 = 0,
+    input_queue: std.ArrayList([]const u8),
 
     pub fn init(
         alloc: std.mem.Allocator,
@@ -39,7 +41,7 @@ pub const HiBasic = struct {
         ram: *[0x10000]u8,
         snapshot_file: ?[]const u8,
         auto_save: HiBasicAutoSave,
-    ) Self {
+    ) !Self {
         return Self{
             .alloc = alloc,
             .reader = reader,
@@ -47,30 +49,59 @@ pub const HiBasic = struct {
             .ram = ram,
             .snapshot_file = snapshot_file,
             .auto_save = auto_save,
+            .input_queue = try std.ArrayList([]const u8).initCapacity(alloc, 100),
         };
     }
 
     pub fn deinit(self: *Self) void {
-        _ = self;
+        self.input_queue.deinit();
+    }
+
+    pub fn @"hook:reset"(self: *Self, cpu: anytype) !void {
+        self.started = false;
+        cpu.os.startCapture();
     }
 
     pub fn @"hook:readline"(self: *Self, cpu: anytype) !?[]const u8 {
         if (!self.started) {
             self.started = true;
             try self.onStartup(cpu);
-        } else {
-            const hash = hashBytes(self.getProgram(cpu));
-            if (self.prog_hash != 0 and self.prog_hash != hash)
-                try self.onCodeChange(cpu);
-            self.prog_hash = hash;
+            const output = cpu.os.takeCapture();
+            try self.writer.print("{s}", .{output});
         }
+
+        // Anything in the input queue?
+        if (self.inputPending()) {
+            const cmd = self.input_queue.orderedRemove(0);
+            return cmd;
+        }
+
+        if (!self.interactive) {
+            self.interactive = true;
+            try self.onInteractive(cpu);
+        }
+
+        const hash = hashBytes(self.getProgram(cpu));
+        if (self.prog_hash != 0 and self.prog_hash != hash)
+            try self.onCodeChange(cpu);
+        self.prog_hash = hash;
+
         return null;
+    }
+
+    pub fn inputPending(self: Self) bool {
+        return self.input_queue.items.len != 0;
+    }
+
+    pub fn scheduleCommand(self: *Self, cmd: []const u8) !void {
+        try self.input_queue.append(cmd);
+        self.interactive = false;
     }
 
     fn onStartup(self: *Self, cpu: anytype) !void {
         if (self.snapshot_file) |file| {
             if (try self.loadSnapshot(cpu, file)) {
-                try self.writer.print("\nLoaded {s}\n>", .{file});
+                try self.writer.print("Loaded {s}\n", .{file});
             }
         }
     }
@@ -81,6 +112,11 @@ pub const HiBasic = struct {
                 try self.saveSnapshot(cpu, file);
             }
         }
+    }
+
+    fn onInteractive(self: *Self, cpu: anytype) !void {
+        _ = self;
+        _ = cpu;
     }
 
     pub fn reset(self: *Self, cpu: anytype) void {
@@ -120,6 +156,7 @@ pub const HiBasic = struct {
             return HiBasicError.ProgramTooLarge;
         @memcpy(self.ram[page..top], prog);
         cpu.poke16(TOP, top);
+        self.prog_hash = hashBytes(prog);
     }
 
     fn saveSnapshot(self: Self, cpu: anytype, file: []const u8) !void {

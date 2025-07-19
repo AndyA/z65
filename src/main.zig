@@ -27,7 +27,7 @@ pub fn main() !void {
     var w = std.fs.File.stdout().writer(&w_buf);
 
     var ram: [0x10000]u8 = @splat(0);
-    var lang = hb.HiBasic.init(
+    var lang = try hb.HiBasic.init(
         std.heap.page_allocator,
         &r.interface,
         &w.interface,
