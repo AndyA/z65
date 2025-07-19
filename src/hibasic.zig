@@ -50,6 +50,7 @@ pub const HiBasic = struct {
     src_last_modified: i128 = 0,
     started: bool = false,
     interactive: bool = true,
+    show_last_output: bool = false,
     prog_hash: u256 = 0,
     input_queue: std.ArrayList([]const u8),
     free_queue: std.ArrayList([]const u8),
@@ -94,8 +95,14 @@ pub const HiBasic = struct {
         }
 
         // Anything in the input queue?
-        if (self.inputPending())
-            return try self.takeCommand();
+        if (self.inputPending()) {
+            const cmd = try self.takeCommand();
+            if (self.show_last_output and !self.inputPending()) {
+                _ = cpu.os.takeCapture();
+                self.show_last_output = false;
+            }
+            return cmd;
+        }
 
         if (!self.interactive) {
             self.interactive = true;
@@ -133,8 +140,8 @@ pub const HiBasic = struct {
                         try self.scheduleCommand(ln);
                     }
                     try self.scheduleCommand(line);
-                    _ = cpu;
-                    // cpu.os.startCapture();
+                    self.show_last_output = true;
+                    cpu.os.startCapture();
                     return try self.takeCommand();
                 }
             }
@@ -165,6 +172,9 @@ pub const HiBasic = struct {
             if (try self.loadBinSnapshot(cpu, snap.file)) {
                 try self.writer.print("Loaded {s}\n", .{snap.file});
             }
+        }
+        if (self.src_snapshot) |snap| {
+            self.src_last_modified = try snap.lastModified();
         }
     }
 

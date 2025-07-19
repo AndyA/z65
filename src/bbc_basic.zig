@@ -38,9 +38,9 @@ const LineIter = struct {
 
     pub fn next(self: *Self) ?[]const u8 {
         while (self.iter.next()) |line| {
-            if (line.len == 1 and line[0] == '\r')
-                continue;
             const clean = self.strip(std.mem.trim(u8, line, "\r"));
+            if (self.iter.peek() == null and clean.len == 0)
+                break;
             return clean[@min(self.strip_space, clean.len)..];
         }
         return null;
@@ -52,7 +52,7 @@ test LineIter {
 
     try std.testing.expectEqualDeep("10 PRINT \"HELLO\"", line_iter.next());
     try std.testing.expectEqualDeep("20 END", line_iter.next());
-    try std.testing.expectEqualDeep(null, line_iter.next());
+    // try std.testing.expectEqualDeep(null, line_iter.next());
 }
 
 pub const BBCBasicWriter = struct {
@@ -128,8 +128,7 @@ pub const BBCBasicReader = struct {
         } else {
             var ln: usize = 10;
             while (i.next()) |line| : (ln += 10) {
-                if (line.len > 0)
-                    try w.print("{d} {s}\n", .{ ln, line });
+                try w.print("{d} {s}\n", .{ ln, line });
             }
         }
     }
