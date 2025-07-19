@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub const PanicTrapHandler = struct {
     pub const Self = @This();
-    pub fn trap(self: Self, cpu: anytype, opcode: u8) void {
+    pub fn trap(self: Self, cpu: anytype, opcode: u8) !void {
         _ = self;
         std.debug.print("Illegal instruction {x} at {x}\n", .{ opcode, cpu.PC });
         @panic("Illegal instruction");
@@ -56,7 +56,9 @@ pub fn makeCPU(
         for (despatch, 0..) |_, opcode| {
             const shim = struct {
                 pub fn instr(cpu: anytype) void {
-                    cpu.os.trap(cpu, opcode);
+                    cpu.os.trap(cpu, opcode) catch |err| {
+                        std.debug.print("Error in trap handler {s}\n", .{@errorName(err)});
+                    };
                 }
             };
             despatch[opcode] = shim.instr;
@@ -346,7 +348,7 @@ test "trap" {
     const TestTrapHandler = struct {
         trapped: [256]usize = @splat(0),
         pub const Self = @This();
-        pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
+        pub fn trap(self: *Self, cpu: anytype, opcode: u8) !void {
             if (opcode == TRAP_OPCODE) {
                 const signal: u8 = cpu.fetch8();
                 self.trapped[signal] += 1;

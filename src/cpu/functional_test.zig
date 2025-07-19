@@ -28,7 +28,7 @@ pub fn runFunctionalTest(
             self.output.deinit();
         }
 
-        pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
+        pub fn trap(self: *Self, cpu: anytype, opcode: u8) !void {
             if (opcode == TRAP_OPCODE) {
                 const signal: u8 = cpu.fetch8();
                 switch (signal) {

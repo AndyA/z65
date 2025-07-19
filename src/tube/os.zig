@@ -24,6 +24,8 @@ pub fn TubeOS(comptime LangType: type) type {
         reader: *std.io.Reader,
         writer: *std.io.Writer,
         lang: *LangType,
+        output: std.ArrayList(u8),
+        capture: bool = false,
 
         pub fn init(
             alloc: std.mem.Allocator,
@@ -37,14 +39,31 @@ pub fn TubeOS(comptime LangType: type) type {
                 .reader = reader,
                 .writer = writer,
                 .lang = lang,
+                .output = try std.ArrayList(u8).initCapacity(alloc, 256),
             };
         }
 
         pub fn deinit(self: *Self) void {
-            _ = self;
+            self.output.deinit();
         }
 
         pub fn reset(self: Self, cpu: anytype) void {
+            self.install(cpu);
+            if (@hasDecl(LangType, "hook:reset"))
+                try self.lang.@"hook:reset"(cpu);
+        }
+
+        pub fn startCapture(self: *Self) void {
+            self.capture = true;
+            self.output.clearRetainingCapacity();
+        }
+
+        pub fn takeCapture(self: *Self) []const u8 {
+            self.capture = false;
+            return self.output.items;
+        }
+
+        fn install(self: Self, cpu: anytype) void {
             _ = self;
             const STUB_START: u16 = 0xffce;
             const IRQV: u16 = 0xfffe;
@@ -127,116 +146,132 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate}
         }
 
-        fn sendLine(self: *Self, cpu: anytype, addr: u16, ln: []const u8) void {
+        fn sendLine(self: *Self, cpu: anytype, addr: u16, ln: []const u8) !void {
             if (@hasDecl(LangType, "hook:sendline")) {
-                const replaced = self.lang.@"hook:sendline"(cpu, addr, ln) catch |err| {
-                    std.debug.print("Error in hook:sendline: {s}\n", .{@errorName(err)});
-                    @panic("hook:sendline failed");
-                };
+                const replaced = try self.lang.@"hook:sendline"(cpu, addr, ln);
                 self.sendBuffer(cpu, addr, replaced);
             } else {
                 self.sendBuffer(cpu, addr, ln);
             }
         }
 
-        pub fn trap(self: *Self, cpu: anytype, opcode: u8) void {
+        fn doOSCLI(self: *Self, cpu: anytype) !void {
+            var cmd_line = try ct.peekString(self.alloc, cpu, ct.getXY(cpu), 0x0D);
+            defer cmd_line.deinit();
+            const res = try OSCLI.handle(cmd_line.items, cpu);
+            if (!res)
+                std.debug.print("Bad command {s}\n", .{cmd_line.items});
+        }
+
+        fn doOSBYTE(self: *Self, cpu: anytype) !void {
+            _ = self;
+            switch (cpu.A) {
+                0x7e => {
+                    cpu.X = cpu.peek8(0xff) & 0x80;
+                    cpu.poke8(0xff, 0x00); // clear Escape
+                },
+                0x82 => ct.setXY(cpu, @intFromEnum(Symbols.MACHINE)),
+                0x83 => ct.setXY(cpu, @intFromEnum(Symbols.PAGE)),
+                0x84 => ct.setXY(cpu, @intFromEnum(Symbols.HIMEM)),
+                0xda => {}, // set VDU queue length
+                else => std.debug.print("OSBYTE {x} not implemented {f}\n", .{ cpu.A, cpu }),
+            }
+        }
+
+        fn doOSWORD(self: *Self, cpu: anytype) !void {
+            const addr = ct.getXY(cpu);
+            switch (cpu.A) {
+                0x00 => {
+                    if (@hasDecl(LangType, "hook:readline")) {
+                        const line = try self.lang.@"hook:readline"(cpu);
+                        if (line) |ln| {
+                            try self.sendLine(cpu, addr, ln);
+                            return;
+                        }
+                    }
+
+                    const ln = self.reader.takeDelimiterExclusive('\n') catch |err| {
+                        switch (err) {
+                            error.EndOfStream => {
+                                cpu.stop();
+                                return;
+                            },
+                            else => return err,
+                        }
+                    };
+                    try self.sendLine(cpu, addr, ln);
+                },
+                0x01 => {
+                    const delta_ms = std.time.milliTimestamp() - self.base_time_ms;
+                    const delta_cs: u40 = @intCast(@divTrunc(delta_ms, 10));
+                    RW_u40.write(cpu, addr, delta_cs);
+                },
+                0x02 => {
+                    const new_time_cs = RW_u40.read(cpu, addr);
+                    self.base_time_ms = std.time.milliTimestamp() - new_time_cs * 10;
+                },
+                else => std.debug.print("OSWORD {x} not implemented\n", .{cpu.A}),
+            }
+        }
+
+        fn doOSFILE(self: *Self, cpu: anytype) !void {
+            const cb: OSFILE = RW_OSFILE.read(cpu, ct.getXY(cpu));
+            try cb.despatch(self.alloc, cpu);
+        }
+
+        fn doOSWRCH(self: *Self, cpu: anytype) !void {
+            if (self.capture) {
+                try self.output.append(cpu.A);
+            } else {
+                try self.writer.print("{c}", .{cpu.A});
+            }
+        }
+
+        fn doOSRDCH(self: *Self, cpu: anytype) !void {
+            _ = self;
+            std.debug.print("OSRDCH {f}\n", .{cpu});
+        }
+
+        fn doOSARGS(self: *Self, cpu: anytype) !void {
+            _ = self;
+            std.debug.print("OSARGS {f}\n", .{cpu});
+        }
+
+        fn doOSBGET(self: *Self, cpu: anytype) !void {
+            _ = self;
+            std.debug.print("OSBGET {f}\n", .{cpu});
+        }
+
+        fn doOSBPUT(self: *Self, cpu: anytype) !void {
+            _ = self;
+            std.debug.print("OSBPUT {f}\n", .{cpu});
+        }
+
+        fn doOSGBPB(self: *Self, cpu: anytype) !void {
+            _ = self;
+            std.debug.print("OSGBPB {f}\n", .{cpu});
+        }
+
+        fn doOSFIND(self: *Self, cpu: anytype) !void {
+            _ = self;
+            std.debug.print("OSFIND {f}\n", .{cpu});
+        }
+
+        pub fn trap(self: *Self, cpu: anytype, opcode: u8) !void {
             if (opcode == TRAP_OPCODE) {
                 const osfn: MOSFunction = @enumFromInt(cpu.fetch8());
                 switch (osfn) {
-                    .OSCLI => {
-                        var cmd_line = ct.peekString(self.alloc, cpu, ct.getXY(cpu), 0x0D) catch
-                            unreachable;
-                        defer cmd_line.deinit();
-                        const res = OSCLI.handle(cmd_line.items, cpu) catch |err| {
-                            std.debug.print("Error: {s}\n", .{@errorName(err)});
-                            return;
-                        };
-                        if (!res)
-                            std.debug.print("Bad command {s}\n", .{cmd_line.items});
-                    },
-                    .OSBYTE => {
-                        switch (cpu.A) {
-                            0x7e => {
-                                cpu.X = cpu.peek8(0xff) & 0x80;
-                                cpu.poke8(0xff, 0x00); // clear Escape
-                            },
-                            0x82 => ct.setXY(cpu, @intFromEnum(Symbols.MACHINE)),
-                            0x83 => ct.setXY(cpu, @intFromEnum(Symbols.PAGE)),
-                            0x84 => ct.setXY(cpu, @intFromEnum(Symbols.HIMEM)),
-                            0xda => {}, // set VDU queue length
-                            else => std.debug.print(
-                                \\OSBYTE {x} not implemented {f}
-                                \\
-                            , .{ cpu.A, cpu }),
-                        }
-                    },
-                    .OSWORD => {
-                        const addr = ct.getXY(cpu);
-                        switch (cpu.A) {
-                            0x00 => {
-                                if (@hasDecl(LangType, "hook:readline")) {
-                                    const line = self.lang.@"hook:readline"(cpu) catch |err| {
-                                        std.debug.print("Error in hook:readline: {s}\n", .{@errorName(err)});
-                                        @panic("hook:readline failed");
-                                    };
-                                    if (line) |ln| {
-                                        self.sendLine(cpu, addr, ln);
-                                        return;
-                                    }
-                                }
-
-                                const ln = self.reader.takeDelimiterExclusive('\n') catch |err| {
-                                    switch (err) {
-                                        error.EndOfStream => {
-                                            cpu.stop();
-                                            return;
-                                        },
-                                        else => unreachable,
-                                    }
-                                };
-                                self.sendLine(cpu, addr, ln);
-                            },
-                            0x01 => {
-                                const delta_ms = std.time.milliTimestamp() - self.base_time_ms;
-                                const delta_cs: u40 = @intCast(@divTrunc(delta_ms, 10));
-                                RW_u40.write(cpu, addr, delta_cs);
-                            },
-                            0x02 => {
-                                const new_time_cs = RW_u40.read(cpu, addr);
-                                self.base_time_ms = std.time.milliTimestamp() - new_time_cs * 10;
-                            },
-                            else => std.debug.print("OSWORD {x} not implemented\n", .{cpu.A}),
-                        }
-                    },
-                    .OSWRCH => {
-                        self.writer.print("{c}", .{cpu.A}) catch |err| {
-                            std.debug.print("Error writing character: {s}\n", .{@errorName(err)});
-                        };
-                    },
-                    .OSRDCH => {
-                        std.debug.print("OSRDCH {f}\n", .{cpu});
-                    },
-                    .OSFILE => {
-                        const cb: OSFILE = RW_OSFILE.read(cpu, ct.getXY(cpu));
-                        cb.despatch(self.alloc, cpu) catch |err| {
-                            std.debug.print("Error in OSFILE: {s}\n", .{@errorName(err)});
-                        };
-                    },
-                    .OSARGS => {
-                        std.debug.print("OSARGS {f}\n", .{cpu});
-                    },
-                    .OSBGET => {
-                        std.debug.print("OSBGET {f}\n", .{cpu});
-                    },
-                    .OSBPUT => {
-                        std.debug.print("OSBPUT {f}\n", .{cpu});
-                    },
-                    .OSGBPB => {
-                        std.debug.print("OSGBPB {f}\n", .{cpu});
-                    },
-                    .OSFIND => {
-                        std.debug.print("OSFIND {f}\n", .{cpu});
-                    },
+                    .OSCLI => try self.doOSCLI(cpu),
+                    .OSBYTE => try self.doOSBYTE(cpu),
+                    .OSWORD => try self.doOSWORD(cpu),
+                    .OSWRCH => try self.doOSWRCH(cpu),
+                    .OSRDCH => try self.doOSRDCH(cpu),
+                    .OSFILE => try self.doOSFILE(cpu),
+                    .OSARGS => try self.doOSARGS(cpu),
+                    .OSBGET => try self.doOSBGET(cpu),
+                    .OSBPUT => try self.doOSBPUT(cpu),
+                    .OSGBPB => try self.doOSGBPB(cpu),
+                    .OSFIND => try self.doOSFIND(cpu),
                 }
             } else {
                 std.debug.print("Illegal instruction: {x} at {f}\n", .{ opcode, cpu });
