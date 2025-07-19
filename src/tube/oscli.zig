@@ -2,16 +2,20 @@ const std = @import("std");
 const star = @import("../star_commands.zig");
 const constants = @import("constants.zig");
 
-pub const OSFILE_CB = @import("osfile.zig").OSFILE_CB;
-
 const StarCommands = struct {
-    pub fn @"*CAT"(cpu: anytype, args: anytype) !void {
+    pub fn @"*CAT"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
         _ = cpu;
         _ = args;
         std.debug.print("Meow!\n", .{});
     }
 
-    pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(cpu: anytype, args: anytype) !void {
+    pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
         cpu.A = args.A;
         cpu.X = args.X orelse 0;
         cpu.Y = args.Y orelse 0;
@@ -54,7 +58,10 @@ const StarCommands = struct {
         std.debug.print("*SPOOL \"{s}\"\n", .{args.name});
     }
 
-    pub fn @"*!<shell:[]u8*>"(cpu: anytype, args: anytype) !void {
+    pub fn @"*!<shell:[]u8*>"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
         _ = cpu;
         std.debug.print("shell {s}\n", .{args.shell});
     }

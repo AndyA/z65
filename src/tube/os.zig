@@ -44,11 +44,7 @@ pub fn TubeOS(comptime LangType: type) type {
             _ = self;
         }
 
-        pub fn reset(self: *Self, cpu: anytype) void {
-            self.installInHost(cpu);
-        }
-
-        fn installInHost(self: Self, cpu: anytype) void {
+        pub fn reset(self: Self, cpu: anytype) void {
             _ = self;
             const STUB_START: u16 = 0xffce;
             const IRQV: u16 = 0xfffe;
@@ -167,7 +163,7 @@ pub fn TubeOS(comptime LangType: type) type {
                         switch (cpu.A) {
                             0x00 => {
                                 if (@hasDecl(LangType, "hook:readline")) {
-                                    const line = self.lang.@"hook:readline"(self, cpu) catch |err| {
+                                    const line = self.lang.@"hook:readline"(cpu) catch |err| {
                                         std.debug.print("Error in hook:readline: {s}\n", .{@errorName(err)});
                                         @panic("hook:readline failed");
                                     };

@@ -33,6 +33,7 @@ pub fn main() !void {
         &w.interface,
         &ram,
         SNAPSHOT,
+        .AutoSave,
     );
     defer lang.deinit();
 
@@ -52,7 +53,7 @@ pub fn main() !void {
 
     cpu.reset();
     os.reset(&cpu);
-    lang.reset(&os, &cpu);
+    lang.reset(&cpu);
 
     cpu.poke8(TRACE, 0x00); // disable tracing
     while (!cpu.stopped) {

@@ -500,11 +500,11 @@ pub fn makeHandler(comptime Commands: type) type {
                 }
 
                 return struct {
-                    pub fn handle(cmd: []const u8, context: anytype) !bool {
+                    pub fn handle(cmd: []const u8, cpu: anytype) !bool {
                         inline for (commands, 0..) |command, i| {
                             if (try command.match(cmd)) |params| {
                                 const method = @field(Commands, s.decls[i].name);
-                                try method(context, params);
+                                try method(cpu, params);
                                 return true;
                             }
                         }
@@ -522,20 +522,17 @@ pub fn makeHandler(comptime Commands: type) type {
 test makeHandler {
     const echo = false;
     const Commands = struct {
-        pub fn @"*CAT"(
-            context: anytype,
-            params: anytype,
-        ) !void {
-            _ = context;
+        pub fn @"*CAT"(cpu: anytype, params: anytype) !void {
+            _ = cpu;
             _ = params;
             if (echo) std.debug.print("*CAT\n", .{});
         }
 
         pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
-            context: anytype,
+            cpu: anytype,
             params: anytype,
         ) !void {
-            _ = context;
+            _ = cpu;
             if (echo) {
                 std.debug.print("*FX {d}", .{params.A});
                 if (params.X) |x| std.debug.print(", {d}", .{x});
@@ -545,10 +542,10 @@ test makeHandler {
         }
 
         pub fn @"*SAVE <name:[]u8> <start:u16x> <end:u16xr> [<exec:u16x>]"(
-            context: anytype,
+            cpu: anytype,
             params: anytype,
         ) !void {
-            _ = context;
+            _ = cpu;
             if (echo) std.debug.print("*SAVE \"{s}\" {x} {x}\n", .{
                 params.name,
                 params.start,
@@ -556,11 +553,8 @@ test makeHandler {
             });
         }
 
-        pub fn @"*!<shell:[]u8*>"(
-            context: anytype,
-            params: anytype,
-        ) !void {
-            _ = context;
+        pub fn @"*!<shell:[]u8*>"(cpu: anytype, params: anytype) !void {
+            _ = cpu;
             if (echo) std.debug.print("shell {s}\n", .{params.shell});
         }
     };
