@@ -216,7 +216,7 @@ pub const HiBasic = struct {
         while (!cpu.stopped and self.inputPending())
             cpu.step();
         const output = cpu.os.peekCapture();
-        return output[1 .. output.len - 1];
+        return output[1 .. output.len - 3];
     }
 
     pub fn reset(self: *Self, cpu: anytype) void {
