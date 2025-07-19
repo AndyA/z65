@@ -7,11 +7,8 @@ const StarCommands = struct {
         cpu: anytype,
         args: anytype,
     ) !void {
+        _ = cpu;
         _ = args;
-        const output = try cpu.os.lang.runScript(cpu, &.{
-            "LIST ,100",
-        });
-        std.debug.print("Output:\n\"{s}\"\n", .{output});
     }
 
     pub fn @"LANGUAGE CALLBACK <name:[]u8>"(
