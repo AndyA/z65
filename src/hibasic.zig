@@ -49,7 +49,7 @@ pub const HiBasic = struct {
             self.started = true;
             if (self.snapshot_file) |file| {
                 if (try self.loadSnapshot(cpu, file)) {
-                    std.debug.print("\nLoaded {s}\n>", .{file});
+                    try self.writer.print("\nLoaded {s}\n>", .{file});
                 }
             }
         }
@@ -70,12 +70,12 @@ pub const HiBasic = struct {
     }
 
     pub fn shutDown(self: *Self, cpu: anytype) !void {
-        std.debug.print("\n", .{});
+        try self.writer.print("\n", .{});
         if (self.snapshot_file) |file| {
             try self.saveSnapshot(cpu, file);
-            std.debug.print("Saved {s}\n", .{file});
+            try self.writer.print("Saved {s}\n", .{file});
         }
-        std.debug.print("Bye!\n", .{});
+        try self.writer.print("Bye!\n", .{});
     }
 
     pub fn getPage(self: Self, cpu: anytype) u16 {
