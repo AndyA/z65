@@ -129,7 +129,7 @@ pub const HiBasic = struct {
                 const changed = self.src_last_modified != 0 and self.src_last_modified != lm;
                 self.src_last_modified = lm;
                 if (changed) {
-                    std.debug.print("{s} changed, reloading\n", .{snap.file});
+                    // std.debug.print("{s} changed, reloading\n", .{snap.file});
                     const prog = try std.fs.cwd().readFileAlloc(self.alloc, snap.file, 0x10000);
                     defer self.alloc.free(prog);
                     var bbr = try bb.BBCBasicReader.init(prog, self.alloc);
