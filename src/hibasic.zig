@@ -1,5 +1,6 @@
 const std = @import("std");
 const ct = @import("cpu/cpu_tools.zig");
+const bb = @import("bbc_basic.zig");
 
 const Symbols = @import("tube/os.zig").Symbols;
 
@@ -192,13 +193,18 @@ pub const HiBasic = struct {
     }
 
     fn saveSrcSnapshot(self: *Self, cpu: anytype, file: []const u8) !void {
-        const output = try self.runScript(cpu, &.{
-            "LIST",
-        });
-
+        const output = try self.runScript(cpu, &.{"LIST"});
         const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
         defer fh.close();
-        try fh.writeAll(output);
+        var w_buf: [8192]u8 = undefined;
+        var w = fh.writer(&w_buf);
+
+        const bbw = bb.BBCBasicWriter{ .source = output, .strip = true };
+        var iter = bbw.iter();
+        while (iter.next()) |line| {
+            try w.interface.print("{s}\n", .{line});
+        }
+        try w.interface.flush();
     }
 
     fn saveBinSnapshot(self: Self, cpu: anytype, file: []const u8) !void {

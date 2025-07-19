@@ -76,4 +76,5 @@ pub fn main() !void {
 
 test {
     @import("std").testing.refAllDecls(@This());
+    _ = @import("bbc_basic.zig");
 }
