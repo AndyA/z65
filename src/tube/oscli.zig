@@ -8,7 +8,10 @@ const StarCommands = struct {
         args: anytype,
     ) !void {
         _ = args;
-        try cpu.os.lang.scheduleCommand("LIST");
+        const output = try cpu.os.lang.runScript(cpu, &.{
+            "LIST ,100",
+        });
+        std.debug.print("Output:\n\"{s}\"\n", .{output});
     }
 
     pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(

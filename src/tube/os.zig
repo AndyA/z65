@@ -58,6 +58,10 @@ pub fn TubeOS(comptime LangType: type) type {
             self.output.clearRetainingCapacity();
         }
 
+        pub fn peekCapture(self: Self) []const u8 {
+            return self.output.items;
+        }
+
         pub fn takeCapture(self: *Self) []const u8 {
             self.capture = false;
             return self.output.items;
@@ -144,6 +148,7 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.P.C = false;
             ct.pokeBytes(cpu, buf_addr, ln);
             cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate}
+            cpu.poke8(0xff, 0x00);
         }
 
         fn sendLine(self: *Self, cpu: anytype, addr: u16, ln: []const u8) !void {

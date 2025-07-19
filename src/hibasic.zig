@@ -71,13 +71,12 @@ pub const HiBasic = struct {
         }
 
         // Anything in the input queue?
-        if (self.inputPending()) {
-            const cmd = self.input_queue.orderedRemove(0);
-            return cmd;
-        }
+        if (self.inputPending())
+            return self.input_queue.orderedRemove(0);
 
         if (!self.interactive) {
             self.interactive = true;
+            _ = cpu.os.takeCapture();
             try self.onInteractive(cpu);
         }
 
@@ -85,6 +84,10 @@ pub const HiBasic = struct {
         if (self.prog_hash != 0 and self.prog_hash != hash)
             try self.onCodeChange(cpu);
         self.prog_hash = hash;
+
+        // Try the queue again
+        if (self.inputPending())
+            return self.input_queue.orderedRemove(0);
 
         return null;
     }
@@ -112,11 +115,24 @@ pub const HiBasic = struct {
                 try self.saveSnapshot(cpu, file);
             }
         }
+
+        try self.scheduleCommand("*CAT");
     }
 
     fn onInteractive(self: *Self, cpu: anytype) !void {
         _ = self;
         _ = cpu;
+    }
+
+    pub fn runScript(self: *Self, cpu: anytype, script: []const []const u8) ![]const u8 {
+        for (script) |cmd|
+            try self.scheduleCommand(cmd);
+        try self.scheduleCommand(""); // A NOP to finish
+        cpu.os.startCapture();
+        while (!cpu.stopped and self.inputPending())
+            cpu.step();
+        const output = cpu.os.peekCapture();
+        return output[1 .. output.len - 1];
     }
 
     pub fn reset(self: *Self, cpu: anytype) void {
