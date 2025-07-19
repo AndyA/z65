@@ -27,7 +27,14 @@ pub fn main() !void {
     var w = std.fs.File.stdout().writer(&w_buf);
 
     var ram: [0x10000]u8 = @splat(0);
-    var lang = hb.HiBasic.init(&ram, SNAPSHOT);
+    var lang = hb.HiBasic.init(
+        std.heap.page_allocator,
+        &r.interface,
+        &w.interface,
+        &ram,
+        SNAPSHOT,
+    );
+    defer lang.deinit();
 
     var os = try TubeOS.init(
         std.heap.page_allocator,
@@ -43,8 +50,9 @@ pub fn main() !void {
         &os,
     );
 
-    os.installInHost(&cpu);
-    lang.installInHost(&cpu);
+    cpu.reset();
+    os.reset(&cpu);
+    lang.reset(&os, &cpu);
 
     cpu.poke8(TRACE, 0x00); // disable tracing
     while (!cpu.stopped) {

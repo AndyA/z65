@@ -14,15 +14,32 @@ pub const HiBasic = struct {
     const TOP = 0x12;
     const PAGE_HI = 0x18;
 
+    alloc: std.mem.Allocator,
+    reader: *std.io.Reader,
+    writer: *std.io.Writer,
+
     ram: *[0x10000]u8,
     snapshot_file: ?[]const u8 = null,
     started: bool = false,
 
-    pub fn init(ram: *[0x10000]u8, snapshot_file: ?[]const u8) Self {
+    pub fn init(
+        alloc: std.mem.Allocator,
+        reader: *std.io.Reader,
+        writer: *std.io.Writer,
+        ram: *[0x10000]u8,
+        snapshot_file: ?[]const u8,
+    ) Self {
         return Self{
+            .alloc = alloc,
+            .reader = reader,
+            .writer = writer,
             .ram = ram,
             .snapshot_file = snapshot_file,
         };
+    }
+
+    pub fn deinit(self: *Self) void {
+        _ = self;
     }
 
     pub fn @"hook:readline"(self: *Self, os: anytype, cpu: anytype) !?[]const u8 {
@@ -39,16 +56,15 @@ pub const HiBasic = struct {
         return null;
     }
 
-    pub fn installInHost(self: *Self, cpu: anytype) void {
+    fn installInHost(self: *Self, os: anytype, cpu: anytype) void {
+        _ = os;
+        _ = cpu;
         const rom_image = @embedFile("roms/HiBASIC.rom");
-        // ct.pokeBytes(cpu, LOAD_ADDR, rom_image);
         @memcpy(self.ram[LOAD_ADDR .. LOAD_ADDR + rom_image.len], rom_image);
-        self.reset(cpu);
     }
 
-    pub fn reset(self: *Self, cpu: anytype) void {
-        _ = self;
-        cpu.reset();
+    pub fn reset(self: *Self, os: anytype, cpu: anytype) void {
+        self.installInHost(os, cpu);
         cpu.PC = @intCast(LOAD_ADDR);
         cpu.A = 0x01;
     }

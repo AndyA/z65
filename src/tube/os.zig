@@ -44,7 +44,11 @@ pub fn TubeOS(comptime LangType: type) type {
             _ = self;
         }
 
-        pub fn installInHost(self: Self, cpu: anytype) void {
+        pub fn reset(self: *Self, cpu: anytype) void {
+            self.installInHost(cpu);
+        }
+
+        fn installInHost(self: Self, cpu: anytype) void {
             _ = self;
             const STUB_START: u16 = 0xffce;
             const IRQV: u16 = 0xfffe;
