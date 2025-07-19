@@ -154,9 +154,9 @@ pub const HiBasic = struct {
     }
 
     pub fn scheduleCommand(self: *Self, cmd: []const u8) !void {
-        const x = try self.alloc.alloc(u8, cmd.len);
-        @memcpy(x, cmd);
-        try self.input_queue.append(x);
+        const cmd_copy = try self.alloc.alloc(u8, cmd.len);
+        @memcpy(cmd_copy, cmd);
+        try self.input_queue.append(cmd_copy);
         self.interactive = false;
     }
 
