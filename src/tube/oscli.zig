@@ -9,6 +9,7 @@ const StarCommands = struct {
     ) !void {
         _ = cpu;
         _ = args;
+        std.debug.print("Meow!\n", .{});
     }
 
     pub fn @"LANGUAGE CALLBACK <name:[]u8>"(
