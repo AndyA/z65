@@ -143,6 +143,7 @@ pub const HiBasic = struct {
         if (self.src_snapshot) |snap| {
             if (snap.auto_load) {
                 const lm = try snap.lastModified();
+                if (lm == 0) return line;
                 const changed = self.src_last_modified != 0 and self.src_last_modified != lm;
                 self.src_last_modified = lm;
 
