@@ -37,8 +37,10 @@ pub const HiBasic = struct {
     const Self = @This();
     const LOAD_ADDR = @intFromEnum(Symbols.HIMEM);
     const HIMEM = 0x06;
+    const NEXTP = 0x0b; // current program line pointer
     const TOP = 0x12;
     const PAGE_HI = 0x18;
+    const CMD_BUF = 0x700;
 
     alloc: std.mem.Allocator,
     reader: *std.io.Reader,
@@ -86,7 +88,17 @@ pub const HiBasic = struct {
         cpu.os.startCapture();
     }
 
+    pub fn commandMode(self: *Self, cpu: anytype) bool {
+        _ = self;
+        const nextp = cpu.peek16(Self.NEXTP);
+        const buf = cpu.peek16(ct.getXY(cpu));
+        return nextp == CMD_BUF and buf == CMD_BUF;
+    }
+
     pub fn @"hook:readline"(self: *Self, cpu: anytype) !?[]const u8 {
+        if (!commandMode(self, cpu))
+            return null;
+
         if (!self.started) {
             self.started = true;
             try self.onStartup(cpu);
@@ -123,6 +135,9 @@ pub const HiBasic = struct {
     }
 
     pub fn @"hook:sendline"(self: *Self, cpu: anytype, line: []const u8) ![]const u8 {
+        if (!self.commandMode(cpu))
+            return line;
+
         if (self.src_snapshot) |snap| {
             if (snap.auto_load) {
                 const lm = try snap.lastModified();
