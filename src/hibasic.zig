@@ -21,12 +21,12 @@ pub const HiBasicSnapshot = struct {
     auto_load: bool = false,
 
     pub fn lastModified(self: Self) !i128 {
-        const fh = try std.fs.cwd().openFile(self.file, .{});
-        defer fh.close();
-        const s = fh.stat() catch |err| {
+        const fh = std.fs.cwd().openFile(self.file, .{}) catch |err| {
             if (err == error.FileNotFound) return 0; // No snapshot file
             return err;
         };
+        defer fh.close();
+        const s = try fh.stat();
         return s.mtime;
     }
 };
