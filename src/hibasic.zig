@@ -119,7 +119,6 @@ pub const HiBasic = struct {
         if (!self.interactive) {
             self.interactive = true;
             _ = cpu.os.takeCapture();
-            try self.onInteractive(cpu);
         }
 
         const hash = hashBytes(self.getProgram(cpu));
@@ -135,7 +134,7 @@ pub const HiBasic = struct {
     }
 
     pub fn @"hook:sendline"(self: *Self, cpu: anytype, line: []const u8) ![]const u8 {
-        if (!self.commandMode(cpu))
+        if (!self.commandMode(cpu) or self.inputPending())
             return line;
 
         if (self.src_snapshot) |snap| {
@@ -143,25 +142,34 @@ pub const HiBasic = struct {
                 const lm = try snap.lastModified();
                 const changed = self.src_last_modified != 0 and self.src_last_modified != lm;
                 self.src_last_modified = lm;
+
                 if (changed) {
-                    // std.debug.print("{s} changed, reloading\n", .{snap.file});
+                    try self.scheduleCommand("NEW");
+
                     const prog = try std.fs.cwd().readFileAlloc(self.alloc, snap.file, 0x10000);
                     defer self.alloc.free(prog);
-                    var bbr = try bb.BBCBasicReader.init(prog, self.alloc);
-                    defer bbr.deinit();
-                    try self.scheduleCommand("NEW");
-                    var i = try bbr.iter();
-                    while (i.next()) |ln| {
-                        try self.scheduleCommand(ln);
-                    }
+
+                    try self.typeProg(prog);
                     try self.scheduleCommand(line);
+
                     self.show_last_output = true;
                     cpu.os.startCapture();
+
                     return try self.takeCommand();
                 }
             }
         }
+
         return line;
+    }
+
+    fn typeProg(self: *Self, prog: []const u8) !void {
+        var bbr = try bb.BBCBasicReader.init(prog, self.alloc);
+        defer bbr.deinit();
+        var i = try bbr.iter();
+        while (i.next()) |ln| {
+            try self.scheduleCommand(ln);
+        }
     }
 
     pub fn inputPending(self: Self) bool {
@@ -205,11 +213,6 @@ pub const HiBasic = struct {
                 try self.scheduleCommand("*LANGUAGE CALLBACK code_change");
             }
         }
-    }
-
-    fn onInteractive(self: *Self, cpu: anytype) !void {
-        _ = self;
-        _ = cpu;
     }
 
     pub fn onCallback(self: *Self, cpu: anytype, callback: []const u8) !void {
