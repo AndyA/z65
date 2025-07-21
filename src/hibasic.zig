@@ -13,22 +13,21 @@ fn hashBytes(text: []const u8) u256 {
 pub const HiBasicError = error{
     ProgramTooLarge,
 };
+pub fn lastModified(file: []const u8) !i128 {
+    const fh = std.fs.cwd().openFile(file, .{}) catch |err| {
+        if (err == error.FileNotFound) return 0; // No snapshot file
+        return err;
+    };
+    defer fh.close();
+    const s = try fh.stat();
+    return s.mtime;
+}
 
 pub const HiBasicSnapshot = struct {
     const Self = @This();
     file: []const u8,
     auto_save: bool = false,
     auto_load: bool = false,
-
-    pub fn lastModified(self: Self) !i128 {
-        const fh = std.fs.cwd().openFile(self.file, .{}) catch |err| {
-            if (err == error.FileNotFound) return 0; // No snapshot file
-            return err;
-        };
-        defer fh.close();
-        const s = try fh.stat();
-        return s.mtime;
-    }
 };
 
 fn freeList(alloc: std.mem.Allocator, list: *std.ArrayList([]const u8)) void {
@@ -142,7 +141,7 @@ pub const HiBasic = struct {
 
         if (self.src_snapshot) |snap| {
             if (snap.auto_load) {
-                const lm = try snap.lastModified();
+                const lm = try lastModified(snap.file);
                 if (lm == 0) return line;
                 const changed = self.src_last_modified != 0 and self.src_last_modified != lm;
                 self.src_last_modified = lm;
@@ -201,7 +200,7 @@ pub const HiBasic = struct {
             }
         }
         if (self.src_snapshot) |snap| {
-            self.src_last_modified = try snap.lastModified();
+            self.src_last_modified = try lastModified(snap.file);
         }
     }
 
@@ -223,7 +222,7 @@ pub const HiBasic = struct {
         if (std.mem.eql(u8, callback, "code_change")) {
             if (self.src_snapshot) |snap| {
                 try self.saveSrcSnapshot(cpu, snap.file);
-                self.src_last_modified = try snap.lastModified();
+                self.src_last_modified = try lastModified(snap.file);
             }
         } else {
             std.debug.print("Unrecognized callback: {s}\n", .{callback});
