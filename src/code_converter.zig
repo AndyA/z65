@@ -153,6 +153,26 @@ test "runHiBasic error" {
     try std.testing.expectError(BasicError.BRK, res);
 }
 
+pub const Code = struct {
+    const Self = @This();
+    alloc: std.mem.Allocator,
+    bytes: []const u8,
+    hash: u256,
+
+    pub fn init(alloc: std.mem.Allocator, bytes: []const u8) !Self {
+        const bytes_copy = try alloc.dupe(u8, bytes);
+        return Self{
+            .alloc = alloc,
+            .bytes = bytes_copy,
+            .hash = hashBytes(bytes_copy),
+        };
+    }
+
+    pub fn deinit(self: Self) void {
+        self.alloc.free(self.bytes);
+    }
+};
+
 pub fn sourceToBinary(source: Code) !Code {
     var r = std.io.Reader.fixed(source.bytes);
     var buf: std.ArrayListUnmanaged(u8) = .empty;
@@ -242,53 +262,7 @@ test binaryToSource {
     const out_source = try binaryToSource(bin);
     defer out_source.deinit();
 
-    std.debug.print("{s}", .{out_source.bytes});
+    // std.debug.print("{s}", .{out_source.bytes});
 
     try std.testing.expectEqualDeep(prog, out_source.bytes);
 }
-
-const Code = struct {
-    const Self = @This();
-    alloc: std.mem.Allocator,
-    bytes: []const u8,
-    hash: u256,
-
-    pub fn init(alloc: std.mem.Allocator, bytes: []const u8) !Self {
-        const bytes_copy = try alloc.dupe(u8, bytes);
-        return Self{
-            .alloc = alloc,
-            .bytes = bytes_copy,
-            .hash = hashBytes(bytes_copy),
-        };
-    }
-
-    pub fn deinit(self: Self) void {
-        self.alloc.free(self.bytes);
-    }
-};
-
-const CodeConverter = struct {
-    const Self = @This();
-    alloc: std.mem.Allocator,
-    source: ?Code = null,
-    bin: ?Code = null,
-
-    pub fn initWithSource(alloc: std.mem.Allocator, source: []const u8) !Self {
-        return Self{
-            .alloc = alloc,
-            .source = try Code.init(alloc, source),
-        };
-    }
-
-    pub fn initWithBinary(alloc: std.mem.Allocator, binary: []const u8) !Self {
-        return Self{
-            .alloc = alloc,
-            .bin = try Code.init(alloc, binary),
-        };
-    }
-
-    pub fn deinit(self: Self) void {
-        if (self.source) |src| src.deinit();
-        if (self.bin) |bin| bin.deinit();
-    }
-};
