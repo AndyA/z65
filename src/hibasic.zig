@@ -4,11 +4,7 @@ const bb = @import("bbc_basic.zig");
 
 const Symbols = @import("tube/os.zig").Symbols;
 
-fn hashBytes(text: []const u8) u256 {
-    var h = std.crypto.hash.sha2.Sha256.init(.{});
-    h.update(text);
-    return @bitCast(h.finalResult());
-}
+const hashBytes = @import("tools/hasher.zig").hashBytes;
 
 pub const HiBasicError = error{
     ProgramTooLarge,

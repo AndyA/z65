@@ -3,6 +3,7 @@ const machine = @import("cpu/cpu.zig");
 const memory = @import("cpu/memory.zig");
 const tube = @import("tube/os.zig");
 const hb = @import("hibasic.zig");
+const cc = @import("code_converter.zig");
 
 const TRACE: u16 = 0xfe90;
 const SNAPSHOT = ".snapshot";
@@ -71,4 +72,5 @@ pub fn main() !void {
 test {
     @import("std").testing.refAllDecls(@This());
     _ = @import("bbc_basic.zig");
+    _ = @import("code_converter.zig");
 }
