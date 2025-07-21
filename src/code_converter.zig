@@ -44,10 +44,20 @@ const Tube65C02 = machine.makeCPU(
     .{ .clear_decimal_on_int = true },
 );
 
-const BasicError = error{ BRK, ProgramTooLarge };
+const BasicError = error{ BRK, ProgramTooLarge, BadProgram };
+
+fn peek16(bytes: []const u8, addr: u16) u16 {
+    if (addr + 1 >= bytes.len) @panic("Out of range");
+    return @as(u16, bytes[addr]) | (@as(u16, bytes[addr + 1]) << 8);
+}
+
+fn peek16be(bytes: []const u8, addr: u16) u16 {
+    if (addr + 1 >= bytes.len) @panic("Out of range");
+    return @as(u16, bytes[addr + 1]) | (@as(u16, bytes[addr]) << 8);
+}
 
 pub fn getProgram(ram: *[0x10000]u8) []const u8 {
-    const top: u16 = @as(u16, ram[ZP_TOP]) | (@as(u16, ram[ZP_TOP + 1]) << 8);
+    const top = peek16(ram, ZP_TOP);
     return ram[PAGE..top];
 }
 
@@ -173,6 +183,27 @@ pub const Code = struct {
     }
 };
 
+pub fn validateBinary(prog: []const u8) !void {
+    const bp = BasicError.BadProgram;
+    var pos: u16 = 0;
+    var line: u16 = 0;
+    while (true) {
+        if (pos + 1 >= prog.len or prog[pos] != 0x0D) return bp;
+        if (prog[pos + 1] == 0xFF) {
+            if (pos + 2 != prog.len) return bp;
+            return;
+        }
+        if (pos + 3 >= prog.len) return bp;
+        const ln = peek16be(prog, pos + 1);
+        if (pos > 0 and ln <= line) return bp;
+        line = ln;
+        const len = prog[pos + 3];
+        if (len < 5) return bp;
+        pos += len;
+        if (pos >= prog.len) return bp;
+    }
+}
+
 pub fn sourceToBinary(source: Code) !Code {
     var r = std.io.Reader.fixed(source.bytes);
     var buf: std.ArrayListUnmanaged(u8) = .empty;
@@ -219,7 +250,9 @@ test sourceToBinary {
     const bin = try sourceToBinary(source);
     defer bin.deinit();
 
-    // hexDump(bin.bytes);
+    hexDump(bin.bytes);
+
+    try validateBinary(bin.bytes);
 }
 
 pub fn binaryToSource(binary: Code) !Code {
