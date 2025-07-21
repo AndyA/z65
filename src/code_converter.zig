@@ -11,6 +11,7 @@ const hashBytes = @import("tools/hasher.zig").hashBytes;
 const HIMEM = @intFromEnum(constants.Symbols.HIMEM);
 const PAGE = @intFromEnum(constants.Symbols.PAGE);
 const OSWORD = @intFromEnum(constants.MOSEntry.OSWORD);
+const CLEAR = 0xF523; // Basic's CLEAR routine
 const ZP_TOP = 0x12;
 
 const MiniBasic = struct {
@@ -161,6 +162,18 @@ test "runHiBasic error" {
     const res = runHiBasic(allocator, &ram, &r, &w.writer);
 
     try std.testing.expectError(BasicError.BRK, res);
+
+    var output = w.toArrayList();
+    defer output.deinit(allocator);
+    cleanBasicOutput(&output);
+
+    try std.testing.expectEqualDeep(
+        \\3.14159265
+        \\Mistake
+        \\
+    ,
+        output.items,
+    );
 }
 
 pub const Code = struct {
@@ -298,4 +311,77 @@ test binaryToSource {
     // std.debug.print("{s}", .{out_source.bytes});
 
     try std.testing.expectEqualDeep(prog, out_source.bytes);
+}
+
+fn showChanged(a: []const u8, b: []const u8) void {
+    if (a.len != b.len) {
+        std.debug.print("length mismatch: a={d}, b={d}", .{ a.len, b.len });
+        return;
+    }
+    for (a, 0..) |ia, i| {
+        if (ia != b[i])
+            std.debug.print("{x:0>4} {x:0>2} -> {x:0>2}\n", .{ i, ia, b[i] });
+    }
+}
+
+test "playground" {
+    const allocator = std.testing.allocator;
+    var ram0: [0x10000]u8 = @splat(0xff);
+    var ram1: [0x10000]u8 = @splat(0xff);
+    var ram2: [0x10000]u8 = @splat(0xff);
+    ram1[255] = 0;
+    ram2[255] = 0;
+    const prog =
+        \\   10 A$ = "Hi!" : PRINT A$
+        \\   20 A = 100 : B = 100 : Z = 100
+        \\   30 A$ = "A" : B$ = "B" : Z$ = "Z"
+        \\   40 DIM a(100) : DIM a$(100) : DIM a% 100
+        \\   50 DIM z(100) : DIM z$(100) : DIM z% 100
+        \\   60 PROChello
+        \\   70 END
+        \\   80 DEF PROChello
+        \\   90   LOCAL A$
+        \\  100   PRINT "Hello, World"
+        \\  110 ENDPROC
+        \\REN.
+        \\LIST
+        \\RUN
+        \\
+    ;
+    {
+        var r = std.io.Reader.fixed(prog);
+        var buf: std.ArrayListUnmanaged(u8) = .empty;
+        var w = std.io.Writer.Allocating.fromArrayList(allocator, &buf);
+        defer w.deinit();
+
+        try runHiBasic(allocator, &ram1, &r, &w.writer);
+
+        var output = w.toArrayList();
+        defer output.deinit(allocator);
+        cleanBasicOutput(&output);
+
+        std.debug.print("----\n{s}----\n", .{output.items});
+    }
+
+    showChanged(ram0[0..0xb800], ram1[0..0xb800]);
+
+    {
+        var r = std.io.Reader.fixed(prog ++
+            \\CLEAR
+            \\
+        );
+        var buf: std.ArrayListUnmanaged(u8) = .empty;
+        var w = std.io.Writer.Allocating.fromArrayList(allocator, &buf);
+        defer w.deinit();
+
+        runHiBasic(allocator, &ram2, &r, &w.writer) catch |err| {
+            var output = w.toArrayList();
+            defer output.deinit(allocator);
+            cleanBasicOutput(&output);
+            std.debug.print("----\n{s}----\n", .{output.items});
+            return err;
+        };
+    }
+
+    showChanged(ram1[0..0xb800], ram2[0..0xb800]);
 }
