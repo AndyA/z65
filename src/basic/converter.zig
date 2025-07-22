@@ -15,27 +15,27 @@ pub fn needsLineNumbers(prog: []const u8) !bool {
 }
 
 test needsLineNumbers {
-    const allocator = std.testing.allocator;
+    const alloc = std.testing.allocator;
 
     {
-        const bin = try code.sourceToBinary(allocator,
+        const bin = try code.sourceToBinary(alloc,
             \\   10 PRINT """Hello, World""" : REM Quotes!
             \\   20 DATA Hello, World
             \\   30 RESTORE 20
             \\
         );
-        defer bin.deinit();
-        try std.testing.expect(try needsLineNumbers(bin.bytes));
+        defer alloc.free(bin);
+        try std.testing.expect(try needsLineNumbers(bin));
     }
 
     {
-        const bin = try code.sourceToBinary(allocator,
+        const bin = try code.sourceToBinary(alloc,
             \\   10 PRINT """Hello, World""" : REM Quotes!
             \\   20 DATA Hello, World
             \\
         );
-        defer bin.deinit();
-        try std.testing.expect(!try needsLineNumbers(bin.bytes));
+        defer alloc.free(bin);
+        try std.testing.expect(!try needsLineNumbers(bin));
     }
 }
 
@@ -111,7 +111,7 @@ fn withoutLastLine(text: []const u8) []const u8 {
     return text[0..pos];
 }
 
-pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) !code.Code {
+pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) ![]const u8 {
     const info = try getSourceInfo(source);
     if (info.line_numbers)
         return try code.sourceToBinary(alloc, source);
@@ -135,19 +135,19 @@ pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) !code.Code {
     return try code.sourceToBinary(alloc, output.items);
 }
 
-pub fn stringifyBinary(alloc: std.mem.Allocator, bin: []const u8) !code.Code {
+pub fn stringifyBinary(alloc: std.mem.Allocator, bin: []const u8) ![]const u8 {
     const needs_numbers = try needsLineNumbers(bin);
     const source = try code.binaryToSource(alloc, bin);
     if (needs_numbers)
         return source;
-    defer source.deinit();
+    defer alloc.free(source);
 
-    const info = try getSourceInfo(source.bytes);
+    const info = try getSourceInfo(source);
     var buf: std.ArrayListUnmanaged(u8) = .empty;
     var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
-    var iter = std.mem.splitScalar(u8, withoutLastLine(source.bytes), '\n');
+    var iter = std.mem.splitScalar(u8, withoutLastLine(source), '\n');
     while (iter.next()) |line| {
         var pos: usize = 0;
         while (pos < line.len and std.ascii.isWhitespace(line[pos]))
@@ -160,13 +160,13 @@ pub fn stringifyBinary(alloc: std.mem.Allocator, bin: []const u8) !code.Code {
 
     var output = w.toArrayList();
     defer output.deinit(alloc);
-    return try code.Code.init(alloc, output.items);
+    return try alloc.dupe(u8, output.items);
 }
 
-pub fn roundTrip(alloc: std.mem.Allocator, source: []const u8) !code.Code {
+pub fn roundTrip(alloc: std.mem.Allocator, source: []const u8) ![]const u8 {
     const bin = try parseSource(alloc, source);
-    defer bin.deinit();
-    return try stringifyBinary(alloc, bin.bytes);
+    defer alloc.free(bin);
+    return try stringifyBinary(alloc, bin);
 }
 
 test roundTrip {
@@ -181,8 +181,8 @@ test roundTrip {
             \\PRINT "Hello"
             \\
         ;
-        defer out.deinit();
-        try std.testing.expect(std.mem.eql(u8, want, out.bytes));
+        defer alloc.free(out);
+        try std.testing.expect(std.mem.eql(u8, want, out));
     }
 
     {
@@ -198,8 +198,8 @@ test roundTrip {
             \\UNTIL FALSE
             \\
         ;
-        defer out.deinit();
-        try std.testing.expect(std.mem.eql(u8, want, out.bytes));
+        defer alloc.free(out);
+        try std.testing.expect(std.mem.eql(u8, want, out));
     }
 
     {
@@ -213,8 +213,8 @@ test roundTrip {
             \\   20 GOTO 10
             \\
         ;
-        defer out.deinit();
-        try std.testing.expect(std.mem.eql(u8, want, out.bytes));
+        defer alloc.free(out);
+        try std.testing.expect(std.mem.eql(u8, want, out));
     }
 
     {
@@ -228,7 +228,7 @@ test roundTrip {
             \\   20 GOTO 10
             \\
         ;
-        defer out.deinit();
-        try std.testing.expect(std.mem.eql(u8, want, out.bytes));
+        defer alloc.free(out);
+        try std.testing.expect(std.mem.eql(u8, want, out));
     }
 }

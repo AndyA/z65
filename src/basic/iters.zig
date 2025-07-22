@@ -1,7 +1,6 @@
 const std = @import("std");
 const kw = @import("keywords.zig");
 const constants = @import("../tube/constants.zig");
-const Code = @import("code.zig").Code;
 const util = @import("../tools/util.zig");
 
 pub const BasicIterError = error{BadProgram};

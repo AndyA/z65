@@ -122,11 +122,11 @@ pub const HiBasic = struct {
         defer self.alloc.free(prog);
 
         const bin = try cvt.parseSource(self.alloc, prog);
-        defer bin.deinit();
+        defer self.alloc.free(bin);
 
         const current = self.getProgram(cpu);
-        if (!std.mem.eql(u8, bin.bytes, current)) {
-            try self.setProgram(cpu, bin.bytes);
+        if (!std.mem.eql(u8, bin, current)) {
+            try self.setProgram(cpu, bin);
             code.clearVariables(self.ram);
         }
     }
@@ -134,10 +134,10 @@ pub const HiBasic = struct {
     pub fn saveSource(self: Self, cpu: anytype, file: []const u8) !void {
         const prog = self.getProgram(cpu);
         const source = try cvt.stringifyBinary(self.alloc, prog);
-        defer source.deinit();
+        defer self.alloc.free(source);
         const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
         defer fh.close();
-        try fh.writeAll(source.bytes);
+        try fh.writeAll(source);
     }
 
     fn onStartup(self: *Self, cpu: anytype) !void {
