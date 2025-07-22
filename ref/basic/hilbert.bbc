@@ -11,9 +11,9 @@ tmp         = &70
 row_a       = &74
 row_b       = &76
 buf         = &78
-count       = &7C
-last_x      = &7D
-last_y      = &7E
+count       = &80
+last_x      = &81
+last_y      = &82
 
 height      = 70
 width       = 72
@@ -25,8 +25,11 @@ FOR pass = 0 TO 2 STEP 2
 P% = code
 [OPT pass
 
-.putdot     PHA
-            STX tmp
+
+.putwide    STA tmp
+            ASL A
+            ORA tmp
+.putdot     STX tmp
             AND #&0F
             TAX
             BEQ putdot2
@@ -37,7 +40,6 @@ P% = code
             LDA dots, X
 .putdot1    JSR oswrch
             LDX tmp
-            PLA
             RTS
 
 .putdot2    LDA #ASC" "
@@ -48,7 +50,7 @@ P% = code
             EQUB &97 : EQUB &9A : EQUB &90 : EQUB &9C
             EQUB &84 : EQUB &99 : EQUB &9F : EQUB &88
 
-.showscreen LDA #screen MOD 256
+.initscreen LDA #screen MOD 256
             STA row_a + 0
             CLC
             ADC #32
@@ -59,40 +61,12 @@ P% = code
             STA row_b + 1
             LDA #height DIV 2
             STA count
+            RTS
 
-.shows0     LDY #0
-
-.shows1     LDA (row_a), Y \ top half of character
-            LDX #3
-.shows2     PHA
-            AND #&03
-            STA buf, X
-            PLA
-            LSR A : LSR A
-            DEX
-            BPL shows2
-            
-            LDA (row_b), Y \ bottom half of character
-            LDX #3
-.shows3     PHA
-            ASL A : ASL A
-            ORA buf, X
-            JSR putdot
-            PLA
-            LSR A : LSR A
-            DEX
-            BPL shows3
-
-            INY
-            CPY #width DIV 8
-            BCC shows1
-            JSR osnewl
-
+.nextrow    JSR osnewl
             LDX #row_a : JSR add64
             LDX #row_b : JSR add64
-
             DEC count
-            BNE shows0
             RTS
 
 .add64      CLC
@@ -103,7 +77,62 @@ P% = code
             INC 1, X
 .add641     RTS
 
+.showscreen JSR initscreen
+.shows0     LDY #0
+.shows1     LDA (row_a), Y \ top half of character
+            LDX #3
+.shows2     PHA
+            AND #&03
+            STA buf, X
+            PLA
+            LSR A : LSR A
+            DEX
+            BPL shows2
+            LDA (row_b), Y \ bottom half of character
+            LDX #3
+.shows3     PHA
+            ASL A : ASL A
+            ORA buf, X
+            JSR putdot
+            PLA
+            LSR A : LSR A
+            DEX
+            BPL shows3
+            INY
+            CPY #width DIV 8
+            BCC shows1
+            JSR nextrow
+            BNE shows0
+            RTS
 
+.showwide   JSR initscreen
+.showw0     LDY #0
+.showw1     LDA (row_a), Y \ top half of character
+            LDX #7
+.showw2     PHA
+            AND #&01
+            STA buf, X
+            PLA
+            LSR A
+            DEX
+            BPL showw2
+            LDA (row_b), Y \ bottom half of character
+            LDX #7
+.showw3     PHA
+            AND #&01
+            ASL A : ASL A
+            ORA buf, X
+            JSR putwide
+            PLA
+            LSR A
+            DEX
+            BPL showw3
+            INY
+            CPY #width DIV 8
+            BCC showw1
+            JSR nextrow
+            BNE showw0
+            RTS
 
 .clear      LDY #screen MOD 256
             STY row_a + 0
@@ -130,7 +159,7 @@ P% = code
             LSR row_a + 1 : ROR row_a + 0 : ROL A
             LSR row_a + 1 : ROR row_a + 0 : ROL A
             TAY
-            LDA bitsf, Y
+            LDA bits, Y
             PHA
 
             LDA row_a + 0
@@ -142,7 +171,7 @@ P% = code
             PLA
             RTS
 
-.bitsf      EQUB &01 : EQUB &10 : EQUB &04 : EQUB &40
+.bits       EQUB &01 : EQUB &10 : EQUB &04 : EQUB &40
             EQUB &02 : EQUB &20 : EQUB &08 : EQUB &80
 
 .getpix     JSR pixaddr
@@ -409,9 +438,9 @@ PRINT "Code size: "; P% - code
 
 A% = 255 : CALL clear
 init% = TRUE
-PROChilbert(0, 0, 0, 1, 0, 0, 1, 5)
+PROChil(0, 0, 0, 0, 1, 1, 0, 5)
 
-CALL showscreen
+CALL showwide
 END
 
 DEF PROCline(A%, X%, Y%)
@@ -422,10 +451,10 @@ DEF PROCseg(A%, x, y)
   PROCline(A%, 3 + x * 64, 2 + y * 64)
 ENDPROC
 
-DEF PROChilbert(A%, x, y, xi, xj, yi, yj, n)
+DEF PROChil(A%, x, y, xi, xj, yi, yj, n)
   IF n <= 0 THEN PROCseg(A%, x + (xi + yi) / 2, y + (xj + yj) / 2) : ENDPROC
-  PROChilbert(A%, x,           y,           yi/2, yj/2,  xi/2,  xj/2, n-1)
-  PROChilbert(A%, x+xi/2,      y+xj/2 ,     xi/2, xj/2,  yi/2,  yj/2, n-1)
-  PROChilbert(A%, x+xi/2+yi/2, y+xj/2+yj/2, xi/2, xj/2,  yi/2,  yj/2, n-1)
-  PROChilbert(A%, x+xi/2+yi,   y+xj/2+yj,  -yi/2,-yj/2, -xi/2, -xj/2, n-1)
+  PROChil(A%, x,           y,           yi/2, yj/2,  xi/2,  xj/2, n-1)
+  PROChil(A%, x+xi/2,      y+xj/2 ,     xi/2, xj/2,  yi/2,  yj/2, n-1)
+  PROChil(A%, x+xi/2+yi/2, y+xj/2+yj/2, xi/2, xj/2,  yi/2,  yj/2, n-1)
+  PROChil(A%, x+xi/2+yi,   y+xj/2+yj,  -yi/2,-yj/2, -xi/2, -xj/2, n-1)
 ENDPROC
