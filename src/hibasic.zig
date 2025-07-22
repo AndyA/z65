@@ -30,13 +30,6 @@ fn isFileCommand(tok: u8) bool {
         tok == @intFromEnum(kw.KeywordsEnum.CHAIN);
 }
 
-pub const HiBasicSnapshot = struct {
-    const Self = @This();
-    file: []const u8,
-    auto_save: bool = false,
-    auto_load: bool = false,
-};
-
 pub const HiBasic = struct {
     const Self = @This();
     const LOAD_ADDR = @intFromEnum(Symbols.HIMEM);
@@ -55,6 +48,7 @@ pub const HiBasic = struct {
     started: bool = false,
     prog_hash: u256 = 0,
     current_file: ?[]const u8 = null,
+    auto_load: bool = true,
     auto_save: bool = true,
 
     pub fn init(
@@ -120,7 +114,7 @@ pub const HiBasic = struct {
             return line;
 
         if (self.current_file) |file| {
-            if (self.auto_save) {
+            if (self.auto_load) {
                 const lm = try lastModified(file);
                 if (lm == 0) return line;
                 const changed = self.last_modified != 0 and self.last_modified != lm;
