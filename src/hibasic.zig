@@ -11,6 +11,7 @@ const hashBytes = @import("tools/util.zig").hashBytes;
 
 pub const HiBasicError = error{
     ProgramTooLarge,
+    NoFileName,
 };
 
 pub fn lastModified(file: []const u8) !i128 {
@@ -54,6 +55,7 @@ pub const HiBasic = struct {
     last_modified: i128 = 0,
     started: bool = false,
     prog_hash: u256 = 0,
+    current_file: ?[]const u8 = null,
 
     pub fn init(
         alloc: std.mem.Allocator,
@@ -72,7 +74,7 @@ pub const HiBasic = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        _ = self;
+        self.clearCurrentFile();
     }
 
     pub fn commandMode(self: *Self, cpu: anytype) bool {
@@ -80,6 +82,22 @@ pub const HiBasic = struct {
         const nextp = cpu.peek16(Self.NEXTP);
         const buf = cpu.peek16(ct.getXY(cpu));
         return nextp == CMD_BUF and buf == CMD_BUF;
+    }
+
+    pub fn clearCurrentFile(self: *Self) void {
+        if (self.current_file) |file| {
+            self.alloc.free(file);
+            self.current_file = null;
+        }
+    }
+
+    pub fn setCurrentFile(self: *Self, name: []const u8) !void {
+        if (self.current_file) |file| {
+            if (std.mem.eql(u8, file, name)) return;
+            self.alloc.free(file);
+        }
+        self.current_file = try self.alloc.dupe(u8, name);
+        std.debug.print("Editing {s}\n", .{self.current_file.?});
     }
 
     pub fn @"hook:readline"(self: *Self, cpu: anytype) !?[]const u8 {
@@ -145,8 +163,14 @@ pub const HiBasic = struct {
     ) bool {
         const page = self.getPage(cpu);
         return self.commandContext(cpu, isFileCommand) and
-            std.ascii.endsWithIgnoreCase(name, ".bas") and
+            (std.ascii.endsWithIgnoreCase(name, ".bas") or name.len == 0) and
             (osf.load_addr == page or osf.start_addr == page);
+    }
+
+    fn defaultName(self: Self, name: []const u8) ![]const u8 {
+        if (name.len > 0) return name;
+        if (self.current_file) |file| return file;
+        return HiBasicError.NoFileName;
     }
 
     pub fn @"hook:load"(
@@ -156,7 +180,9 @@ pub const HiBasic = struct {
         name: []const u8,
     ) !bool {
         if (self.shouldIntercept(osf, cpu, name)) {
-            try self.loadSource(cpu, name);
+            const real_name = try self.defaultName(name);
+            try self.loadSource(cpu, real_name);
+            try self.setCurrentFile(real_name);
             return true;
         }
 
@@ -164,13 +190,15 @@ pub const HiBasic = struct {
     }
 
     pub fn @"hook:save"(
-        self: Self,
+        self: *Self,
         osf: osfile.OSFILE,
         cpu: anytype,
         name: []const u8,
     ) !bool {
         if (self.shouldIntercept(osf, cpu, name)) {
-            try self.saveSource(cpu, name);
+            const real_name = try self.defaultName(name);
+            try self.saveSource(cpu, real_name);
+            try self.setCurrentFile(real_name);
             return true;
         }
 
@@ -213,6 +241,11 @@ pub const HiBasic = struct {
             if (snap.auto_save) {
                 try self.saveSource(cpu, snap.file);
             }
+        }
+
+        const prog = self.getProgram(cpu);
+        if (prog.len == 2) { // NEW?
+            self.clearCurrentFile();
         }
     }
 
