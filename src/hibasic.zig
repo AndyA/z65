@@ -155,7 +155,7 @@ pub const HiBasic = struct {
     ) bool {
         const page = self.getPage(cpu);
         return self.commandContext(cpu, isFileCommand) and
-            (std.ascii.endsWithIgnoreCase(name, ".bas") or name.len == 0) and
+            (std.ascii.endsWithIgnoreCase(name, ".bbc") or name.len == 0) and
             (osf.load_addr == page or osf.start_addr == page);
     }
 
