@@ -20,12 +20,6 @@ const MiniBasic = struct {
         cpu.PC = @intCast(HIMEM);
         cpu.A = 0x01;
     }
-
-    pub fn onCallback(self: *Self, cpu: anytype, callback: []const u8) !void {
-        _ = self;
-        _ = cpu;
-        std.debug.print("Unrecognized callback: {s}\n", .{callback});
-    }
 };
 
 const TubeOS = tube.TubeOS(MiniBasic);

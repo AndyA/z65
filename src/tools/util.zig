@@ -39,3 +39,9 @@ pub fn peek16be(bytes: []const u8, addr: u16) u16 {
     if (addr + 1 >= bytes.len) @panic("Out of range");
     return @as(u16, bytes[addr + 1]) | (@as(u16, bytes[addr]) << 8);
 }
+
+pub fn poke16(bytes: []u8, addr: u16, value: u16) void {
+    if (addr + 1 >= bytes.len) @panic("Out of range");
+    bytes[addr] = @intCast(value & 0x00FF);
+    bytes[addr + 1] = @intCast((value >> 8) & 0x00FF);
+}

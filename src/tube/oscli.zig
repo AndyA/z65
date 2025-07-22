@@ -12,13 +12,6 @@ const StarCommands = struct {
         std.debug.print("Meow!\n", .{});
     }
 
-    pub fn @"LANGUAGE CALLBACK <name:[]u8>"(
-        cpu: anytype,
-        args: anytype,
-    ) !void {
-        try cpu.os.lang.onCallback(cpu, args.name);
-    }
-
     pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
         cpu: anytype,
         args: anytype,

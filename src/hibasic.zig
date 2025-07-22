@@ -1,6 +1,8 @@
 const std = @import("std");
 const ct = @import("cpu/cpu_tools.zig");
 const bb = @import("bbc_basic.zig");
+const cvt = @import("basic/converter.zig");
+const code = @import("basic/code.zig");
 
 const Symbols = @import("tube/os.zig").Symbols;
 
@@ -9,6 +11,7 @@ const hashBytes = @import("tools/util.zig").hashBytes;
 pub const HiBasicError = error{
     ProgramTooLarge,
 };
+
 pub fn lastModified(file: []const u8) !i128 {
     const fh = std.fs.cwd().openFile(file, .{}) catch |err| {
         if (err == error.FileNotFound) return 0; // No snapshot file
@@ -25,11 +28,6 @@ pub const HiBasicSnapshot = struct {
     auto_save: bool = false,
     auto_load: bool = false,
 };
-
-fn freeList(alloc: std.mem.Allocator, list: *std.ArrayList([]const u8)) void {
-    for (list.items) |item| alloc.free(item);
-    list.items.len = 0;
-}
 
 pub const HiBasic = struct {
     const Self = @This();
@@ -49,11 +47,7 @@ pub const HiBasic = struct {
     src_snapshot: ?HiBasicSnapshot,
     src_last_modified: i128 = 0,
     started: bool = false,
-    interactive: bool = true,
-    show_last_output: bool = false,
     prog_hash: u256 = 0,
-    input_queue: std.ArrayList([]const u8),
-    free_queue: std.ArrayList([]const u8),
 
     pub fn init(
         alloc: std.mem.Allocator,
@@ -70,15 +64,11 @@ pub const HiBasic = struct {
             .ram = ram,
             .bin_snapshot = bin_snapshot,
             .src_snapshot = src_snapshot,
-            .input_queue = try std.ArrayList([]const u8).initCapacity(alloc, 100),
-            .free_queue = try std.ArrayList([]const u8).initCapacity(alloc, 100),
         };
     }
 
     pub fn deinit(self: *Self) void {
-        freeList(self.alloc, &self.input_queue);
-        freeList(self.alloc, &self.free_queue);
-        self.input_queue.deinit();
+        _ = self;
     }
 
     pub fn @"hook:reset"(self: *Self, cpu: anytype) !void {
@@ -104,35 +94,16 @@ pub const HiBasic = struct {
             try self.writer.print("{s}", .{output});
         }
 
-        // Anything in the input queue?
-        if (self.inputPending()) {
-            const cmd = try self.takeCommand();
-            if (self.show_last_output and !self.inputPending()) {
-                _ = cpu.os.takeCapture();
-                self.show_last_output = false;
-            }
-            return cmd;
-        }
-
-        if (!self.interactive) {
-            self.interactive = true;
-            _ = cpu.os.takeCapture();
-        }
-
         const hash = hashBytes(self.getProgram(cpu));
         if (self.prog_hash != 0 and self.prog_hash != hash)
             try self.onCodeChange(cpu);
         self.prog_hash = hash;
 
-        // Try the queue again
-        if (self.inputPending())
-            return try self.takeCommand();
-
         return null;
     }
 
     pub fn @"hook:sendline"(self: *Self, cpu: anytype, line: []const u8) ![]const u8 {
-        if (!self.commandMode(cpu) or self.inputPending())
+        if (!self.commandMode(cpu))
             return line;
 
         if (self.src_snapshot) |snap| {
@@ -143,50 +114,22 @@ pub const HiBasic = struct {
                 self.src_last_modified = lm;
 
                 if (changed) {
-                    try self.scheduleCommand("NEW");
-
                     const prog = try std.fs.cwd().readFileAlloc(self.alloc, snap.file, 0x10000);
                     defer self.alloc.free(prog);
 
-                    try self.typeProg(prog);
-                    try self.scheduleCommand(line);
+                    const bin = try cvt.parseSource(self.alloc, prog);
+                    defer bin.deinit();
 
-                    self.show_last_output = true;
-                    cpu.os.startCapture();
-
-                    return try self.takeCommand();
+                    const current = self.getProgram(cpu);
+                    if (!std.mem.eql(u8, bin.bytes, current)) {
+                        try self.setProgram(cpu, bin.bytes);
+                        code.clearVariables(self.ram);
+                    }
                 }
             }
         }
 
         return line;
-    }
-
-    fn typeProg(self: *Self, prog: []const u8) !void {
-        var bbr = try bb.BBCBasicReader.init(prog, self.alloc);
-        defer bbr.deinit();
-        var i = try bbr.iter();
-        while (i.next()) |ln| {
-            try self.scheduleCommand(ln);
-        }
-    }
-
-    pub fn inputPending(self: Self) bool {
-        return self.input_queue.items.len != 0;
-    }
-
-    pub fn scheduleCommand(self: *Self, cmd: []const u8) !void {
-        const cmd_copy = try self.alloc.alloc(u8, cmd.len);
-        @memcpy(cmd_copy, cmd);
-        try self.input_queue.append(cmd_copy);
-        self.interactive = false;
-    }
-
-    pub fn takeCommand(self: *Self) ![]const u8 {
-        freeList(self.alloc, &self.free_queue);
-        const next = self.input_queue.orderedRemove(0);
-        try self.free_queue.append(next);
-        return next;
     }
 
     fn onStartup(self: *Self, cpu: anytype) !void {
@@ -209,31 +152,14 @@ pub const HiBasic = struct {
 
         if (self.src_snapshot) |snap| {
             if (snap.auto_save) {
-                try self.scheduleCommand("*LANGUAGE CALLBACK code_change");
+                const prog = self.getProgram(cpu);
+                const source = try cvt.stringifyBinary(self.alloc, prog);
+                defer source.deinit();
+                const fh = try std.fs.cwd().createFile(snap.file, .{ .truncate = true });
+                defer fh.close();
+                try fh.writeAll(source.bytes);
             }
         }
-    }
-
-    pub fn onCallback(self: *Self, cpu: anytype, callback: []const u8) !void {
-        if (std.mem.eql(u8, callback, "code_change")) {
-            if (self.src_snapshot) |snap| {
-                try self.saveSrcSnapshot(cpu, snap.file);
-                self.src_last_modified = try lastModified(snap.file);
-            }
-        } else {
-            std.debug.print("Unrecognized callback: {s}\n", .{callback});
-        }
-    }
-
-    pub fn runScript(self: *Self, cpu: anytype, script: []const []const u8) ![]const u8 {
-        for (script) |cmd|
-            try self.scheduleCommand(cmd);
-        try self.scheduleCommand(""); // A NOP to finish
-        cpu.os.startCapture();
-        while (!cpu.stopped and self.inputPending())
-            cpu.step();
-        const output = cpu.os.peekCapture();
-        return output[1 .. output.len - 1];
     }
 
     pub fn reset(self: *Self, cpu: anytype) void {
@@ -274,21 +200,6 @@ pub const HiBasic = struct {
         @memcpy(self.ram[page..top], prog);
         cpu.poke16(TOP, top);
         self.prog_hash = hashBytes(prog);
-    }
-
-    fn saveSrcSnapshot(self: *Self, cpu: anytype, file: []const u8) !void {
-        const output = try self.runScript(cpu, &.{"LIST"});
-        const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
-        defer fh.close();
-        var w_buf: [8192]u8 = undefined;
-        var w = fh.writer(&w_buf);
-
-        const bbw = bb.BBCBasicWriter{ .source = output, .strip = true };
-        var iter = bbw.iter();
-        while (iter.next()) |line| {
-            try w.interface.print("{s}\n", .{line});
-        }
-        try w.interface.flush();
     }
 
     fn saveBinSnapshot(self: Self, cpu: anytype, file: []const u8) !void {
