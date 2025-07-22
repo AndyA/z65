@@ -2,6 +2,9 @@ const std = @import("std");
 const kw = @import("keywords.zig");
 const code = @import("code.zig");
 const iters = @import("iters.zig");
+const util = @import("../tools/util.zig");
+
+pub const ConverterError = error{MixedLineNumbers};
 
 pub fn needsLineNumbers(prog: []const u8) !bool {
     var ti = iters.TokenIter.init(prog);
@@ -33,5 +36,196 @@ test needsLineNumbers {
         );
         defer bin.deinit();
         try std.testing.expect(!try needsLineNumbers(bin.bytes));
+    }
+}
+
+pub const SourceInfo = struct { line_numbers: bool, indent: usize };
+
+pub fn getSourceInfo(source: []const u8) !SourceInfo {
+    var iter = std.mem.splitScalar(u8, source, '\n');
+    var line_numbers: ?bool = null;
+    var min_indent: usize = std.math.maxInt(usize);
+    while (iter.next()) |line| {
+        var pos: usize = 0;
+        while (pos < line.len and std.ascii.isWhitespace(line[pos])) pos += 1;
+        if (pos >= line.len) continue;
+        if (pos < line.len and std.ascii.isDigit(line[pos])) {
+            if (line_numbers) |ln| {
+                if (!ln) return ConverterError.MixedLineNumbers;
+            }
+            line_numbers = true;
+            while (pos < line.len and std.ascii.isDigit(line[pos])) pos += 1;
+            const start = pos;
+            while (pos < line.len and std.ascii.isWhitespace(line[pos])) pos += 1;
+            min_indent = @min(min_indent, pos - start);
+        } else {
+            if (line_numbers) |ln| {
+                if (ln) return ConverterError.MixedLineNumbers;
+            }
+            line_numbers = false;
+            min_indent = @min(min_indent, pos);
+        }
+    }
+    if (line_numbers) |ln| return SourceInfo{
+        .indent = min_indent,
+        .line_numbers = ln,
+    };
+    return SourceInfo{
+        .indent = 0,
+        .line_numbers = false,
+    };
+}
+
+test getSourceInfo {
+    try std.testing.expectEqual(
+        SourceInfo{ .indent = 0, .line_numbers = false },
+        try getSourceInfo(""),
+    );
+    try std.testing.expectEqual(
+        SourceInfo{ .indent = 2, .line_numbers = true },
+        try getSourceInfo(
+            \\   10  PRINT "Hello"
+        ),
+    );
+    try std.testing.expectEqual(
+        SourceInfo{ .indent = 2, .line_numbers = true },
+        try getSourceInfo(
+            \\   10  PRINT "Hello"
+            \\20  GOTO 10
+        ),
+    );
+    try std.testing.expectEqual(
+        SourceInfo{ .indent = 2, .line_numbers = false },
+        try getSourceInfo(
+            \\  REPEAT
+            \\    PRINT "Hello"
+            \\  UNTIL FALSE
+            \\
+        ),
+    );
+}
+
+fn withoutLastLine(text: []const u8) []const u8 {
+    if (text.len > 0 and text[text.len - 1] == '\n')
+        return text[0 .. text.len - 1];
+    return text;
+}
+
+pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) !code.Code {
+    const info = try getSourceInfo(source);
+    if (info.line_numbers)
+        return try code.sourceToBinary(alloc, source);
+
+    var buf: std.ArrayListUnmanaged(u8) = .empty;
+    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+    defer w.deinit();
+
+    var iter = std.mem.splitScalar(u8, withoutLastLine(source), '\n');
+    var num: usize = 10;
+    while (iter.next()) |line| : (num += 10) {
+        const tail = line[@min(line.len, info.indent)..];
+        try w.writer.print("{d} {s}\n", .{ num, tail });
+    }
+    var output = w.toArrayList();
+    defer output.deinit(alloc);
+
+    return try code.sourceToBinary(alloc, output.items);
+}
+
+pub fn stringifyBinary(alloc: std.mem.Allocator, bin: []const u8) !code.Code {
+    const needs_numbers = try needsLineNumbers(bin);
+    const source = try code.binaryToSource(alloc, bin);
+    if (needs_numbers)
+        return source;
+    defer source.deinit();
+
+    const info = try getSourceInfo(source.bytes);
+    var buf: std.ArrayListUnmanaged(u8) = .empty;
+    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+    defer w.deinit();
+
+    var iter = std.mem.splitScalar(u8, withoutLastLine(source.bytes), '\n');
+    while (iter.next()) |line| {
+        var pos: usize = 0;
+        while (pos < line.len and std.ascii.isWhitespace(line[pos]))
+            pos += 1;
+        while (pos < line.len and std.ascii.isDigit(line[pos]))
+            pos += 1;
+        const tail = line[@min(line.len, pos + info.indent)..];
+        try w.writer.print("{s}\n", .{tail});
+    }
+
+    var output = w.toArrayList();
+    defer output.deinit(alloc);
+    return try code.Code.init(alloc, output.items);
+}
+
+pub fn roundTrip(alloc: std.mem.Allocator, source: []const u8) !code.Code {
+    const bin = try parseSource(alloc, source);
+    defer bin.deinit();
+    return try stringifyBinary(alloc, bin.bytes);
+}
+
+test roundTrip {
+    const alloc = std.testing.allocator;
+
+    {
+        const out = try roundTrip(alloc,
+            \\ 10 PRINT "Hello"
+            \\
+        );
+        const want =
+            \\PRINT "Hello"
+            \\
+        ;
+        defer out.deinit();
+        try std.testing.expect(std.mem.eql(u8, want, out.bytes));
+    }
+
+    {
+        const out = try roundTrip(alloc,
+            \\     REPEAT
+            \\        PRINT "Hello"
+            \\     UNTIL FALSE
+            \\
+        );
+        const want =
+            \\REPEAT
+            \\   PRINT "Hello"
+            \\UNTIL FALSE
+            \\
+        ;
+        defer out.deinit();
+        try std.testing.expect(std.mem.eql(u8, want, out.bytes));
+    }
+
+    {
+        const out = try roundTrip(alloc,
+            \\ 10 PRINT "Hello"
+            \\ 20 GOTO 10
+            \\
+        );
+        const want =
+            \\   10 PRINT "Hello"
+            \\   20 GOTO 10
+            \\
+        ;
+        defer out.deinit();
+        try std.testing.expect(std.mem.eql(u8, want, out.bytes));
+    }
+
+    {
+        const out = try roundTrip(alloc,
+            \\PRINT "Hello"
+            \\GOTO 10
+            \\
+        );
+        const want =
+            \\   10 PRINT "Hello"
+            \\   20 GOTO 10
+            \\
+        ;
+        defer out.deinit();
+        try std.testing.expect(std.mem.eql(u8, want, out.bytes));
     }
 }
