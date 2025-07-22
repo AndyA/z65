@@ -57,15 +57,36 @@ fn peek16be(bytes: []const u8, addr: u16) u16 {
     return @as(u16, bytes[addr + 1]) | (@as(u16, bytes[addr]) << 8);
 }
 
-pub fn getProgram(ram: *[0x10000]u8) []const u8 {
+pub fn validBinary(prog: []const u8) ![]const u8 {
+    const bp = BasicError.BadProgram;
+    var pos: u16 = 0;
+    var line: u16 = 0;
+    while (true) {
+        if (pos + 1 >= prog.len or prog[pos] != 0x0D) return bp;
+        if (prog[pos + 1] == 0xFF) {
+            if (pos + 2 != prog.len) return bp;
+            return prog;
+        }
+        if (pos + 3 >= prog.len) return bp;
+        const ln = peek16be(prog, pos + 1);
+        if (pos > 0 and ln <= line) return bp;
+        line = ln;
+        const len = prog[pos + 3];
+        if (len < 5) return bp;
+        pos += len;
+        if (pos >= prog.len) return bp;
+    }
+}
+
+pub fn getProgram(ram: *[0x10000]u8) ![]const u8 {
     const top = peek16(ram, ZP_TOP);
-    return ram[PAGE..top];
+    return validBinary(ram[PAGE..top]);
 }
 
 pub fn setProgram(ram: *[0x10000]u8, prog: []const u8) !void {
     if (prog.len > HIMEM - PAGE - 0x100)
         return BasicError.ProgramTooLarge;
-    @memcpy(ram[PAGE .. PAGE + prog.len], prog);
+    @memcpy(ram[PAGE .. PAGE + prog.len], try validBinary(prog));
 }
 
 pub fn runHiBasic(
@@ -196,27 +217,6 @@ pub const Code = struct {
     }
 };
 
-pub fn validateBinary(prog: []const u8) !void {
-    const bp = BasicError.BadProgram;
-    var pos: u16 = 0;
-    var line: u16 = 0;
-    while (true) {
-        if (pos + 1 >= prog.len or prog[pos] != 0x0D) return bp;
-        if (prog[pos + 1] == 0xFF) {
-            if (pos + 2 != prog.len) return bp;
-            return;
-        }
-        if (pos + 3 >= prog.len) return bp;
-        const ln = peek16be(prog, pos + 1);
-        if (pos > 0 and ln <= line) return bp;
-        line = ln;
-        const len = prog[pos + 3];
-        if (len < 5) return bp;
-        pos += len;
-        if (pos >= prog.len) return bp;
-    }
-}
-
 pub fn sourceToBinary(source: Code) !Code {
     var r = std.io.Reader.fixed(source.bytes);
     var buf: std.ArrayListUnmanaged(u8) = .empty;
@@ -226,7 +226,7 @@ pub fn sourceToBinary(source: Code) !Code {
     var ram: [0x10000]u8 = @splat(0);
     try runHiBasic(source.alloc, &ram, &r, &w.writer);
 
-    return try Code.init(source.alloc, getProgram(&ram));
+    return try Code.init(source.alloc, try getProgram(&ram));
 }
 
 pub fn hexDump(mem: []const u8) void {
@@ -265,7 +265,7 @@ test sourceToBinary {
 
     hexDump(bin.bytes);
 
-    try validateBinary(bin.bytes);
+    _ = try validBinary(bin.bytes);
 }
 
 pub fn binaryToSource(binary: Code) !Code {
