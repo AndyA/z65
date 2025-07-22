@@ -4,7 +4,7 @@ const bb = @import("bbc_basic.zig");
 
 const Symbols = @import("tube/os.zig").Symbols;
 
-const hashBytes = @import("tools/hasher.zig").hashBytes;
+const hashBytes = @import("tools/util.zig").hashBytes;
 
 pub const HiBasicError = error{
     ProgramTooLarge,
