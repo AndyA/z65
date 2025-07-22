@@ -51,25 +51,23 @@ pub const HiBasic = struct {
     writer: *std.io.Writer,
 
     ram: *[0x10000]u8,
-    snapshot: ?HiBasicSnapshot,
     last_modified: i128 = 0,
     started: bool = false,
     prog_hash: u256 = 0,
     current_file: ?[]const u8 = null,
+    auto_save: bool = true,
 
     pub fn init(
         alloc: std.mem.Allocator,
         reader: *std.io.Reader,
         writer: *std.io.Writer,
         ram: *[0x10000]u8,
-        snapshot: ?HiBasicSnapshot,
     ) !Self {
         return Self{
             .alloc = alloc,
             .reader = reader,
             .writer = writer,
             .ram = ram,
-            .snapshot = snapshot,
         };
     }
 
@@ -97,7 +95,7 @@ pub const HiBasic = struct {
             self.alloc.free(file);
         }
         self.current_file = try self.alloc.dupe(u8, name);
-        std.debug.print("Editing {s}\n", .{self.current_file.?});
+        // std.debug.print("Editing {s}\n", .{self.current_file.?});
     }
 
     pub fn @"hook:readline"(self: *Self, cpu: anytype) !?[]const u8 {
@@ -121,15 +119,15 @@ pub const HiBasic = struct {
         if (!self.commandMode(cpu))
             return line;
 
-        if (self.snapshot) |snap| {
-            if (snap.auto_load) {
-                const lm = try lastModified(snap.file);
+        if (self.current_file) |file| {
+            if (self.auto_save) {
+                const lm = try lastModified(file);
                 if (lm == 0) return line;
                 const changed = self.last_modified != 0 and self.last_modified != lm;
                 self.last_modified = lm;
 
                 if (changed) {
-                    try self.loadSource(cpu, snap.file);
+                    try self.loadSource(cpu, file);
                 }
             }
         }
@@ -227,19 +225,19 @@ pub const HiBasic = struct {
     }
 
     fn onStartup(self: *Self, cpu: anytype) !void {
-        if (self.snapshot) |snap| {
-            self.loadSource(cpu, snap.file) catch |err| {
+        if (self.current_file) |file| {
+            self.loadSource(cpu, file) catch |err| {
                 if (err == error.FileNotFound) return;
                 return err;
             };
-            self.last_modified = try lastModified(snap.file);
+            self.last_modified = try lastModified(file);
         }
     }
 
     fn onCodeChange(self: *Self, cpu: anytype) !void {
-        if (self.snapshot) |snap| {
-            if (snap.auto_save) {
-                try self.saveSource(cpu, snap.file);
+        if (self.current_file) |file| {
+            if (self.auto_save) {
+                try self.saveSource(cpu, file);
             }
         }
 
@@ -257,13 +255,8 @@ pub const HiBasic = struct {
     }
 
     pub fn shutDown(self: *Self, cpu: anytype) !void {
-        try self.writer.print("\n", .{});
-        if (self.snapshot) |snap| {
-            if (snap.auto_save) {
-                try self.saveSource(cpu, snap.file);
-            }
-        }
-        try self.writer.print("Bye!\n", .{});
+        _ = cpu;
+        try self.writer.print("\nBye!\n", .{});
     }
 
     pub fn getPage(self: Self, cpu: anytype) u16 {
