@@ -111,7 +111,13 @@ fn withoutLastLine(text: []const u8) []const u8 {
     return text[0..pos];
 }
 
+pub fn isBinary(source: []const u8) bool {
+    _ = code.validBinary(source) catch return false;
+    return true;
+}
+
 pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) ![]const u8 {
+    if (isBinary(source)) return try alloc.dupe(u8, source);
     const info = try getSourceInfo(source);
     if (info.line_numbers)
         return try code.sourceToBinary(alloc, source);

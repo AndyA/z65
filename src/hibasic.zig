@@ -229,15 +229,15 @@ pub const HiBasic = struct {
     }
 
     fn onCodeChange(self: *Self, cpu: anytype) !void {
+        const prog = self.getProgram(cpu);
+        if (prog.len == 2) { // NEW?
+            self.clearCurrentFile();
+        }
+
         if (self.current_file) |file| {
             if (self.auto_save) {
                 try self.saveSource(cpu, file);
             }
-        }
-
-        const prog = self.getProgram(cpu);
-        if (prog.len == 2) { // NEW?
-            self.clearCurrentFile();
         }
     }
 
