@@ -1,22 +1,21 @@
 REM Turns out BBC Basic is UTF-8 safe
 REM Andy Armstrong <andy@hexten.net>
 
-oswrch = &FFEE
-osnewl = &FFE7
-zig_trace = &FE90
+oswrch      = &FFEE
+osnewl      = &FFE7
+zig_trace   = &FE90
 
-scratch  = &50
+scratch     = &50
+tmp         = &70
+row_a       = &74
+row_b       = &76
+buf         = &78
+count       = &7C
+last_x      = &7D
+last_y      = &7E
 
-tmp      = &70
-row_a    = &74
-row_b    = &76
-buf      = &78
-count    = &7C
-last_x   = &7D
-last_y   = &7E
-
-height   = 70
-width    = 72
+height      = 70
+width       = 72
 
 DIM code 1000
 DIM screen 8191
