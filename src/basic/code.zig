@@ -80,25 +80,20 @@ pub fn sourceToBinary(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
     return try alloc.dupe(u8, try getProgram(&ram));
 }
 
-// test sourceCodeToBinary {
-//     const allocator = std.testing.allocator;
+test sourceToBinary {
+    const alloc = std.testing.allocator;
 
-//     const prog =
-//         \\   10 PRINT "Hello, World"
-//         \\   20 GOTO 10
-//         \\
-//     ;
+    const prog =
+        \\   10 PRINT "Hello, World"
+        \\   20 GOTO 10
+        \\
+    ;
 
-//     const source = try Code.init(allocator, prog);
-//     defer source.deinit();
+    const bin = try sourceToBinary(alloc, prog);
+    defer alloc.free(bin);
 
-//     const bin = try sourceCodeToBinary(source);
-//     defer bin.deinit();
-
-//     // hexDump(bin.bytes);
-
-//     _ = try validBinary(bin.bytes);
-// }
+    _ = try validBinary(bin);
+}
 
 pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
     if (prog.len == 2) return alloc.dupe(u8, "");
@@ -122,27 +117,20 @@ pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
     return try alloc.dupe(u8, output.items);
 }
 
-// test binaryCodeToSource {
-//     const allocator = std.testing.allocator;
+test binaryToSource {
+    const alloc = std.testing.allocator;
 
-//     const prog =
-//         \\   10 PRINT "Hello, World"
-//         \\   20 GOTO 10
-//         \\
-//     ;
+    const prog =
+        \\   10 PRINT "Hello, World"
+        \\   20 GOTO 10
+        \\
+    ;
 
-//     const in_source = try Code.init(allocator, prog);
-//     defer in_source.deinit();
+    const bin = try sourceToBinary(alloc, prog);
+    defer alloc.free(bin);
 
-//     const bin = try sourceCodeToBinary(in_source);
-//     defer bin.deinit();
+    const out_source = try binaryToSource(alloc, bin);
+    defer alloc.free(out_source);
 
-//     // hexDump(bin.bytes);
-
-//     const out_source = try binaryCodeToSource(bin);
-//     defer out_source.deinit();
-
-//     // std.debug.print("{s}", .{out_source.bytes});
-
-//     try std.testing.expectEqualDeep(prog, out_source.bytes);
-// }
+    try std.testing.expectEqualDeep(prog, out_source);
+}
