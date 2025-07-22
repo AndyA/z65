@@ -121,41 +121,28 @@ P% = code
 .pixaddr    STX tmp + 0
             STY tmp + 1
 
-            TXA
-            LSR A
-            LSR A
-            LSR A
-            CLC
+            STX row_a + 0
+            STY row_a + 1
+            LDA #0
+            TAX
+            LSR row_a + 1 : ROR row_a + 0 : ROL A
+            LSR row_a + 1 : ROR row_a + 0 : ROL A
+            LSR row_a + 1 : ROR row_a + 0 : ROL A
+            TAY
+            LDA bitsf, Y
+            PHA
+
+            LDA row_a + 0
             ADC #screen MOD 256
             STA row_a + 0
-            LDA #screen DIV 256
-            ADC #0
+            LDA row_a + 1
+            ADC #screen DIV 256
             STA row_a + 1
-
-            LDA tmp + 1 \ Y
-            LDX #0
-            STX tmp + 3
-            JSR asl5
-            ADC row_a + 0
-            STA row_a + 0
-            LDA tmp + 3
-            ADC row_a + 1
-            STA row_a + 1
-
-            LDA tmp + 0 \ X
-            AND #&07
-            TAY
-            LDA bits, Y
+            PLA
             RTS
 
-.asl5       JSR asl1
-.asl4       JSR asl2
-.asl2       JSR asl1
-.asl1       ASL A : ROL tmp + 3
-            RTS
-
-.bits       EQUB &01 : EQUB &02 : EQUB &04 : EQUB &08
-            EQUB &10 : EQUB &20 : EQUB &40 : EQUB &80
+.bitsf      EQUB &01 : EQUB &10 : EQUB &04 : EQUB &40
+            EQUB &02 : EQUB &20 : EQUB &08 : EQUB &80
 
 .getpix     JSR pixaddr
             AND (row_a, X)
