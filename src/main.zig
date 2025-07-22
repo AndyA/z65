@@ -32,8 +32,11 @@ pub fn main() !void {
         &r.interface,
         &w.interface,
         &ram,
-        .{ .file = SNAPSHOT ++ ".bbc", .auto_save = true },
-        .{ .file = SNAPSHOT ++ ".bas", .auto_save = true, .auto_load = true },
+        .{
+            .file = SNAPSHOT ++ ".bas",
+            .auto_save = true,
+            .auto_load = true,
+        },
     );
     defer lang.deinit();
 
@@ -70,6 +73,5 @@ pub fn main() !void {
 
 test {
     @import("std").testing.refAllDecls(@This());
-    _ = @import("bbc_basic.zig");
     _ = @import("basic/converter.zig");
 }

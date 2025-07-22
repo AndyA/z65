@@ -125,6 +125,7 @@ test sourceCodeToBinary {
 }
 
 pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) !Code {
+    if (prog.len == 2) return Code.init(alloc, "");
     var r = std.io.Reader.fixed(
         \\OLD
         \\LIST
@@ -135,6 +136,7 @@ pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) !Code {
 
     var ram: [0x10000]u8 = @splat(0);
     try setProgram(&ram, prog);
+    // Why doesn't this fail on Bad Program?
     try runner.runHiBasic(alloc, &ram, &r, &w.writer);
 
     var output = w.toArrayList();

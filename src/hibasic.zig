@@ -1,6 +1,5 @@
 const std = @import("std");
 const ct = @import("cpu/cpu_tools.zig");
-const bb = @import("bbc_basic.zig");
 const cvt = @import("basic/converter.zig");
 const code = @import("basic/code.zig");
 
@@ -43,9 +42,8 @@ pub const HiBasic = struct {
     writer: *std.io.Writer,
 
     ram: *[0x10000]u8,
-    bin_snapshot: ?HiBasicSnapshot,
-    src_snapshot: ?HiBasicSnapshot,
-    src_last_modified: i128 = 0,
+    snapshot: ?HiBasicSnapshot,
+    last_modified: i128 = 0,
     started: bool = false,
     prog_hash: u256 = 0,
 
@@ -54,26 +52,19 @@ pub const HiBasic = struct {
         reader: *std.io.Reader,
         writer: *std.io.Writer,
         ram: *[0x10000]u8,
-        bin_snapshot: ?HiBasicSnapshot,
-        src_snapshot: ?HiBasicSnapshot,
+        snapshot: ?HiBasicSnapshot,
     ) !Self {
         return Self{
             .alloc = alloc,
             .reader = reader,
             .writer = writer,
             .ram = ram,
-            .bin_snapshot = bin_snapshot,
-            .src_snapshot = src_snapshot,
+            .snapshot = snapshot,
         };
     }
 
     pub fn deinit(self: *Self) void {
         _ = self;
-    }
-
-    pub fn @"hook:reset"(self: *Self, cpu: anytype) !void {
-        self.started = false;
-        cpu.os.startCapture();
     }
 
     pub fn commandMode(self: *Self, cpu: anytype) bool {
@@ -90,8 +81,6 @@ pub const HiBasic = struct {
         if (!self.started) {
             self.started = true;
             try self.onStartup(cpu);
-            const output = cpu.os.takeCapture();
-            try self.writer.print("{s}", .{output});
         }
 
         const hash = hashBytes(self.getProgram(cpu));
@@ -106,25 +95,15 @@ pub const HiBasic = struct {
         if (!self.commandMode(cpu))
             return line;
 
-        if (self.src_snapshot) |snap| {
+        if (self.snapshot) |snap| {
             if (snap.auto_load) {
                 const lm = try lastModified(snap.file);
                 if (lm == 0) return line;
-                const changed = self.src_last_modified != 0 and self.src_last_modified != lm;
-                self.src_last_modified = lm;
+                const changed = self.last_modified != 0 and self.last_modified != lm;
+                self.last_modified = lm;
 
                 if (changed) {
-                    const prog = try std.fs.cwd().readFileAlloc(self.alloc, snap.file, 0x10000);
-                    defer self.alloc.free(prog);
-
-                    const bin = try cvt.parseSource(self.alloc, prog);
-                    defer bin.deinit();
-
-                    const current = self.getProgram(cpu);
-                    if (!std.mem.eql(u8, bin.bytes, current)) {
-                        try self.setProgram(cpu, bin.bytes);
-                        code.clearVariables(self.ram);
-                    }
+                    try self.loadSource(cpu, snap.file);
                 }
             }
         }
@@ -132,32 +111,43 @@ pub const HiBasic = struct {
         return line;
     }
 
-    fn onStartup(self: *Self, cpu: anytype) !void {
-        if (self.bin_snapshot) |snap| {
-            if (try self.loadBinSnapshot(cpu, snap.file)) {
-                try self.writer.print("Loaded {s}\n", .{snap.file});
-            }
+    fn loadSource(self: *Self, cpu: anytype, file: []const u8) !void {
+        const prog = try std.fs.cwd().readFileAlloc(self.alloc, file, 0x10000);
+        defer self.alloc.free(prog);
+
+        const bin = try cvt.parseSource(self.alloc, prog);
+        defer bin.deinit();
+
+        const current = self.getProgram(cpu);
+        if (!std.mem.eql(u8, bin.bytes, current)) {
+            try self.setProgram(cpu, bin.bytes);
+            code.clearVariables(self.ram);
         }
-        if (self.src_snapshot) |snap| {
-            self.src_last_modified = try lastModified(snap.file);
+    }
+
+    pub fn saveSource(self: Self, cpu: anytype, file: []const u8) !void {
+        const prog = self.getProgram(cpu);
+        const source = try cvt.stringifyBinary(self.alloc, prog);
+        defer source.deinit();
+        const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
+        defer fh.close();
+        try fh.writeAll(source.bytes);
+    }
+
+    fn onStartup(self: *Self, cpu: anytype) !void {
+        if (self.snapshot) |snap| {
+            self.loadSource(cpu, snap.file) catch |err| {
+                if (err == error.FileNotFound) return;
+                return err;
+            };
+            self.last_modified = try lastModified(snap.file);
         }
     }
 
     fn onCodeChange(self: *Self, cpu: anytype) !void {
-        if (self.bin_snapshot) |snap| {
+        if (self.snapshot) |snap| {
             if (snap.auto_save) {
-                try self.saveBinSnapshot(cpu, snap.file);
-            }
-        }
-
-        if (self.src_snapshot) |snap| {
-            if (snap.auto_save) {
-                const prog = self.getProgram(cpu);
-                const source = try cvt.stringifyBinary(self.alloc, prog);
-                defer source.deinit();
-                const fh = try std.fs.cwd().createFile(snap.file, .{ .truncate = true });
-                defer fh.close();
-                try fh.writeAll(source.bytes);
+                try self.saveSource(cpu, snap.file);
             }
         }
     }
@@ -171,9 +161,11 @@ pub const HiBasic = struct {
 
     pub fn shutDown(self: *Self, cpu: anytype) !void {
         try self.writer.print("\n", .{});
-        if (self.bin_snapshot) |snap| {
-            try self.saveBinSnapshot(cpu, snap.file);
-            try self.writer.print("Saved {s}\n", .{snap.file});
+        if (self.snapshot) |snap| {
+            if (snap.auto_save) {
+                try self.saveSource(cpu, snap.file);
+                try self.writer.print("Saved {s}\n", .{snap.file});
+            }
         }
         try self.writer.print("Bye!\n", .{});
     }

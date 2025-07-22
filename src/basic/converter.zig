@@ -106,9 +106,9 @@ test getSourceInfo {
 }
 
 fn withoutLastLine(text: []const u8) []const u8 {
-    if (text.len > 0 and text[text.len - 1] == '\n')
-        return text[0 .. text.len - 1];
-    return text;
+    var pos = text.len;
+    if (pos > 0 and text[pos - 1] == '\n') pos -= 1;
+    return text[0..pos];
 }
 
 pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) !code.Code {
@@ -120,11 +120,14 @@ pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) !code.Code {
     var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
-    var iter = std.mem.splitScalar(u8, withoutLastLine(source), '\n');
-    var num: usize = 10;
-    while (iter.next()) |line| : (num += 10) {
-        const tail = line[@min(line.len, info.indent)..];
-        try w.writer.print("{d} {s}\n", .{ num, tail });
+    const src = withoutLastLine(source);
+    if (src.len > 0) {
+        var iter = std.mem.splitScalar(u8, src, '\n');
+        var num: usize = 10;
+        while (iter.next()) |line| : (num += 10) {
+            const tail = line[@min(line.len, info.indent)..];
+            try w.writer.print("{d} {s}\n", .{ num, tail });
+        }
     }
     var output = w.toArrayList();
     defer output.deinit(alloc);

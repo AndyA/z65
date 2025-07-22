@@ -24,8 +24,6 @@ pub fn TubeOS(comptime LangType: type) type {
         reader: *std.io.Reader,
         writer: *std.io.Writer,
         lang: *LangType,
-        output: std.ArrayList(u8),
-        capture: bool = false,
 
         pub fn init(
             alloc: std.mem.Allocator,
@@ -39,32 +37,15 @@ pub fn TubeOS(comptime LangType: type) type {
                 .reader = reader,
                 .writer = writer,
                 .lang = lang,
-                .output = try std.ArrayList(u8).initCapacity(alloc, 256),
             };
         }
 
         pub fn deinit(self: *Self) void {
-            self.output.deinit();
+            _ = self;
         }
 
         pub fn reset(self: Self, cpu: anytype) void {
             self.install(cpu);
-            if (@hasDecl(LangType, "hook:reset"))
-                try self.lang.@"hook:reset"(cpu);
-        }
-
-        pub fn startCapture(self: *Self) void {
-            self.capture = true;
-            self.output.clearRetainingCapacity();
-        }
-
-        pub fn peekCapture(self: Self) []const u8 {
-            return self.output.items;
-        }
-
-        pub fn takeCapture(self: *Self) []const u8 {
-            self.capture = false;
-            return self.output.items;
         }
 
         fn install(self: Self, cpu: anytype) void {
@@ -224,11 +205,7 @@ pub fn TubeOS(comptime LangType: type) type {
         }
 
         fn doOSWRCH(self: *Self, cpu: anytype) !void {
-            if (self.capture) {
-                try self.output.append(cpu.A);
-            } else {
-                try self.writer.print("{c}", .{cpu.A});
-            }
+            try self.writer.print("{c}", .{cpu.A});
         }
 
         fn doOSRDCH(self: *Self, cpu: anytype) !void {
