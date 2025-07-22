@@ -1,0 +1,444 @@
+REM Turns out BBC Basic is UTF-8 safe
+REM Andy Armstrong <andy@hexten.net>
+
+oswrch = &FFEE
+osnewl = &FFE7
+zig_trace = &FE90
+
+scratch  = &50
+
+tmp      = &70
+row_a    = &74
+row_b    = &76
+buf      = &78
+count    = &7C
+last_x   = &7D
+last_y   = &7E
+
+height   = 70
+width    = 72
+
+DIM code 1000
+DIM screen 8191
+
+FOR pass = 0 TO 2 STEP 2
+P% = code
+[OPT pass
+
+.putdot     PHA
+            STX tmp
+            AND #&0F
+            TAX
+            BEQ putdot2
+            LDA #&E2
+            JSR oswrch
+            LDA #&96
+            JSR oswrch
+            LDA dots, X
+.putdot1    JSR oswrch
+            LDX tmp
+            PLA
+            RTS
+
+.putdot2    LDA #ASC" "
+            BNE putdot1
+
+.dots       EQUB &20 : EQUB &98 : EQUB &9D : EQUB &80
+            EQUB &96 : EQUB &8C : EQUB &9E : EQUB &9B
+            EQUB &97 : EQUB &9A : EQUB &90 : EQUB &9C
+            EQUB &84 : EQUB &99 : EQUB &9F : EQUB &88
+
+.showscreen LDA #screen MOD 256
+            STA row_a + 0
+            CLC
+            ADC #32
+            STA row_b + 0
+            LDA #screen DIV 256
+            STA row_a + 1
+            ADC #0
+            STA row_b + 1
+            LDA #height DIV 2
+            STA count
+
+.shows0     LDY #0
+
+.shows1     LDA (row_a), Y \ top half of character
+            LDX #3
+.shows2     PHA
+            AND #&03
+            STA buf, X
+            PLA
+            LSR A : LSR A
+            DEX
+            BPL shows2
+            
+            LDA (row_b), Y \ bottom half of character
+            LDX #3
+.shows3     PHA
+            ASL A : ASL A
+            ORA buf, X
+            JSR putdot
+            PLA
+            LSR A : LSR A
+            DEX
+            BPL shows3
+
+            INY
+            CPY #width DIV 8
+            BCC shows1
+            JSR osnewl
+
+            LDX #row_a : JSR add64
+            LDX #row_b : JSR add64
+
+            DEC count
+            BNE shows0
+            RTS
+
+.add64      CLC
+            LDA 0, X
+            ADC #64
+            STA 0, X
+            BCC add641
+            INC 1, X
+.add641     RTS
+
+
+
+.clear      LDY #screen MOD 256
+            STY row_a + 0
+            LDY #screen DIV 256
+            STY row_a + 1
+            LDY #0
+            LDX #32
+.cl1        STA (row_a), Y
+            INY
+            BNE cl1
+            INC row_a + 1
+            DEX
+            BNE cl1
+            RTS
+
+.pixaddr    STX tmp + 0
+            STY tmp + 1
+
+            TXA
+            LSR A
+            LSR A
+            LSR A
+            CLC
+            ADC #screen MOD 256
+            STA row_a + 0
+            LDA #screen DIV 256
+            ADC #0
+            STA row_a + 1
+
+            LDA tmp + 1 \ Y
+            LDX #0
+            STX tmp + 3
+            JSR asl5
+            ADC row_a + 0
+            STA row_a + 0
+            LDA tmp + 3
+            ADC row_a + 1
+            STA row_a + 1
+
+            LDA tmp + 0 \ X
+            AND #&07
+            TAY
+            LDA bits, Y
+            RTS
+
+.asl5       JSR asl1
+.asl4       JSR asl2
+.asl2       JSR asl1
+.asl1       ASL A : ROL tmp + 3
+            RTS
+
+.bits       EQUB &01 : EQUB &02 : EQUB &04 : EQUB &08
+            EQUB &10 : EQUB &20 : EQUB &40 : EQUB &80
+
+.getpix     JSR pixaddr
+            AND (row_a, X)
+            BEQ setpix5
+            LDA #1
+            BNE setpix5
+
+.setpix     PHA
+            CMP #0
+            BNE setpix1
+            JSR pixaddr
+            EOR #&FF
+            AND (row_a, X)
+            BCC setpix3
+
+.setpix1    CMP #1
+            BNE setpix2
+            JSR pixaddr
+            ORA (row_a, X)
+            BCC setpix3
+
+.setpix2    CMP #2
+            BNE setpix4
+            JSR pixaddr
+            EOR (row_a, X)
+.setpix3    STA (row_a, X)
+.setpix4    PLA
+.setpix5    LDX tmp + 0
+            LDY tmp + 1
+            RTS
+
+\ We're interested in four cases:
+\  shallow +X +Y
+\  shallow +X -Y
+\  steep   +X +Y
+\  steep   -X +Y
+
+.draw       STA buf + 0
+            TXA
+            PHA
+            SEC
+            SBC last_x
+            BCS draw1
+            EOR #&FF
+            ADC #1
+.draw1      STA buf + 1 \ dX
+            TYA
+            PHA
+            SEC
+            SBC last_y
+            BCS draw2
+            EOR #&FF
+            ADC #1
+.draw2      STA buf + 2 \ dY
+            PHA
+            CLC
+            ADC buf + 1
+            ROR A
+            STA count
+            PLA
+            CMP buf + 1
+            BCS draw8 \ dY >= dX
+
+\ Shallow
+
+            CPX last_x
+            BCC draw3
+            JSR swapends
+.draw3      INC last_x \ make end cond easier
+            CPY last_y
+            BCS draw6 \ Down
+
+\ Shallow up
+
+.draw4      LDA buf + 0
+            JSR setpix
+            LDA count
+            SEC
+            SBC buf + 2
+            BCS draw5
+            ADC buf + 1
+            INY
+.draw5      STA count
+            INX
+            CPX last_x
+            BCC draw4
+            BCS drawX
+
+\ Shallow down
+
+.draw6      LDA buf + 0
+            JSR setpix
+            LDA count
+            SEC
+            SBC buf + 2
+            BCS draw7
+            ADC buf + 1
+            DEY
+.draw7      STA count
+            INX
+            CPX last_x
+            BCC draw6
+            BCS drawX
+
+\ Steep
+
+.draw8      CPY last_y
+            BCC draw9
+            JSR swapends
+.draw9      INC last_y
+            CPX last_x
+            BCS draw12 \ Left
+
+\ Steep right
+
+.draw10     LDA buf + 0
+            JSR setpix
+            LDA count
+            SEC
+            SBC buf + 1
+            BCS draw11
+            ADC buf + 2
+            INX
+.draw11     STA count
+            INY
+            CPY last_y
+            BCC draw10
+            BCS drawX
+
+\ Steep left
+
+.draw12     LDA buf + 0
+            JSR setpix
+            LDA count
+            SEC
+            SBC buf + 1
+            BCS draw13
+            ADC buf + 2
+            DEX
+.draw13     STA count
+            INY
+            CPY last_y
+            BCC draw12
+
+.drawX      PLA
+            TAY
+            PLA
+            TAX
+            LDA buf + 0
+
+.move       STX last_x
+            STY last_y
+            RTS
+
+.swapends   LDA last_x
+            STX last_x
+            TAX
+            LDA last_y
+            STY last_y
+            TAY
+            RTS
+
+.debug_t    JSR trace
+.debug      PHP
+            PHA
+            JSR prstr : EQUS "dX=" : EQUB 0
+            LDA buf + 1 : JSR prdec
+            JSR prstr : EQUS ", dY=" : EQUB 0
+            LDA buf + 2 : JSR prdec
+            JSR prstr : EQUS ", count=" : EQUB 0
+            LDA count : JSR prdec
+            JSR prstr : EQUS ", X=" : EQUB 0
+            TXA : JSR prdec
+            JSR prstr : EQUS ", Y=" : EQUB 0
+            TYA : JSR prdec
+            JSR prstr : EQUS ", lX=" : EQUB 0
+            LDA last_x : JSR prdec
+            JSR prstr : EQUS ", lY=" : EQUB 0
+            LDA last_y : JSR prdec
+            JSR osnewl
+            PLA
+            PLP
+            RTS
+
+.prstr      PLA
+            STA scratch + 0
+            PLA
+            STA scratch + 1
+            TYA
+            PHA
+            LDY #0
+.prstr1     INC scratch + 0
+            BNE prstr2
+            INC scratch + 1
+.prstr2     LDA (scratch), Y
+            BEQ prstr3
+            JSR oswrch
+            JMP prstr1
+.prstr3     PLA
+            TAY
+            LDA scratch + 1
+            PHA
+            LDA scratch + 0
+            PHA
+            RTS
+
+.prdec      PHA
+            STA scratch + 0
+            TXA
+            PHA
+            LDA #0
+            PHA
+.prdec1     LDX #8
+            LDA #0
+.prdec2     ASL scratch + 0
+            ROL A
+            CMP #10
+            BCC prdec3
+            SBC #10
+            INC scratch + 0
+.prdec3     DEX
+            BNE prdec2
+            CLC
+            ADC #ASC"0"
+            PHA
+            LDA scratch + 0
+            BNE prdec1
+.prdec4     PLA
+            BEQ prdec5
+            JSR oswrch
+            JMP prdec4
+.prdec5     PLA
+            TAX
+            PLA
+            RTS
+
+.trace      STA scratch + 0
+            PHP : PLA : STA scratch + 1
+            PLA : STA scratch + 2
+            PLA : STA scratch + 3
+            LDA zig_trace : PHA
+            LDA #(trace_x - 1) DIV 256 : PHA
+            LDA #(trace_x - 1) MOD 256 : PHA
+            LDA scratch + 3 : PHA
+            LDA scratch + 2 : PHA
+            LDA #1 : STA zig_trace
+            LDA scratch + 1 : PHA
+            LDA scratch + 0
+            PLP
+            RTS
+
+.trace_x    STA scratch + 0
+            PHP : PLA : STA scratch + 1
+            PLA : STA zig_trace
+            LDA scratch + 1 : PHA
+            LDA scratch + 0
+            PLP
+            RTS
+
+]
+NEXT
+PRINT "Code size: "; P% - code
+
+A% = 255 : CALL clear
+init% = TRUE
+PROChilbert(0, 0, 0, 1, 0, 0, 1, 5)
+
+CALL showscreen
+END
+
+DEF PROCline(A%, X%, Y%)
+  IF init% THEN CALL move : init% = FALSE ELSE CALL draw
+ENDPROC
+
+DEF PROCseg(A%, x, y)
+  PROCline(A%, 3 + x * 64, 2 + y * 64)
+ENDPROC
+
+DEF PROChilbert(A%, x, y, xi, xj, yi, yj, n)
+  IF n <= 0 THEN PROCseg(A%, x + (xi + yi) / 2, y + (xj + yj) / 2) : ENDPROC
+  PROChilbert(A%, x,           y,           yi/2, yj/2,  xi/2,  xj/2, n-1)
+  PROChilbert(A%, x+xi/2,      y+xj/2 ,     xi/2, xj/2,  yi/2,  yj/2, n-1)
+  PROChilbert(A%, x+xi/2+yi/2, y+xj/2+yj/2, xi/2, xj/2,  yi/2,  yj/2, n-1)
+  PROChilbert(A%, x+xi/2+yi,   y+xj/2+yj,  -yi/2,-yj/2, -xi/2, -xj/2, n-1)
+ENDPROC

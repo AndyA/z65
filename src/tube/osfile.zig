@@ -1,7 +1,7 @@
 const std = @import("std");
 const ct = @import("../cpu/cpu_tools.zig");
 
-fn writeFile(name: []const u8, bytes: []const u8) !void {
+pub fn writeFile(name: []const u8, bytes: []const u8) !void {
     // TODO atomic
     const file = try std.fs.cwd().createFile(name, .{ .truncate = true });
     defer file.close();
@@ -27,14 +27,14 @@ pub const OSFILE = struct {
         var file_name = try ct.peekString(alloc, cpu, self.filename, 0x0D);
         defer file_name.deinit();
 
+        const lang = cpu.os.lang;
+        if (@hasDecl(@TypeOf(lang.*), "hook:save")) {
+            if (try lang.@"hook:save"(self, cpu, file_name.items)) return 0x01;
+        }
+
         const size: u16 = @intCast(self.end_addr - self.start_addr);
         const bytes = try ct.peekBytesAlloc(alloc, cpu, @intCast(self.start_addr), size);
         defer alloc.free(bytes);
-
-        const lang = cpu.os.lang;
-        if (@hasDecl(@TypeOf(lang.*), "hook:save")) {
-            try lang.@"hook:save"(cpu);
-        }
 
         try writeFile(file_name.items, bytes);
 
@@ -45,20 +45,14 @@ pub const OSFILE = struct {
         var file_name = try ct.peekString(alloc, cpu, self.filename, 0x0D);
         defer file_name.deinit();
 
-        const file = try std.fs.cwd().openFile(file_name.items, .{});
-        defer file.close();
-
-        var buffer: [1024]u8 = undefined;
-        var offset: u16 = 0;
-
-        // std.debug.print("Loading {s} \"{s}\"\n", .{ self, file_name.items });
-
-        while (true) {
-            const read_size = try file.read(&buffer);
-            if (read_size == 0) break; // EOF
-            ct.pokeBytes(cpu, @intCast(self.load_addr + offset), buffer[0..read_size]);
-            offset += @intCast(read_size);
+        const lang = cpu.os.lang;
+        if (@hasDecl(@TypeOf(lang.*), "hook:load")) {
+            if (try lang.@"hook:load"(self, cpu, file_name.items)) return 0x01;
         }
+
+        var buf: [0x10000]u8 = undefined;
+        const prog = try std.fs.cwd().readFile(file_name.items, &buf);
+        ct.pokeBytes(cpu, @intCast(self.load_addr), prog);
         return 0x01;
     }
 

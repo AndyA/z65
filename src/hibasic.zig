@@ -2,6 +2,8 @@ const std = @import("std");
 const ct = @import("cpu/cpu_tools.zig");
 const cvt = @import("basic/converter.zig");
 const code = @import("basic/code.zig");
+const kw = @import("basic/keywords.zig");
+const osfile = @import("tube/osfile.zig");
 
 const Symbols = @import("tube/os.zig").Symbols;
 
@@ -19,6 +21,12 @@ pub fn lastModified(file: []const u8) !i128 {
     defer fh.close();
     const s = try fh.stat();
     return s.mtime;
+}
+
+fn isFileCommand(tok: u8) bool {
+    return tok == @intFromEnum(kw.KeywordsEnum.LOAD) or
+        tok == @intFromEnum(kw.KeywordsEnum.SAVE) or
+        tok == @intFromEnum(kw.KeywordsEnum.CHAIN);
 }
 
 pub const HiBasicSnapshot = struct {
@@ -111,15 +119,67 @@ pub const HiBasic = struct {
         return line;
     }
 
-    pub fn @"hook:save"(self: Self, cpu: anytype) !void {
+    fn commandContext(self: Self, cpu: anytype, pred: fn (u8) bool) bool {
         _ = self;
-        _ = cpu;
-        std.debug.print("hook:save\n", .{});
+        var nextp = cpu.peek16(Self.NEXTP);
+        const cutoff = nextp -| 0x100;
+        while (nextp > cutoff) {
+            nextp -= 1;
+            const c = cpu.peek8(nextp);
+            if (c == '"') {
+                nextp -= 1;
+                while (cpu.peek8(nextp) != '"') nextp -= 1;
+                continue;
+            }
+            if (pred(c)) return true;
+            if (c == 0x0D or c == ':') return false;
+        }
+        return false;
+    }
+
+    fn shouldIntercept(
+        self: Self,
+        osf: osfile.OSFILE,
+        cpu: anytype,
+        name: []const u8,
+    ) bool {
+        const page = self.getPage(cpu);
+        return self.commandContext(cpu, isFileCommand) and
+            std.ascii.endsWithIgnoreCase(name, ".bas") and
+            (osf.load_addr == page or osf.start_addr == page);
+    }
+
+    pub fn @"hook:load"(
+        self: *Self,
+        osf: osfile.OSFILE,
+        cpu: anytype,
+        name: []const u8,
+    ) !bool {
+        if (self.shouldIntercept(osf, cpu, name)) {
+            try self.loadSource(cpu, name);
+            return true;
+        }
+
+        return false;
+    }
+
+    pub fn @"hook:save"(
+        self: Self,
+        osf: osfile.OSFILE,
+        cpu: anytype,
+        name: []const u8,
+    ) !bool {
+        if (self.shouldIntercept(osf, cpu, name)) {
+            try self.saveSource(cpu, name);
+            return true;
+        }
+
+        return false;
     }
 
     fn loadSource(self: *Self, cpu: anytype, file: []const u8) !void {
-        const prog = try std.fs.cwd().readFileAlloc(self.alloc, file, 0x10000);
-        defer self.alloc.free(prog);
+        var buf: [0x10000]u8 = undefined;
+        const prog = try std.fs.cwd().readFile(file, &buf);
 
         const bin = try cvt.parseSource(self.alloc, prog);
         defer self.alloc.free(bin);
@@ -135,9 +195,7 @@ pub const HiBasic = struct {
         const prog = self.getProgram(cpu);
         const source = try cvt.stringifyBinary(self.alloc, prog);
         defer self.alloc.free(source);
-        const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
-        defer fh.close();
-        try fh.writeAll(source);
+        try osfile.writeFile(file, source);
     }
 
     fn onStartup(self: *Self, cpu: anytype) !void {
@@ -170,7 +228,6 @@ pub const HiBasic = struct {
         if (self.snapshot) |snap| {
             if (snap.auto_save) {
                 try self.saveSource(cpu, snap.file);
-                try self.writer.print("Saved {s}\n", .{snap.file});
             }
         }
         try self.writer.print("Bye!\n", .{});
