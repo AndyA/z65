@@ -1,12 +1,13 @@
 const std = @import("std");
-const machine = @import("cpu/cpu.zig");
-const memory = @import("cpu/memory.zig");
-const tube = @import("tube/os.zig");
-const hb = @import("hibasic.zig");
-const serde = @import("serde.zig").serde;
+const machine = @import("../cpu/cpu.zig");
+const memory = @import("../cpu/memory.zig");
+const tube = @import("../tube/os.zig");
+const hb = @import("../hibasic.zig");
+const serde = @import("../serde.zig").serde;
+const kw = @import("keywords.zig");
 
-const constants = @import("tube/constants.zig");
-const hashBytes = @import("tools/hasher.zig").hashBytes;
+const constants = @import("../tube/constants.zig");
+const hashBytes = @import("../tools/hasher.zig").hashBytes;
 
 const HIMEM = @intFromEnum(constants.Symbols.HIMEM);
 const PAGE = @intFromEnum(constants.Symbols.PAGE);
@@ -19,7 +20,7 @@ const MiniBasic = struct {
     ram: *[0x10000]u8,
 
     pub fn reset(self: *Self, cpu: anytype) void {
-        const rom_image = @embedFile("roms/HiBASIC.rom");
+        const rom_image = @embedFile("../roms/HiBASIC.rom");
         @memcpy(self.ram[HIMEM .. HIMEM + rom_image.len], rom_image);
         cpu.PC = @intCast(HIMEM);
         cpu.A = 0x01;
@@ -35,10 +36,10 @@ const MiniBasic = struct {
 const TubeOS = tube.TubeOS(MiniBasic);
 
 const Tube65C02 = machine.makeCPU(
-    @import("cpu/wdc65c02.zig").InstructionSet65C02,
-    @import("cpu/address_modes.zig").AddressModes,
-    @import("cpu/instructions.zig").Instructions,
-    @import("cpu/alu.zig").ALU65C02,
+    @import("../cpu/wdc65c02.zig").InstructionSet65C02,
+    @import("../cpu/address_modes.zig").AddressModes,
+    @import("../cpu/instructions.zig").Instructions,
+    @import("../cpu/alu.zig").ALU65C02,
     memory.FlatMemory,
     machine.NullInterruptSource,
     TubeOS,
@@ -57,25 +58,136 @@ fn peek16be(bytes: []const u8, addr: u16) u16 {
     return @as(u16, bytes[addr + 1]) | (@as(u16, bytes[addr]) << 8);
 }
 
-pub fn validBinary(prog: []const u8) ![]const u8 {
+pub const BasicLine = struct {
+    line_number: u16,
+    bytes: []const u8,
+};
+
+pub const BasicIter = struct {
+    const Self = @This();
     const bp = BasicError.BadProgram;
-    var pos: u16 = 0;
-    var line: u16 = 0;
-    while (true) {
-        if (pos + 1 >= prog.len or prog[pos] != 0x0D) return bp;
-        if (prog[pos + 1] == 0xFF) {
-            if (pos + 2 != prog.len) return bp;
-            return prog;
-        }
-        if (pos + 3 >= prog.len) return bp;
-        const ln = peek16be(prog, pos + 1);
-        if (pos > 0 and ln <= line) return bp;
-        line = ln;
-        const len = prog[pos + 3];
-        if (len < 5) return bp;
-        pos += len;
-        if (pos >= prog.len) return bp;
+    prog: []const u8,
+    pos: u16 = 0,
+
+    pub fn init(prog: []const u8) Self {
+        return Self{ .prog = prog };
     }
+
+    pub fn next(self: *Self) BasicError!?BasicLine {
+        if (self.pos + 1 >= self.prog.len or self.prog[self.pos] != 0x0D) return bp;
+        if (self.prog[self.pos + 1] == 0xFF) { // end of prog?
+            if (self.pos + 2 != self.prog.len) return bp;
+            return null;
+        }
+        if (self.pos + 3 >= self.prog.len) return bp;
+        const line_number = peek16be(self.prog, self.pos + 1);
+        const len = self.prog[self.pos + 3];
+        if (len < 5) return bp;
+        if (self.pos + len >= self.prog.len) return bp;
+        const bytes = self.prog[self.pos + 4 .. self.pos + len];
+        self.pos += len;
+
+        return BasicLine{
+            .line_number = line_number,
+            .bytes = bytes,
+        };
+    }
+};
+
+pub const LineTokenIter = struct {
+    const Self = @This();
+    line: BasicLine,
+    pos: u16 = 0,
+
+    pub fn init(line: BasicLine) Self {
+        return Self{ .line = line };
+    }
+
+    pub fn next(self: *Self) ?u8 {
+        const bytes = self.line.bytes;
+        while (true) {
+            if (self.pos >= bytes.len)
+                return null;
+
+            const tok = bytes[self.pos];
+            self.pos += 1;
+
+            if (kw.isRemLike(tok))
+                return null;
+
+            if (tok == '"') {
+                while (self.pos < bytes.len and bytes[self.pos] != '"')
+                    self.pos += 1;
+                if (self.pos >= bytes.len)
+                    return null;
+                self.pos += 1;
+                continue;
+            }
+
+            if (tok >= 0x80)
+                return tok;
+        }
+    }
+};
+
+pub const TokenIter = struct {
+    const Self = @This();
+    line_iter: BasicIter,
+    token_iter: ?LineTokenIter = null,
+
+    pub fn init(prog: []const u8) Self {
+        return Self{ .line_iter = BasicIter.init(prog) };
+    }
+
+    pub fn next(self: *Self) !?u8 {
+        while (true) {
+            if (self.token_iter == null) {
+                const line = try self.line_iter.next();
+                if (line) |l|
+                    self.token_iter = LineTokenIter.init(l)
+                else
+                    return null;
+            }
+
+            const tok = self.token_iter.?.next();
+            if (tok) |t| return t;
+            self.token_iter = null;
+        }
+    }
+};
+
+test TokenIter {
+    const allocator = std.testing.allocator;
+    const prog =
+        \\   10 PRINT """Hello, World""" : REM Quotes!
+        \\   20 GOTO 10
+        \\
+    ;
+
+    const source = try Code.init(allocator, prog);
+    defer source.deinit();
+
+    const bin = try sourceToBinary(source);
+    defer bin.deinit();
+
+    hexDump(bin.bytes);
+
+    var ti = TokenIter.init(bin.bytes);
+    try std.testing.expectEqualDeep(@intFromEnum(kw.KeywordsEnum.PRINT), try ti.next());
+    try std.testing.expectEqualDeep(@intFromEnum(kw.KeywordsEnum.GOTO), try ti.next());
+    try std.testing.expectEqualDeep(@intFromEnum(kw.KeywordsEnum.@":line:"), try ti.next());
+    try std.testing.expectEqualDeep(null, try ti.next());
+}
+
+pub fn validBinary(prog: []const u8) BasicError![]const u8 {
+    var i = BasicIter.init(prog);
+    var last_line: u16 = 0;
+    while (try i.next()) |line| {
+        if (last_line != 0 and line.line_number <= last_line)
+            return BasicError.BadProgram;
+        last_line = line.line_number;
+    }
+    return prog;
 }
 
 pub fn getProgram(ram: *[0x10000]u8) ![]const u8 {
@@ -263,7 +375,7 @@ test sourceToBinary {
     const bin = try sourceToBinary(source);
     defer bin.deinit();
 
-    hexDump(bin.bytes);
+    // hexDump(bin.bytes);
 
     _ = try validBinary(bin.bytes);
 }
@@ -324,64 +436,64 @@ fn showChanged(a: []const u8, b: []const u8) void {
     }
 }
 
-test "playground" {
-    const allocator = std.testing.allocator;
-    var ram0: [0x10000]u8 = @splat(0xff);
-    var ram1: [0x10000]u8 = @splat(0xff);
-    var ram2: [0x10000]u8 = @splat(0xff);
-    ram1[255] = 0;
-    ram2[255] = 0;
-    const prog =
-        \\   10 A$ = "Hi!" : PRINT A$
-        \\   20 A = 100 : B = 100 : Z = 100
-        \\   30 A$ = "A" : B$ = "B" : Z$ = "Z"
-        \\   40 DIM a(100) : DIM a$(100) : DIM a% 100
-        \\   50 DIM z(100) : DIM z$(100) : DIM z% 100
-        \\   60 PROChello
-        \\   70 END
-        \\   80 DEF PROChello
-        \\   90   LOCAL A$
-        \\  100   PRINT "Hello, World"
-        \\  110 ENDPROC
-        \\REN.
-        \\LIST
-        \\RUN
-        \\
-    ;
-    {
-        var r = std.io.Reader.fixed(prog);
-        var buf: std.ArrayListUnmanaged(u8) = .empty;
-        var w = std.io.Writer.Allocating.fromArrayList(allocator, &buf);
-        defer w.deinit();
+// test "playground" {
+//     const allocator = std.testing.allocator;
+//     var ram0: [0x10000]u8 = @splat(0xff);
+//     var ram1: [0x10000]u8 = @splat(0xff);
+//     var ram2: [0x10000]u8 = @splat(0xff);
+//     ram1[255] = 0;
+//     ram2[255] = 0;
+//     const prog =
+//         \\   10 A$ = "Hi!" : PRINT A$
+//         \\   20 A = 100 : B = 100 : Z = 100
+//         \\   30 A$ = "A" : B$ = "B" : Z$ = "Z"
+//         \\   40 DIM a(100) : DIM a$(100) : DIM a% 100
+//         \\   50 DIM z(100) : DIM z$(100) : DIM z% 100
+//         \\   60 PROChello
+//         \\   70 END
+//         \\   80 DEF PROChello
+//         \\   90   LOCAL A$
+//         \\  100   PRINT "Hello, World"
+//         \\  110 ENDPROC
+//         \\REN.
+//         \\LIST
+//         \\RUN
+//         \\
+//     ;
+//     {
+//         var r = std.io.Reader.fixed(prog);
+//         var buf: std.ArrayListUnmanaged(u8) = .empty;
+//         var w = std.io.Writer.Allocating.fromArrayList(allocator, &buf);
+//         defer w.deinit();
 
-        try runHiBasic(allocator, &ram1, &r, &w.writer);
+//         try runHiBasic(allocator, &ram1, &r, &w.writer);
 
-        var output = w.toArrayList();
-        defer output.deinit(allocator);
-        cleanBasicOutput(&output);
+//         var output = w.toArrayList();
+//         defer output.deinit(allocator);
+//         cleanBasicOutput(&output);
 
-        std.debug.print("----\n{s}----\n", .{output.items});
-    }
+//         std.debug.print("----\n{s}----\n", .{output.items});
+//     }
 
-    showChanged(ram0[0..0xb800], ram1[0..0xb800]);
+//     showChanged(ram0[0..0xb800], ram1[0..0xb800]);
 
-    {
-        var r = std.io.Reader.fixed(prog ++
-            \\CLEAR
-            \\
-        );
-        var buf: std.ArrayListUnmanaged(u8) = .empty;
-        var w = std.io.Writer.Allocating.fromArrayList(allocator, &buf);
-        defer w.deinit();
+//     {
+//         var r = std.io.Reader.fixed(prog ++
+//             \\CLEAR
+//             \\
+//         );
+//         var buf: std.ArrayListUnmanaged(u8) = .empty;
+//         var w = std.io.Writer.Allocating.fromArrayList(allocator, &buf);
+//         defer w.deinit();
 
-        runHiBasic(allocator, &ram2, &r, &w.writer) catch |err| {
-            var output = w.toArrayList();
-            defer output.deinit(allocator);
-            cleanBasicOutput(&output);
-            std.debug.print("----\n{s}----\n", .{output.items});
-            return err;
-        };
-    }
+//         runHiBasic(allocator, &ram2, &r, &w.writer) catch |err| {
+//             var output = w.toArrayList();
+//             defer output.deinit(allocator);
+//             cleanBasicOutput(&output);
+//             std.debug.print("----\n{s}----\n", .{output.items});
+//             return err;
+//         };
+//     }
 
-    showChanged(ram1[0..0xb800], ram2[0..0xb800]);
-}
+//     showChanged(ram1[0..0xb800], ram2[0..0xb800]);
+// }
