@@ -1,6 +1,13 @@
 const std = @import("std");
 const ct = @import("../cpu/cpu_tools.zig");
 
+fn writeFile(name: []const u8, bytes: []const u8) !void {
+    // TODO atomic
+    const file = try std.fs.cwd().createFile(name, .{ .truncate = true });
+    defer file.close();
+    try file.writeAll(bytes);
+}
+
 pub const OSFILE = struct {
     const Self = @This();
 
@@ -24,12 +31,13 @@ pub const OSFILE = struct {
         const bytes = try ct.peekBytesAlloc(alloc, cpu, @intCast(self.start_addr), size);
         defer alloc.free(bytes);
 
-        // std.debug.print("Saving {s} \"{s}\"\n", .{ self, file_name.items });
+        const lang = cpu.os.lang;
+        if (@hasDecl(@TypeOf(lang.*), "hook:save")) {
+            try lang.@"hook:save"(cpu);
+        }
 
-        const file = try std.fs.cwd().createFile(file_name.items, .{ .truncate = true });
-        defer file.close();
+        try writeFile(file_name.items, bytes);
 
-        try file.writeAll(bytes);
         return 0x01;
     }
 

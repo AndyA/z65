@@ -72,15 +72,10 @@ pub const Code = struct {
     const Self = @This();
     alloc: std.mem.Allocator,
     bytes: []const u8,
-    hash: u256,
 
     pub fn init(alloc: std.mem.Allocator, bytes: []const u8) !Self {
         const bytes_copy = try alloc.dupe(u8, bytes);
-        return Self{
-            .alloc = alloc,
-            .bytes = bytes_copy,
-            .hash = util.hashBytes(bytes_copy),
-        };
+        return Self{ .alloc = alloc, .bytes = bytes_copy };
     }
 
     pub fn deinit(self: Self) void {

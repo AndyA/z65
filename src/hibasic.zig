@@ -111,6 +111,12 @@ pub const HiBasic = struct {
         return line;
     }
 
+    pub fn @"hook:save"(self: Self, cpu: anytype) !void {
+        _ = self;
+        _ = cpu;
+        std.debug.print("hook:save\n", .{});
+    }
+
     fn loadSource(self: *Self, cpu: anytype, file: []const u8) !void {
         const prog = try std.fs.cwd().readFileAlloc(self.alloc, file, 0x10000);
         defer self.alloc.free(prog);
