@@ -164,10 +164,7 @@ test TokenIter {
         \\
     ;
 
-    const source = try Code.init(allocator, prog);
-    defer source.deinit();
-
-    const bin = try sourceToBinary(source);
+    const bin = try sourceToBinary(allocator, prog);
     defer bin.deinit();
 
     hexDump(bin.bytes);
@@ -188,6 +185,14 @@ pub fn validBinary(prog: []const u8) BasicError![]const u8 {
         last_line = line.line_number;
     }
     return prog;
+}
+
+pub fn needsLineNumbers(prog: []const u8) !bool {
+    var ti = TokenIter.init(prog);
+    while (try ti.next()) |tok| {
+        if (kw.isGotoLike(tok)) return true;
+    }
+    return false;
 }
 
 pub fn getProgram(ram: *[0x10000]u8) ![]const u8 {
@@ -329,16 +334,20 @@ pub const Code = struct {
     }
 };
 
-pub fn sourceToBinary(source: Code) !Code {
-    var r = std.io.Reader.fixed(source.bytes);
+pub fn sourceToBinary(alloc: std.mem.Allocator, prog: []const u8) !Code {
+    var r = std.io.Reader.fixed(prog);
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(source.alloc, &buf);
+    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
-    try runHiBasic(source.alloc, &ram, &r, &w.writer);
+    try runHiBasic(alloc, &ram, &r, &w.writer);
 
-    return try Code.init(source.alloc, try getProgram(&ram));
+    return try Code.init(alloc, try getProgram(&ram));
+}
+
+pub fn sourceCodeToBinary(source: Code) !Code {
+    return try sourceToBinary(source.alloc, source.bytes);
 }
 
 pub fn hexDump(mem: []const u8) void {
@@ -360,7 +369,7 @@ pub fn hexDump(mem: []const u8) void {
     }
 }
 
-test sourceToBinary {
+test sourceCodeToBinary {
     const allocator = std.testing.allocator;
 
     const prog =
@@ -372,7 +381,7 @@ test sourceToBinary {
     const source = try Code.init(allocator, prog);
     defer source.deinit();
 
-    const bin = try sourceToBinary(source);
+    const bin = try sourceCodeToBinary(source);
     defer bin.deinit();
 
     // hexDump(bin.bytes);
@@ -380,27 +389,31 @@ test sourceToBinary {
     _ = try validBinary(bin.bytes);
 }
 
-pub fn binaryToSource(binary: Code) !Code {
+pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) !Code {
     var r = std.io.Reader.fixed(
         \\OLD
         \\LIST
     );
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(binary.alloc, &buf);
+    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
-    try setProgram(&ram, binary.bytes);
-    try runHiBasic(binary.alloc, &ram, &r, &w.writer);
+    try setProgram(&ram, prog);
+    try runHiBasic(alloc, &ram, &r, &w.writer);
 
     var output = w.toArrayList();
-    defer output.deinit(binary.alloc);
+    defer output.deinit(alloc);
     cleanBasicOutput(&output);
 
-    return try Code.init(binary.alloc, output.items);
+    return try Code.init(alloc, output.items);
 }
 
-test binaryToSource {
+pub fn binaryCodeToSource(binary: Code) !Code {
+    return try binaryToSource(binary.alloc, binary.bytes);
+}
+
+test binaryCodeToSource {
     const allocator = std.testing.allocator;
 
     const prog =
@@ -412,12 +425,12 @@ test binaryToSource {
     const in_source = try Code.init(allocator, prog);
     defer in_source.deinit();
 
-    const bin = try sourceToBinary(in_source);
+    const bin = try sourceCodeToBinary(in_source);
     defer bin.deinit();
 
     // hexDump(bin.bytes);
 
-    const out_source = try binaryToSource(bin);
+    const out_source = try binaryCodeToSource(bin);
     defer out_source.deinit();
 
     // std.debug.print("{s}", .{out_source.bytes});
