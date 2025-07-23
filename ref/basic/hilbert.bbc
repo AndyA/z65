@@ -620,7 +620,7 @@ DEF PROCfill(A%, X%, Y%)
     CALL showwide
     INPUT X$ : IF X$ <> "" THEN ENDPROC
   UNTIL USR flood_gen AND &01000000
-  PRINT "Generation "; ?generation; " max_queue: "; max_queue%
+  PRINT "Generation "; ?generation; ", max_queue: "; max_queue%
   CALL showwide
 ENDPROC
 
