@@ -29,7 +29,7 @@ q_size%     = 3000 * 3 : REM 3 bytes per entry
 q_in%       = 0
 q_out%      = 0
 
-code_size% = 1024
+code_size% = 2048
 DIM code code_size% - 1
 DIM screen 8191
 
@@ -496,17 +496,106 @@ P% = code
             BCS tf7
             BCC fg1
 
+\ bit 0 - up, bit 1 - down
+
+.updown     LDA #0
+            STA buf + 0
+            INY
+            BEQ upd1
+            JSR getpix
+            CMP flood_col
+            BEQ upd1
+            INC buf + 0
+.upd1       ASL buf + 0
+            DEY
+            BEQ upd3
+            DEY
+            JSR getpix
+            CMP flood_col
+            BEQ upd2
+            INC buf + 0
+.upd2       INY
+.upd3       LDA buf + 0
+            RTS
+
+\ Specifc to Hilbert curves- figure out how many lines we cross
+\ to reach the edge
+\ Doesn't handle a horiz segment that goes 
+
+.edges      STA flood_col
+            TXA
+            PHA
+            LDA #0
+            STA count
+            JSR getpix
+            CMP flood_col
+            BEQ edg6
+.edg1       CPX #0
+            BEQ edg6
+            DEX
+            JSR getpix
+            CMP flood_col
+            BNE edg1
+
+            CPX #0
+            BEQ edg6
+            DEX
+            JSR getpix
+            CMP flood_col
+            BNE edg5
+
+\ Multiple
+            INX
+            JSR updown
+            DEX
+            STA buf + 1
+.edg2       CPX #0
+            BEQ edg6 \ ??
+            DEX
+            JSR getpix
+            CMP flood_col
+            BEQ edg2
+            INX
+            JSR updown
+            DEX
+            CMP buf + 1
+            BEQ edg1
+.edg5       INC count
+            BNE edg1
+
+.edg6       PLA
+            TAX
+            LDA count
+            RTS
+
+.test_edge  LDY #height - 1
+.te1        LDX #width - 1
+.te2        LDA #0
+            JSR edges
+            AND #1
+            BEQ te3
+            LDA #0
+            JSR setpix
+.te3        DEX
+            BNE te2
+            DEY
+            BNE te1
+            RTS
+
 \ Debug / printing etc
 
 .debug_t    JSR trace
 .debug      PHP
             PHA
-            JSR prstr : EQUS "X=" : EQUB 0
+            PHA
+            JSR prstr : EQUS "A=" : EQUB 0
+            PLA : JSR prdec
+            JSR prstr : EQUS ", X=" : EQUB 0
             TXA : JSR prdec
             JSR prstr : EQUS ", Y=" : EQUB 0
             TYA : JSR prdec
-            JSR prstr : EQUS ", gen=" : EQUB 0
-            LDA generation : JSR prdec
+            JSR prstr : EQUS ", count=" : EQUB 0
+            LDA count : JSR prdec
             JSR osnewl
             PLA
             PLP
@@ -659,7 +748,6 @@ DEF PROCexplode(n%)
   IF n% > 1 THEN : FOR I% = 2 TO n% : PROCrnd_pix(1) : CALL fillpix : NEXT
   PROCrun_fill
 ENDPROC
-
 
 DEF FNqsize
   LOCAL in%, out%
