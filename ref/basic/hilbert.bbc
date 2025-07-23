@@ -29,7 +29,8 @@ q_size%     = 300 * 3 : REM 3 bytes per entry
 q_in%       = 0
 q_out%      = 0
 
-DIM code 1500
+code_size% = 1024
+DIM code code_size% - 1
 DIM screen 8191
 
 DIM queue q_size% - 1
@@ -590,7 +591,8 @@ P% = code
 
 ]
 NEXT
-PRINT "Code size: "; P% - code
+PRINT "[36mCode size: "; P% - code; ", allocated: "; code_size%; "[0m"
+IF P% - code > code_size% THEN PRINT "[31mCode overflow![0m" : STOP
 PROChilbert
 END
 
