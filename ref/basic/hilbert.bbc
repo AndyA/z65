@@ -18,8 +18,14 @@ last_y      = &82
 height      = 70
 width       = 72
 
+q_size%     = 9999 : REM Multiple of 3
+q_in%       = 0
+q_out%      = 0
+
 DIM code 1000
 DIM screen 8191
+
+DIM queue q_size% - 1
 
 FOR pass = 0 TO 2 STEP 2
 P% = code
@@ -440,6 +446,9 @@ A% = 255 : CALL clear
 init% = TRUE
 PROChil(0, 0, 0, 0, 1, 1, 0, 5)
 
+A% = 0 : X% =  4 : Y% = 0 : CALL move : Y% = 2 : CALL draw
+A% = 0 : X% = 66 : Y% = 0 : CALL move : Y% = 2 : CALL draw
+
 CALL showwide
 END
 
@@ -457,4 +466,39 @@ DEF PROChil(A%, x, y, xi, xj, yi, yj, n)
   PROChil(A%, x+xi/2,      y+xj/2 ,     xi/2, xj/2,  yi/2,  yj/2, n-1)
   PROChil(A%, x+xi/2+yi/2, y+xj/2+yj/2, xi/2, xj/2,  yi/2,  yj/2, n-1)
   PROChil(A%, x+xi/2+yi,   y+xj/2+yj,  -yi/2,-yj/2, -xi/2, -xj/2, n-1)
+ENDPROC
+
+DEF PROCpush(X%, Y%, G%)
+  queue!q_in% = (queue!q_in% AND &FF000000) OR (X% AND &FF) OR ((Y% AND &FF) * 256) OR ((G% AND &FF) * 65536)
+  q_in% = (q_in% + 3) MOD q_size%
+  IF q_in% = q_out% THEN STOP
+ENDPROC
+
+DEF FNshift
+  IF q_in% = q_out% THEN =FALSE
+  LOCAL next%
+  next% = queue!q_out%
+  q_out% = (q_out% + 3) MOD q_size%
+  X% = next% AND &FF
+  Y% = (next% DIV 256) AND &FF
+  G% = (next% DIV 65536) AND &FF
+=TRUE
+
+DEF PROCtry(A%, X%, Y%, G%)
+  IF (USR getpix AND &FF) <> A% THEN PROCpush(X%, Y%, G%)
+ENDPROC
+
+DEF PROCflood(A%, X%, Y%)
+  LOCAL LG%, G%
+  PROCtry(A%, X%, Y%, 0)
+  IF NOT FNshift THEN ENDPROC
+  REPEAT
+    CALL setpix
+    IF G% <> LG% THEN PRINT "Generation "; G% : CALL showwide : LG% = G%
+    IF X% >   0 THEN PROCtry(A%, X% - 1, Y%,     G% + 1)
+    IF X% < 255 THEN PROCtry(A%, X% + 1, Y%,     G% + 1)
+    IF Y% >   0 THEN PROCtry(A%, X%,     Y% - 1, G% + 1)
+    IF Y% < 255 THEN PROCtry(A%, X%,     Y% + 1, G% + 1)
+  UNTIL NOT FNshift
+  PRINT q_in%, q_out%
 ENDPROC
