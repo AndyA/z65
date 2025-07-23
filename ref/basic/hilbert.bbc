@@ -605,10 +605,19 @@ DEF PROCfill(A%, X%, Y%)
   REPEAT
     PRINT "Generation "; ?generation
     CALL showwide
-    INPUT X$ : IF X$ <> "" THEN STOP
+    INPUT X$ : IF X$ <> "" THEN ENDPROC
   UNTIL USR flood_gen AND &01000000
   PRINT "Generation "; ?generation
   CALL showwide
+ENDPROC
+
+DEF PROCrand
+  LOCAL X%, Y%
+  REPEAT
+    X% = RND(width) - 1
+    Y% = RND(height) - 1
+  UNTIL ((USR getpix) AND &FF) = 1
+  PROCfill(0, X%, Y%)
 ENDPROC
 
 DEF FNzp(size%)
