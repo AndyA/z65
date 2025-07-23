@@ -445,6 +445,12 @@ P% = code
 .qshift1    CLC
 .qshift2    RTS
 
+\ Start a flood fill at X, Y with colour A (0 or 1)
+.flood_init STA flood_col
+            LDA #0
+            STA generation
+            JSR qreset
+
 \ If the pixel at X, Y needs to be filled fill it and
 \ queue it for more filling.
 .fillpix    JSR getpix
@@ -475,14 +481,6 @@ P% = code
 .tf6        DEX
             CLC
 .tf7        RTS
-
-\ Start a flood fill at X, Y with colour A (0 or 1)
-.flood_init STA flood_col
-            JSR setpix
-            JSR qreset
-            LDA #0
-            STA generation
-            JMP qpush
 
 \ Perform a generation of the fill. C = 1 if queue full or empty
 .flood_gen  INC generation
