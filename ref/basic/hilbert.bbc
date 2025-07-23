@@ -450,6 +450,7 @@ A% = 0 : X% =  4 : Y% = 0 : CALL move : Y% = 2 : CALL draw
 A% = 0 : X% = 66 : Y% = 0 : CALL move : Y% = 2 : CALL draw
 
 CALL showwide
+REM PROCtest
 END
 
 DEF PROCline(A%, X%, Y%)
@@ -469,7 +470,12 @@ DEF PROChil(A%, x, y, xi, xj, yi, yj, n)
 ENDPROC
 
 DEF PROCpush(X%, Y%, G%)
-  queue!q_in% = (queue!q_in% AND &FF000000) OR (X% AND &FF) OR ((Y% AND &FF) * 256) OR ((G% AND &FF) * 65536)
+  LOCAL next%
+  next% = queue!q_in% AND &FF000000
+  next% = next% OR ((G% AND 255) * 65536)
+  next% = next% OR ((Y% AND 255) * 256)
+  next% = next% OR (X% AND 255)
+  queue!q_in% = next%
   q_in% = (q_in% + 3) MOD q_size%
   IF q_in% = q_out% THEN STOP
 ENDPROC
@@ -480,8 +486,8 @@ DEF FNshift
   next% = queue!q_out%
   q_out% = (q_out% + 3) MOD q_size%
   X% = next% AND &FF
-  Y% = (next% DIV 256) AND &FF
-  G% = (next% DIV 65536) AND &FF
+  Y% = (next% AND &FF00) DIV 256
+  G% = (next% AND &FF0000) DIV 65536
 =TRUE
 
 DEF PROCtry(A%, X%, Y%, G%)
@@ -501,4 +507,27 @@ DEF PROCflood(A%, X%, Y%)
     IF Y% < 255 THEN PROCtry(A%, X%,     Y% + 1, G% + 1)
   UNTIL NOT FNshift
   PRINT q_in%, q_out%
+ENDPROC
+
+DEF PROCtest
+  LOCAL I%, X%, Y%, G%, x%, y%, g%
+  FOR I% = 0 TO 4000
+    X% = I% MOD 256          : x% = X%
+    Y% = I% DIV 256          : y% = Y%
+    G% = (I% DIV 16) MOD 256 : g% = G%
+    PROCpush(X%, Y%, G%)
+    PROCpush(X% EOR 255, Y% EOR 255, G% EOR 255)
+    IF NOT FNshift THEN PROCfail : STOP
+    IF X% <> x% OR Y% <> y% OR G% <> g% THEN PROCfail : STOP
+    IF NOT FNshift THEN PROCfail : STOP
+    IF X% <> (x% EOR 255) OR Y% <> (y% EOR 255) OR G% <> (g% EOR 255) THEN PROCfail : STOP
+  NEXT
+  IF FNshift THEN PROCfail : STOP
+ENDPROC
+
+DEF PROCfail
+  PRINT "I="; I%
+  PRINT "X="; X%; " x="; x%
+  PRINT "Y="; Y%; " y="; y%
+  PRINT "G="; G%; " g="; g%
 ENDPROC
