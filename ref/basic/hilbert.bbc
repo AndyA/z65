@@ -736,7 +736,7 @@ DEF PROCrnd_pix(want%)
   REPEAT
     X% = RND(width) - 1
     Y% = RND(height) - 1
-  UNTIL (USR getpix AND &FF) = want%
+  UNTIL ((USR getpix AND &FF) = want%) AND (USR edges AND 1)
 ENDPROC
 
 DEF PROCexplode(n%)
@@ -745,6 +745,7 @@ DEF PROCexplode(n%)
   A% = 0
   PROCrnd_pix(1)
   CALL flood_init
+  REM Of course this falls over itself
   IF n% > 1 THEN : FOR I% = 2 TO n% : PROCrnd_pix(1) : CALL fillpix : NEXT
   PROCrun_fill
 ENDPROC
