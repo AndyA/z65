@@ -55,10 +55,13 @@ pub fn main() !void {
 
     cpu.poke8(TRACE, 0x00); // disable tracing
     while (!cpu.stopped) {
+        @branchHint(.likely);
         while (!cpu.stopped and cpu.peek8(TRACE) == 0) {
+            @branchHint(.likely);
             cpu.step();
         }
         while (!cpu.stopped and cpu.peek8(TRACE) != 0) {
+            @branchHint(.likely);
             cpu.step();
             switch (cpu.peek8(TRACE)) {
                 0x00 => {},
