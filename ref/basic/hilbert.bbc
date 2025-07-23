@@ -441,27 +441,29 @@ P% = code
 .qshift1    CLC
 .qshift2    RTS
 
-.fillpix    LDA flood_col
+.fillpix    JSR getpix
+            CMP flood_col
+            BEQ qshift1
+            LDA flood_col
             JSR setpix
             LDA generation
             JMP qpush
 
-.tryfill    CPY #0 : BEQ tf2
+.tryfill    CPY #0
+            BEQ tf2
             DEY
-            JSR getpix : CMP flood_col : BEQ tf1
             JSR fillpix : BCS tf7
-.tf1        INY
+            INY
 .tf2        INY : BEQ tf3
-            JSR getpix : CMP flood_col : BEQ tf3
             JSR fillpix : BCS tf7
 .tf3        DEY
-            CPX #0 : BEQ tf5
+            CPX #0
+            BEQ tf5
             DEX
-            JSR getpix : CMP flood_col : BEQ tf4
             JSR fillpix : BCS tf7
-.tf4        INX
-.tf5        INX : BEQ tf6
-            JSR getpix : CMP flood_col : BEQ tf6
+            INX
+.tf5        INX
+            BEQ tf6
             JSR fillpix : BCS tf7
 .tf6        DEX
             CLC
