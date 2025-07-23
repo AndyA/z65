@@ -29,8 +29,8 @@ q_size%     = 3000 * 3 : REM 3 bytes per entry
 q_in%       = 0
 q_out%      = 0
 
-code_size% = 2048
-DIM code code_size% - 1
+code_size% = 1300
+DIM code code_size% + 200
 DIM screen 8191
 DIM buf% 512
 
