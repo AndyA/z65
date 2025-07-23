@@ -625,12 +625,11 @@ DEF PROCfill(A%, X%, Y%)
 ENDPROC
 
 DEF PROCrand
-  LOCAL X%, Y%
-  REPEAT
-    X% = RND(width) - 1
-    Y% = RND(height) - 1
-  UNTIL (((USR getpix) AND &FF) = 1)
-  PROCfill(0, X%, Y%)
+  LOCAL A%, X%, Y%
+  X% = RND(width) - 1
+  Y% = RND(height) - 1
+  A% = ((USR getpix) AND &FF) EOR &01
+  PROCfill(A%, X%, Y%)
 ENDPROC
 
 DEF FNqsize
