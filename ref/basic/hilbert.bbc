@@ -350,6 +350,7 @@ P% = code
 
 \ Queue stuff
 
+\ Reset the queue
 .qreset     PHA
             TXA
             PHA
@@ -386,6 +387,7 @@ P% = code
             STA 1, X
 .qinc2      RTS
 
+\ Check for queue empty / full
 .qempty     LDA q_in + 0
             CMP q_out + 0
             BNE qshift1
@@ -395,6 +397,7 @@ P% = code
             SEC
             RTS
 
+\ Append A, X, Y to queue. C = 1 if full
 .qpush      PHA
             TXA
             PHA
@@ -420,6 +423,7 @@ P% = code
             PLA
             RTS
 
+\ Shift A, X, Y from queue. C = 1 if empty
 .qshift     JSR qempty
             BCS qshift2
             LDY #0
