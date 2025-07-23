@@ -163,31 +163,28 @@ P% = code
 
 .pixaddr    STX tmp + 0
             STY tmp + 1
-
-            STX row_a + 0
             STY row_a + 1
-            LDA #0
-            TAX
-            \ Divide by 8. Collect the remainder *backwards* in A
-            LSR row_a + 1 : ROR row_a + 0 : ROL A
-            LSR row_a + 1 : ROR row_a + 0 : ROL A
-            LSR row_a + 1 : ROR row_a + 0 : ROL A
+            TXA
+            AND #&07
             TAY
             LDA bits, Y
             PHA
-
-            LDA row_a + 0
+            TXA
+            LSR row_a + 1 : ROR A
+            LSR row_a + 1 : ROR A
+            LSR row_a + 1 : ROR A
+            CLC
             ADC #screen MOD 256
             STA row_a + 0
             LDA row_a + 1
             ADC #screen DIV 256
             STA row_a + 1
             PLA
+            LDX #0
             RTS
 
-\ Bitmasks. Permuted because the remainder after /8 is bit reversed
-.bits       EQUB &01 : EQUB &10 : EQUB &04 : EQUB &40
-            EQUB &02 : EQUB &20 : EQUB &08 : EQUB &80
+.bits       EQUB &01 : EQUB &02 : EQUB &04 : EQUB &08
+            EQUB &10 : EQUB &20 : EQUB &40 : EQUB &80
 
 \ Get the pixel at X, Y. Result in A (0 or 1)
 .getpix     JSR pixaddr
