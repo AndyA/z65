@@ -446,6 +446,10 @@ P% = code
 .qshift1    CLC
 .qshift2    RTS
 
+.ispix      JSR getpix
+            CMP flood_col
+            RTS
+
 \ Start a flood fill at X, Y with colour A (0 or 1)
 .flood_init STA flood_col
             LDA #0
@@ -454,8 +458,7 @@ P% = code
 
 \ If the pixel at X, Y needs to be filled fill it and
 \ queue it for more filling.
-.fillpix    JSR getpix
-            CMP flood_col
+.fillpix    JSR ispix
             BEQ qshift1
             LDA flood_col
             JSR setpix
@@ -499,66 +502,54 @@ P% = code
 
 \ bit 0 - up, bit 1 - down
 
-.updown     LDA #0
+.updown     INX
+            LDA #0
             STA buf + 0
             INY
             BEQ upd1
-            JSR getpix
-            CMP flood_col
+            JSR ispix
             BEQ upd1
             INC buf + 0
 .upd1       ASL buf + 0
             DEY
             BEQ upd3
             DEY
-            JSR getpix
-            CMP flood_col
+            JSR ispix
             BEQ upd2
             INC buf + 0
 .upd2       INY
 .upd3       LDA buf + 0
+            DEX
             RTS
-
-\ Specifc to Hilbert curves- figure out how many lines we cross
-\ to reach the edge
-\ Doesn't handle a horiz segment that goes 
 
 .edges      STA flood_col
             TXA
             PHA
             LDA #0
             STA count
-            JSR getpix
-            CMP flood_col
+            JSR ispix
             BEQ edg6
 .edg1       CPX #0
             BEQ edg6
             DEX
-            JSR getpix
-            CMP flood_col
+            JSR ispix
             BNE edg1
 
             CPX #0
             BEQ edg6
             DEX
-            JSR getpix
-            CMP flood_col
+            JSR ispix
             BNE edg5
 
 \ Multiple
-            INX
             JSR updown
-            DEX
             STA buf + 1
 .edg2       CPX #0
             BEQ edg6 \ ??
             DEX
-            JSR getpix
-            CMP flood_col
+            JSR ispix
             BEQ edg2
-            INX
             JSR updown
-            DEX
             CMP buf + 1
             BEQ edg1
 .edg5       INC count
