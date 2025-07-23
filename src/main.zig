@@ -56,18 +56,11 @@ pub fn main() !void {
     cpu.poke8(TRACE, 0x00); // disable tracing
     while (!cpu.stopped) {
         @branchHint(.likely);
-        while (!cpu.stopped and cpu.peek8(TRACE) == 0) {
-            @branchHint(.likely);
-            cpu.step();
-        }
-        traced: while (!cpu.stopped) {
-            @branchHint(.likely);
-            cpu.step();
-            switch (cpu.peek8(TRACE)) {
-                0x00 => break :traced,
-                0x01 => std.debug.print("{f}\n", .{cpu}),
-                else => {},
-            }
+        cpu.step();
+        switch (cpu.peek8(TRACE)) {
+            0x00 => {},
+            0x01 => std.debug.print("{f}\n", .{cpu}),
+            else => {},
         }
     }
 
