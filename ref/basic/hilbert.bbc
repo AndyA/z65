@@ -18,7 +18,7 @@ last_y      = &82
 height      = 70
 width       = 72
 
-q_size%     = 9999 : REM Multiple of 3
+q_size%     = 3333 * 3 : REM Multiple of 3
 q_in%       = 0
 q_out%      = 0
 
@@ -446,11 +446,14 @@ A% = 255 : CALL clear
 init% = TRUE
 PROChil(0, 0, 0, 0, 1, 1, 0, 5)
 
-A% = 0 : X% =  4 : Y% = 0 : CALL move : Y% = 2 : CALL draw
-A% = 0 : X% = 66 : Y% = 0 : CALL move : Y% = 2 : CALL draw
+A% = 0 : X% =  4 : Y% = 2 : CALL move
+Y% = 1 : CALL draw
+X% = 66 : CALL draw
+Y% = 2 : CALL draw
 
 CALL showwide
 REM PROCtest
+PROCflood(0, 5, 2)
 END
 
 DEF PROCline(A%, X%, Y%)
@@ -490,23 +493,31 @@ DEF FNshift
   G% = (next% AND &FF0000) DIV 65536
 =TRUE
 
+DEF FNqsize
+  IF q_in% < q_out% THEN =q_in% - q_out% + q_size%
+=q_in% - q_out%
+
 DEF PROCtry(A%, X%, Y%, G%)
   IF (USR getpix AND &FF) <> A% THEN PROCpush(X%, Y%, G%)
 ENDPROC
 
 DEF PROCflood(A%, X%, Y%)
-  LOCAL LG%, G%
+  LOCAL LG%, G%, q_used%, q_max%
   PROCtry(A%, X%, Y%, 0)
   IF NOT FNshift THEN ENDPROC
   REPEAT
+    q_used% = FNqsize DIV 3
+    IF q_used% > q_max% THEN q_max% = q_used%
+    IF G% <> LG% THEN PRINT "Generation "; G%; " q:"; q_used% : CALL showwide : LG% = G%
     CALL setpix
-    IF G% <> LG% THEN PRINT "Generation "; G% : CALL showwide : LG% = G%
     IF X% >   0 THEN PROCtry(A%, X% - 1, Y%,     G% + 1)
     IF X% < 255 THEN PROCtry(A%, X% + 1, Y%,     G% + 1)
     IF Y% >   0 THEN PROCtry(A%, X%,     Y% - 1, G% + 1)
     IF Y% < 255 THEN PROCtry(A%, X%,     Y% + 1, G% + 1)
   UNTIL NOT FNshift
-  PRINT q_in%, q_out%
+  IF q_in% <> q_out% THEN STOP
+  CALL showwide
+  PRINT "Max queue: "; q_max%
 ENDPROC
 
 DEF PROCtest
