@@ -25,7 +25,7 @@ flood_col   = FNzp(1)
 height      = 70
 width       = 72
 
-q_size%     = 300 * 3 : REM Multiple of 3
+q_size%     = 300 * 3 : REM 3 bytes per entry
 q_in%       = 0
 q_out%      = 0
 
@@ -168,6 +168,7 @@ P% = code
             STY row_a + 1
             LDA #0
             TAX
+            \ Divide by 8. Collect the remainder *backwards* in A
             LSR row_a + 1 : ROR row_a + 0 : ROL A
             LSR row_a + 1 : ROR row_a + 0 : ROL A
             LSR row_a + 1 : ROR row_a + 0 : ROL A
@@ -184,15 +185,21 @@ P% = code
             PLA
             RTS
 
+\ Bitmasks. Permuted because the remainder after /8 is bit reversed
 .bits       EQUB &01 : EQUB &10 : EQUB &04 : EQUB &40
             EQUB &02 : EQUB &20 : EQUB &08 : EQUB &80
 
+\ Get the pixel at X, Y. Result in A (0 or 1)
 .getpix     JSR pixaddr
             AND (row_a, X)
             BEQ setpix5
             LDA #1
             BNE setpix5
 
+\ Set the pixel at X, Y to A
+\   0 => clear
+\   1 => set
+\   2 => invert
 .setpix     PHA
             CMP #0
             BNE setpix1
@@ -217,12 +224,14 @@ P% = code
             LDY tmp + 1
             RTS
 
+\ Draw a line from last_x, last_y to X, Y
+\ Colour (0 or 1) in A
+\
 \ We're interested in four cases:
 \  shallow +X +Y
 \  shallow +X -Y
 \  steep   +X +Y
 \  steep   -X +Y
-
 .draw       STA buf + 0
             TXA
             PHA
@@ -250,7 +259,6 @@ P% = code
             BCS draw8 \ dY >= dX
 
 \ Shallow
-
             CPX last_x
             BCC draw3
             JSR swapends
@@ -259,7 +267,6 @@ P% = code
             BCS draw6 \ Down
 
 \ Shallow up
-
 .draw4      LDA buf + 0
             JSR setpix
             LDA count
@@ -275,7 +282,6 @@ P% = code
             BCS drawX
 
 \ Shallow down
-
 .draw6      LDA buf + 0
             JSR setpix
             LDA count
@@ -291,7 +297,6 @@ P% = code
             BCS drawX
 
 \ Steep
-
 .draw8      CPY last_y
             BCC draw9
             JSR swapends
@@ -300,7 +305,6 @@ P% = code
             BCS draw12 \ Left
 
 \ Steep right
-
 .draw10     LDA buf + 0
             JSR setpix
             LDA count
@@ -316,7 +320,6 @@ P% = code
             BCS drawX
 
 \ Steep left
-
 .draw12     LDA buf + 0
             JSR setpix
             LDA count
@@ -336,6 +339,7 @@ P% = code
             TAX
             LDA buf + 0
 
+\ Move to X, Y
 .move       STX last_x
             STY last_y
             RTS
@@ -445,6 +449,8 @@ P% = code
 .qshift1    CLC
 .qshift2    RTS
 
+\ If the pixel at X, Y needs to be filled fill it and
+\ queue it for more filling.
 .fillpix    JSR getpix
             CMP flood_col
             BEQ qshift1
@@ -453,6 +459,7 @@ P% = code
             LDA generation
             JMP qpush
 
+\ Try filling the pixels around X, Y
 .tryfill    CPY #0
             BEQ tf2
             DEY
@@ -473,6 +480,7 @@ P% = code
             CLC
 .tf7        RTS
 
+\ Start a flood fill at X, Y with colour A (0 or 1)
 .flood_init STA flood_col
             JSR setpix
             JSR qreset
@@ -480,6 +488,7 @@ P% = code
             STA generation
             JMP qpush
 
+\ Perform a generation of the fill. C = 1 if queue full or empty
 .flood_gen  INC generation
 .fg1        JSR qempty
             BCS tf7
