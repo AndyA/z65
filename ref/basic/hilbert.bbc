@@ -675,6 +675,13 @@ IF P% - code > code_size% THEN PRINT "[31mCode overflow![0m" : STOP
 PROChilbert
 END
 
+DEF FNzp(size%)
+  LOCAL S%
+  S% = ZP%
+  ZP% = ZP% + size%
+  IF ZP% >= &90 THEN STOP
+=S%
+
 DEF PROChilbert
   LOCAL A%, X%, Y%
   A% = 255 : CALL clear
@@ -704,15 +711,7 @@ DEF PROCrun_fill
 ENDPROC
 
 DEF PROCfill(A%, X%, Y%)
-  PROChilbert
   CALL flood_init
-  PROCrun_fill
-ENDPROC
-
-DEF PROCfill2(A%, X%, Y%, X2%, Y2%)
-  PROChilbert
-  CALL flood_init
-  X% = X2% : Y% = Y2% : CALL fillpix
   PROCrun_fill
 ENDPROC
 
@@ -733,7 +732,6 @@ ENDPROC
 
 DEF PROCexplode(n%)
   LOCAL A%, X%, Y%, I%
-  PROChilbert
   FOR I% = 1 TO n% * 2 STEP 2
     PROCrnd_pix(1)
     buf%?(I%-1) = X%
@@ -755,13 +753,6 @@ DEF FNqsize
   out% = !q_out AND &FFFF
   IF in% < out% THEN =in% - out% + q_size%
 =in% - out%
-
-DEF FNzp(size%)
-  LOCAL S%
-  S% = ZP%
-  ZP% = ZP% + size%
-  IF ZP% >= &90 THEN STOP
-=S%
 
 DEF PROCline(A%, X%, Y%)
   IF init% THEN CALL move : init% = FALSE ELSE CALL draw
