@@ -163,13 +163,8 @@ P% = code
 
 .pixaddr    STX tmp + 0
             STY tmp + 1
+            TXA
             STY row_a + 1
-            TXA
-            AND #&07
-            TAY
-            LDA bits, Y
-            PHA
-            TXA
             LSR row_a + 1 : ROR A
             LSR row_a + 1 : ROR A
             LSR row_a + 1 : ROR A
@@ -179,7 +174,10 @@ P% = code
             LDA row_a + 1
             ADC #screen DIV 256
             STA row_a + 1
-            PLA
+            TXA
+            AND #&07
+            TAX
+            LDA bits, X
             LDX #0
             RTS
 
