@@ -6,14 +6,21 @@ oswrch      = &FFEE
 osnewl      = &FFE7
 zig_trace   = &FE90
 
-scratch     = &50
-tmp         = &70
-row_a       = &74
-row_b       = &76
-buf         = &78
-count       = &80
-last_x      = &81
-last_y      = &82
+ZP%         = &70
+
+scratch     = FNzp(2)
+tmp         = FNzp(4)
+row_a       = FNzp(2)
+row_b       = FNzp(2)
+buf         = FNzp(8)
+count       = FNzp(1)
+last_x      = FNzp(1)
+last_y      = FNzp(1)
+
+q_in        = FNzp(2)
+q_out       = FNzp(2)
+generation  = FNzp(1)
+flood_col   = FNzp(1)
 
 height      = 70
 width       = 72
@@ -22,7 +29,7 @@ q_size%     = 3333 * 3 : REM Multiple of 3
 q_in%       = 0
 q_out%      = 0
 
-DIM code 1000
+DIM code 1500
 DIM screen 8191
 
 DIM queue q_size% - 1
@@ -341,23 +348,156 @@ P% = code
             TAY
             RTS
 
+\ Queue stuff
+
+.qreset     PHA
+            TXA
+            PHA
+            LDX #q_in
+            JSR qinit
+            LDX #q_out
+            JSR qinit
+            PLA
+            TAX
+            PLA
+            RTS
+
+.qinit      LDA #queue MOD 256
+            STA 0, X
+            LDA #queue DIV 256
+            STA 1, X
+            RTS
+
+.qinc       CLC
+            LDA 0, X
+            ADC #3
+            STA 0, X
+            BCC qinc1
+            INC 1, X
+.qinc1      CMP #(queue + q_size%) MOD 256
+            LDA 1, X
+            SBC #(queue + q_size%) DIV 256
+            BCC qinc2
+            LDA 0, X
+            SBC #q_size% MOD 256
+            STA 0, X
+            LDA 1, X
+            SBC #q_size% DIV 256
+            STA 1, X
+.qinc2      RTS
+
+.qempty     LDA q_in + 0
+            CMP q_out + 0
+            BNE qshift1
+            LDA q_in + 1
+            CMP q_out + 1
+            BNE qshift1
+            SEC
+            RTS
+
+.qpush      PHA
+            TXA
+            PHA
+            TYA
+            PHA
+            TYA \ Y
+            LDY #2
+            STA (q_in), Y
+            TXA \ X
+            DEY
+            STA (q_in), Y
+            TSX
+            LDA &103, X \ A
+            DEY
+            STA (q_in), Y
+            LDX #q_in
+            JSR qinc
+            JSR qempty
+            PLA
+            TAY
+            PLA
+            TAX
+            PLA
+            RTS
+
+.qshift     JSR qempty
+            BCS qshift2
+            LDY #0
+            LDA (q_out), Y \ A
+            PHA
+            INY
+            LDA (q_out), Y \ X
+            PHA
+            INY
+            LDA (q_out), Y \ Y
+            PHA
+            LDX #q_out
+            JSR qinc
+            PLA
+            TAY
+            PLA
+            TAX
+            PLA
+.qshift1    CLC
+.qshift2    RTS
+
+.fillpix    LDA flood_col
+            JSR setpix
+            LDA generation
+            JMP qpush
+
+.tryfill    CPY #0 : BEQ tf2
+            DEY
+            JSR getpix : CMP flood_col : BEQ tf1
+            JSR fillpix : BCS tf7
+.tf1        INY
+.tf2        INY : BEQ tf3
+            JSR getpix : CMP flood_col : BEQ tf3
+            JSR fillpix : BCS tf7
+.tf3        DEY
+            CPX #0 : BEQ tf5
+            DEX
+            JSR getpix : CMP flood_col : BEQ tf4
+            JSR fillpix : BCS tf7
+.tf4        INX
+.tf5        INX : BEQ tf6
+            JSR getpix : CMP flood_col : BEQ tf6
+            JSR fillpix : BCS tf7
+.tf6        DEX
+            CLC
+.tf7        RTS
+
+.flood_init STA flood_col
+            JSR setpix
+            JSR qreset
+            LDA #0
+            STA generation
+            JMP qpush
+
+.flood_gen  INC generation
+.fg1        JSR qempty
+            BCS tf7
+            LDY #0
+            LDA (q_out), Y
+            CMP generation
+            BEQ qshift1
+            JSR qshift
+            BCS tf7
+            JSR tryfill
+            BCS tf7
+            BCC fg1
+
+\ Debug / printing etc
+
 .debug_t    JSR trace
 .debug      PHP
             PHA
-            JSR prstr : EQUS "dX=" : EQUB 0
-            LDA buf + 1 : JSR prdec
-            JSR prstr : EQUS ", dY=" : EQUB 0
-            LDA buf + 2 : JSR prdec
-            JSR prstr : EQUS ", count=" : EQUB 0
-            LDA count : JSR prdec
-            JSR prstr : EQUS ", X=" : EQUB 0
+            JSR prstr : EQUS "X=" : EQUB 0
             TXA : JSR prdec
             JSR prstr : EQUS ", Y=" : EQUB 0
             TYA : JSR prdec
-            JSR prstr : EQUS ", lX=" : EQUB 0
-            LDA last_x : JSR prdec
-            JSR prstr : EQUS ", lY=" : EQUB 0
-            LDA last_y : JSR prdec
+            JSR prstr : EQUS ", gen=" : EQUB 0
+            LDA generation : JSR prdec
             JSR osnewl
             PLA
             PLP
@@ -441,20 +581,42 @@ P% = code
 ]
 NEXT
 PRINT "Code size: "; P% - code
-
-A% = 255 : CALL clear
-init% = TRUE
-PROChil(0, 0, 0, 0, 1, 1, 0, 5)
-
-A% = 0 : X% =  4 : Y% = 2 : CALL move
-Y% = 1 : CALL draw
-X% = 66 : CALL draw
-Y% = 2 : CALL draw
-
-CALL showwide
-REM PROCtest
-PROCflood(0, 5, 2)
+PROChilbert
 END
+
+DEF PROChilbert
+  LOCAL A%, X%, Y%
+  A% = 255 : CALL clear
+  init% = TRUE
+
+  PROChil(0, 0, 0, 0, 1, 1, 0, 5)
+
+  A% = 0 : X% =  4 : Y% = 2 : CALL move
+  Y% = 1 : CALL draw
+  X% = 66 : CALL draw
+  Y% = 2 : CALL draw
+
+  CALL showwide
+ENDPROC
+
+DEF PROCfill(A%, X%, Y%)
+  PROChilbert
+  CALL flood_init
+  REPEAT
+    PRINT "Generation "; ?generation
+    CALL showwide
+    INPUT X$ : IF X$ <> "" THEN STOP
+  UNTIL USR flood_gen AND &01000000
+  PRINT "Generation "; ?generation
+  CALL showwide
+ENDPROC
+
+DEF FNzp(size%)
+  LOCAL S%
+  S% = ZP%
+  ZP% = ZP% + size%
+  IF ZP% >= &90 THEN STOP
+=S%
 
 DEF PROCline(A%, X%, Y%)
   IF init% THEN CALL move : init% = FALSE ELSE CALL draw
@@ -470,75 +632,4 @@ DEF PROChil(A%, x, y, xi, xj, yi, yj, n)
   PROChil(A%, x+xi/2,      y+xj/2 ,     xi/2, xj/2,  yi/2,  yj/2, n-1)
   PROChil(A%, x+xi/2+yi/2, y+xj/2+yj/2, xi/2, xj/2,  yi/2,  yj/2, n-1)
   PROChil(A%, x+xi/2+yi,   y+xj/2+yj,  -yi/2,-yj/2, -xi/2, -xj/2, n-1)
-ENDPROC
-
-DEF PROCpush(X%, Y%, G%)
-  LOCAL next%
-  next% = queue!q_in% AND &FF000000
-  next% = next% OR ((G% AND 255) * 65536)
-  next% = next% OR ((Y% AND 255) * 256)
-  next% = next% OR (X% AND 255)
-  queue!q_in% = next%
-  q_in% = (q_in% + 3) MOD q_size%
-  IF q_in% = q_out% THEN STOP
-ENDPROC
-
-DEF FNshift
-  IF q_in% = q_out% THEN =FALSE
-  LOCAL next%
-  next% = queue!q_out%
-  q_out% = (q_out% + 3) MOD q_size%
-  X% = next% AND &FF
-  Y% = (next% AND &FF00) DIV 256
-  G% = (next% AND &FF0000) DIV 65536
-=TRUE
-
-DEF FNqsize
-  IF q_in% < q_out% THEN =q_in% - q_out% + q_size%
-=q_in% - q_out%
-
-DEF PROCtry(A%, X%, Y%, G%)
-  IF (USR getpix AND &FF) <> A% THEN PROCpush(X%, Y%, G%)
-ENDPROC
-
-DEF PROCflood(A%, X%, Y%)
-  LOCAL LG%, G%, q_used%, q_max%
-  PROCtry(A%, X%, Y%, 0)
-  IF NOT FNshift THEN ENDPROC
-  REPEAT
-    q_used% = FNqsize DIV 3
-    IF q_used% > q_max% THEN q_max% = q_used%
-    IF G% <> LG% THEN PRINT "Generation "; G%; " q:"; q_used% : CALL showwide : LG% = G%
-    CALL setpix
-    IF X% >   0 THEN PROCtry(A%, X% - 1, Y%,     G% + 1)
-    IF X% < 255 THEN PROCtry(A%, X% + 1, Y%,     G% + 1)
-    IF Y% >   0 THEN PROCtry(A%, X%,     Y% - 1, G% + 1)
-    IF Y% < 255 THEN PROCtry(A%, X%,     Y% + 1, G% + 1)
-  UNTIL NOT FNshift
-  IF q_in% <> q_out% THEN STOP
-  CALL showwide
-  PRINT "Max queue: "; q_max%
-ENDPROC
-
-DEF PROCtest
-  LOCAL I%, X%, Y%, G%, x%, y%, g%
-  FOR I% = 0 TO 4000
-    X% = I% MOD 256          : x% = X%
-    Y% = I% DIV 256          : y% = Y%
-    G% = (I% DIV 16) MOD 256 : g% = G%
-    PROCpush(X%, Y%, G%)
-    PROCpush(X% EOR 255, Y% EOR 255, G% EOR 255)
-    IF NOT FNshift THEN PROCfail : STOP
-    IF X% <> x% OR Y% <> y% OR G% <> g% THEN PROCfail : STOP
-    IF NOT FNshift THEN PROCfail : STOP
-    IF X% <> (x% EOR 255) OR Y% <> (y% EOR 255) OR G% <> (g% EOR 255) THEN PROCfail : STOP
-  NEXT
-  IF FNshift THEN PROCfail : STOP
-ENDPROC
-
-DEF PROCfail
-  PRINT "I="; I%
-  PRINT "X="; X%; " x="; x%
-  PRINT "Y="; Y%; " y="; y%
-  PRINT "G="; G%; " g="; g%
 ENDPROC
