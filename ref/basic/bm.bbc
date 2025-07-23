@@ -1,7 +1,8 @@
-baseline = 12000
+mult = 10000
+baseline = 12 * mult
 mHz = 3
 start = TIME
-FOR I% = 1 TO 1000000 : NEXT
+FOR I% = 1 TO 1000 * mult : NEXT
 elapsed = TIME - start
 PRINT baseline / elapsed; " * 65C02"
 PRINT baseline / elapsed * mHz; " mHz"
