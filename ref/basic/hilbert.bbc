@@ -545,7 +545,7 @@ P% = code
             JSR updown
             STA buf + 1
 .edg2       CPX #0
-            BEQ edg6 \ ??
+            BEQ edg6
             DEX
             JSR ispix
             BEQ edg2
