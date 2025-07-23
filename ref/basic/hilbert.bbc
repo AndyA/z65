@@ -32,6 +32,7 @@ q_out%      = 0
 code_size% = 2048
 DIM code code_size% - 1
 DIM screen 8191
+DIM buf% 512
 
 DIM queue q_size% - 1
 
@@ -742,11 +743,18 @@ ENDPROC
 DEF PROCexplode(n%)
   LOCAL A%, X%, Y%, I%
   PROChilbert
+  FOR I% = 1 TO n% * 2 STEP 2
+    PROCrnd_pix(1)
+    buf%?(I%-1) = X%
+    buf%?I% = Y%
+  NEXT
+
   A% = 0
-  PROCrnd_pix(1)
-  CALL flood_init
-  REM Of course this falls over itself
-  IF n% > 1 THEN : FOR I% = 2 TO n% : PROCrnd_pix(1) : CALL fillpix : NEXT
+  FOR I% = 1 TO n% * 2 STEP 2
+    X% = buf%?(I%-1)
+    Y% = buf%?I%
+    IF I% = 1 THEN CALL flood_init ELSE CALL fillpix
+  NEXT
   PROCrun_fill
 ENDPROC
 
