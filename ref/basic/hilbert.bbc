@@ -25,7 +25,7 @@ flood_col   = FNzp(1)
 height      = 70
 width       = 72
 
-q_size%     = 300 * 3 : REM 3 bytes per entry
+q_size%     = 3000 * 3 : REM 3 bytes per entry
 q_in%       = 0
 q_out%      = 0
 
@@ -609,10 +609,8 @@ DEF PROChilbert
   CALL showwide
 ENDPROC
 
-DEF PROCfill(A%, X%, Y%)
-  LOCAL max_queue%, qsize%
-  PROChilbert
-  CALL flood_init
+DEF PROCrun_fill
+  LOCAL X$, max_queue%, qsize%
   REPEAT
     qsize% = FNqsize DIV 3
     IF qsize% > max_queue% THEN max_queue% = qsize%
@@ -624,6 +622,19 @@ DEF PROCfill(A%, X%, Y%)
   CALL showwide
 ENDPROC
 
+DEF PROCfill(A%, X%, Y%)
+  PROChilbert
+  CALL flood_init
+  PROCrun_fill
+ENDPROC
+
+DEF PROCfill2(A%, X%, Y%, X2%, Y2%)
+  PROChilbert
+  CALL flood_init
+  X% = X2% : Y% = Y2% : CALL fillpix
+  PROCrun_fill
+ENDPROC
+
 DEF PROCrand
   LOCAL A%, X%, Y%
   X% = RND(width) - 1
@@ -631,6 +642,24 @@ DEF PROCrand
   A% = ((USR getpix) AND &FF) EOR &01
   PROCfill(A%, X%, Y%)
 ENDPROC
+
+DEF PROCrnd_pix(want%)
+  REPEAT
+    X% = RND(width) - 1
+    Y% = RND(height) - 1
+  UNTIL (USR getpix AND &FF) = want%
+ENDPROC
+
+DEF PROCexplode(n%)
+  LOCAL A%, X%, Y%, I%
+  PROChilbert
+  A% = 0
+  PROCrnd_pix(1)
+  CALL flood_init
+  IF n% > 1 THEN : FOR I% = 2 TO n% : PROCrnd_pix(1) : CALL fillpix : NEXT
+  PROCrun_fill
+ENDPROC
+
 
 DEF FNqsize
   LOCAL in%, out%
