@@ -1,6 +1,6 @@
 const std = @import("std");
-const serde = @import("../serde.zig").serde;
-const ct = @import("../cpu/cpu_tools.zig");
+const serde = @import("../tools/serde.zig").serde;
+const ct = @import("../tools/cpu_tools.zig");
 const constants = @import("constants.zig");
 
 const TRAP_OPCODE: u8 = 0xBB;

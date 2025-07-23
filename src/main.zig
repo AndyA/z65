@@ -55,11 +55,16 @@ pub fn main() !void {
 
     cpu.poke8(TRACE, 0x00); // disable tracing
     while (!cpu.stopped) {
-        cpu.step();
-        switch (cpu.peek8(TRACE)) {
-            0x00 => {},
-            0x01 => std.debug.print("{f}\n", .{cpu}),
-            else => {},
+        while (!cpu.stopped and cpu.peek8(TRACE) == 0) {
+            cpu.step();
+        }
+        while (!cpu.stopped and cpu.peek8(TRACE) != 0) {
+            cpu.step();
+            switch (cpu.peek8(TRACE)) {
+                0x00 => {},
+                0x01 => std.debug.print("{f}\n", .{cpu}),
+                else => {},
+            }
         }
     }
 

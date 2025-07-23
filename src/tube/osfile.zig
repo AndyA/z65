@@ -1,5 +1,5 @@
 const std = @import("std");
-const ct = @import("../cpu/cpu_tools.zig");
+const ct = @import("../tools/cpu_tools.zig");
 
 pub fn writeFile(name: []const u8, bytes: []const u8) !void {
     // TODO atomic

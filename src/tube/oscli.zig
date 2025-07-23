@@ -1,5 +1,5 @@
 const std = @import("std");
-const star = @import("../star_commands.zig");
+const star = @import("../tools/star_commands.zig");
 const constants = @import("constants.zig");
 
 const StarCommands = struct {

@@ -1,5 +1,5 @@
 const std = @import("std");
-const ct = @import("cpu/cpu_tools.zig");
+const ct = @import("tools/cpu_tools.zig");
 const cvt = @import("basic/converter.zig");
 const code = @import("basic/code.zig");
 const kw = @import("basic/keywords.zig");
