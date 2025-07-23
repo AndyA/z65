@@ -25,7 +25,7 @@ flood_col   = FNzp(1)
 height      = 70
 width       = 72
 
-q_size%     = 3333 * 3 : REM Multiple of 3
+q_size%     = 300 * 3 : REM Multiple of 3
 q_in%       = 0
 q_out%      = 0
 
@@ -600,14 +600,17 @@ DEF PROChilbert
 ENDPROC
 
 DEF PROCfill(A%, X%, Y%)
+  LOCAL max_queue%, qsize%
   PROChilbert
   CALL flood_init
   REPEAT
-    PRINT "Generation "; ?generation
+    qsize% = FNqsize DIV 3
+    IF qsize% > max_queue% THEN max_queue% = qsize%
+    PRINT "Generation "; ?generation; ", queue: "; qsize%
     CALL showwide
     INPUT X$ : IF X$ <> "" THEN ENDPROC
   UNTIL USR flood_gen AND &01000000
-  PRINT "Generation "; ?generation
+  PRINT "Generation "; ?generation; " max_queue: "; max_queue%
   CALL showwide
 ENDPROC
 
@@ -616,9 +619,16 @@ DEF PROCrand
   REPEAT
     X% = RND(width) - 1
     Y% = RND(height) - 1
-  UNTIL ((USR getpix) AND &FF) = 1
+  UNTIL (((USR getpix) AND &FF) = 1)
   PROCfill(0, X%, Y%)
 ENDPROC
+
+DEF FNqsize
+  LOCAL in%, out%
+  in% = !q_in AND &FFFF
+  out% = !q_out AND &FFFF
+  IF in% < out% THEN =in% - out% + q_size%
+=in% - out%
 
 DEF FNzp(size%)
   LOCAL S%
