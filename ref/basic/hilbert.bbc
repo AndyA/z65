@@ -40,7 +40,6 @@ FOR pass = 0 TO 2 STEP 2
 P% = code
 [OPT pass
 
-
 .putwide    STA tmp
             ASL A
             ORA tmp
@@ -565,10 +564,9 @@ P% = code
 .te2        LDA #0
             JSR edges
             AND #1
-            BEQ te3
-            LDA #0
+            EOR #1
             JSR setpix
-.te3        DEX
+            DEX
             BNE te2
             DEY
             BNE te1
