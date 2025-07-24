@@ -578,13 +578,13 @@ P% = code
 .debug      PHP
             PHA
             PHA
-            JSR prstr : EQUS "A=" : EQUB 0
+            EQUS FNprstr("A=")
             PLA : JSR prdec
-            JSR prstr : EQUS ", X=" : EQUB 0
+            EQUS FNprstr(", X=")
             TXA : JSR prdec
-            JSR prstr : EQUS ", Y=" : EQUB 0
+            EQUS FNprstr(", Y=")
             TYA : JSR prdec
-            JSR prstr : EQUS ", count=" : EQUB 0
+            EQUS FNprstr(", count=")
             LDA count : JSR prdec
             JSR osnewl
             PLA
@@ -679,6 +679,14 @@ DEF FNzp(size%)
   ZP% = ZP% + size%
   IF ZP% >= &90 THEN STOP
 =S%
+
+DEF FNprstr(msg$)
+  [OPT pass
+    JSR prstr
+    EQUS msg$
+    EQUB 0
+  ]
+=""
 
 DEF PROChilbert
   LOCAL A%, X%, Y%
