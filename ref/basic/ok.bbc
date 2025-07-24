@@ -1,0 +1,20 @@
+FOR I% = 1 TO 5
+  IF I% = 1 THEN PRINT "First!" : NEXT
+  PRINT I%
+NEXT
+
+PRINT
+
+FOR I% = 1 TO 5
+  PRINT I% : NEXT
+
+PRINT
+
+I% = 0
+REPEAT
+  I% = I% + 1
+  IF I% = 1 THEN UNTIL FALSE : REM c.f. Perl's redo
+  PRINT I%
+UNTIL I% >= 5
+
+IF FALSE ELSE PRINT "Bye!"
