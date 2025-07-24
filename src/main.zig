@@ -68,5 +68,5 @@ pub fn main() !void {
 
 test {
     @import("std").testing.refAllDecls(@This());
-    _ = @import("basic/converter.zig");
+    _ = @import("disassembler/disasm.zig");
 }
