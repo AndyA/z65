@@ -43,12 +43,7 @@ class Step:
     x: int
     y: int
     s: int
-    s: int
-    s: int
-    s: int
-    s: int
-    s: int
-    s: int
+    count: int = 0
 
     def __str__(self) -> str:
         return (
@@ -57,7 +52,8 @@ class Step:
             f"A: {self.a:02X} "
             f"X: {self.x:02X} "
             f"Y: {self.y:02X} "
-            f"S: {self.s:02X}"
+            f"S: {self.s:02X} "
+            f"#: {self.count:8d}"
         )
 
 
@@ -81,7 +77,11 @@ for trace_file in trace_files:
     steps = load_steps(trace_file)
     print(f"Loaded {len(steps)} steps from {trace_file}")
 
+    last_pc = None
     for step in steps:
+        if last_pc is not None and (step.pc <= last_pc or step.pc > last_pc + 3):
+            print()
+        last_pc = step.pc
         print(step, end="")
         line = listing.by_address.get(step.pc, None)
         if line := listing.by_address.get(step.pc, None):
