@@ -187,7 +187,7 @@ pub const SRecFile = struct {
 
 test "SRecFile" {
     const expect = std.testing.expect;
-    const file = @embedFile("test/data/srec.s19");
+    const file = @embedFile("../cpu/test/data/srec.s19");
     var sr = try SRecFile.init(std.testing.allocator, file);
     defer sr.deinit();
     // for (sr.records.items) |rec| {

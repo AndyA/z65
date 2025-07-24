@@ -8,7 +8,7 @@ pub fn runFunctionalTest(
 ) !void {
     const std = @import("std");
     const memory = @import("memory.zig");
-    const srec = @import("srec.zig");
+    const srec = @import("../tools/srec.zig");
     const expect = std.testing.expect;
 
     const TRAP_OPCODE: u8 = 0xBB;
