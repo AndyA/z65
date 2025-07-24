@@ -38,7 +38,7 @@ pub const CPUOptions = struct {
     clear_decimal_on_int: bool = false,
 };
 
-pub fn makeCPU(
+pub fn CPU(
     comptime InstructionSet: type,
     comptime AddressModes: type,
     comptime Instructions: type,
@@ -305,7 +305,7 @@ test "cpu" {
 
     var ram: [0x10000]u8 = @splat(0);
 
-    const M6502 = makeCPU(
+    const M6502 = CPU(
         @import("mos6502.zig").InstructionSet6502,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,
@@ -360,7 +360,7 @@ test "trap" {
 
     var ram: [0x10000]u8 = @splat(0);
 
-    const M6502 = makeCPU(
+    const M6502 = CPU(
         @import("mos6502.zig").InstructionSet6502,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,

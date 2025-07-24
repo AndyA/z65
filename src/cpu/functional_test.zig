@@ -49,7 +49,7 @@ pub fn runFunctionalTest(
         }
     };
 
-    const CPU = machine.makeCPU(
+    const CPU = machine.CPU(
         InstructionSet,
         @import("address_modes.zig").AddressModes,
         @import("instructions.zig").Instructions,

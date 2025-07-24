@@ -24,7 +24,7 @@ const MiniBasic = struct {
 
 const TubeOS = tube.TubeOS(MiniBasic);
 
-const Tube65C02 = machine.makeCPU(
+const Tube65C02 = machine.CPU(
     @import("../cpu/wdc65c02.zig").InstructionSet65C02,
     @import("../cpu/address_modes.zig").AddressModes,
     @import("../cpu/instructions.zig").Instructions,
