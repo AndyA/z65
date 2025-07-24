@@ -17,6 +17,7 @@ count       = FNzp(1)
 last_x      = FNzp(1)
 last_y      = FNzp(1)
 
+q_size      = 3000 * 3 : REM 3 bytes per entry
 q_in        = FNzp(2)
 q_out       = FNzp(2)
 generation  = FNzp(1)
@@ -25,16 +26,13 @@ flood_col   = FNzp(1)
 height      = 70
 width       = 72
 
-q_size%     = 3000 * 3 : REM 3 bytes per entry
-q_in%       = 0
-q_out%      = 0
 
 code_size% = 1300
 DIM code code_size% + 200
 DIM screen 8191
 DIM buf% 512
 
-DIM queue q_size% - 1
+DIM queue q_size - 1
 
 FOR pass = 0 TO 2 STEP 2
 P% = code
@@ -375,15 +373,15 @@ P% = code
             STA 0, X
             BCC qinc1
             INC 1, X
-.qinc1      CMP #(queue + q_size%) MOD 256
+.qinc1      CMP #(queue + q_size) MOD 256
             LDA 1, X
-            SBC #(queue + q_size%) DIV 256
+            SBC #(queue + q_size) DIV 256
             BCC qinc2
             LDA 0, X
-            SBC #q_size% MOD 256
+            SBC #q_size MOD 256
             STA 0, X
             LDA 1, X
-            SBC #q_size% DIV 256
+            SBC #q_size DIV 256
             STA 1, X
 .qinc2      RTS
 
@@ -757,7 +755,7 @@ DEF FNqsize
   LOCAL in%, out%
   in% = !q_in AND &FFFF
   out% = !q_out AND &FFFF
-  IF in% < out% THEN =in% - out% + q_size%
+  IF in% < out% THEN =in% - out% + q_size
 =in% - out%
 
 DEF PROCline(A%, X%, Y%)
