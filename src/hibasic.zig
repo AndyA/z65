@@ -189,10 +189,7 @@ pub const HiBasic = struct {
             if (self.config.sync) {
                 const lm = try lastModified(file);
                 if (lm == 0) return line;
-                const changed = self.last_modified != 0 and self.last_modified != lm;
-                self.last_modified = lm;
-
-                if (changed) {
+                if (self.last_modified != 0 and self.last_modified != lm) {
                     try self.loadSource(cpu, file);
                 }
             }
@@ -270,6 +267,8 @@ pub const HiBasic = struct {
     }
 
     fn loadSource(self: *Self, cpu: anytype, file: []const u8) !void {
+        const lm = try lastModified(file);
+
         var buf: [0x10000]u8 = undefined;
         const prog = try std.fs.cwd().readFile(file, &buf);
 
@@ -281,6 +280,8 @@ pub const HiBasic = struct {
             try self.setProgram(cpu, bin);
             code.clearVariables(self.ram);
         }
+
+        self.last_modified = lm;
     }
 
     pub fn saveSource(self: Self, cpu: anytype, file: []const u8) !void {
