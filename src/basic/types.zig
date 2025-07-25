@@ -4,7 +4,7 @@ const serde = @import("../tools/serde.zig");
 pub const BasicFPError = error{TooBig};
 
 pub fn BasicFP(comptime T: type) type {
-    return packed struct {
+    return struct {
         const Self = @This();
         const Serde = serde.serdeBigEndian(Self);
         const zero = Self{ .exp = 0, .mant = 0 };
