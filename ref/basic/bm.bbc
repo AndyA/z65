@@ -1,8 +1,25 @@
-mult = 10000
-baseline = 12 * mult
-mHz = 3
+REM Constants from a real machine
+baseline = 12
+cpu_mHz = 3
+
+@% = 0
+
+PRINT "Calibrating loop..."
+mult = 1
+REPEAT
+  mult = mult * 2
+  start = TIME
+  FOR I% = 1 TO 1000 * mult : NEXT
+  elapsed = TIME - start
+UNTIL elapsed > 10
+
+mult = mult * 100
+
+PRINT "Testing "; 1000 * mult; " iterations"
 start = TIME
 FOR I% = 1 TO 1000 * mult : NEXT
 elapsed = TIME - start
-PRINT baseline / elapsed; " * 65C02"
-PRINT baseline / elapsed * mHz; " mHz"
+per_1000 = elapsed / mult
+speedup = baseline / per_1000
+PRINT "Relative to real 65C02: "; speedup
+PRINT "Effective mHz: "; speedup * cpu_mHz
