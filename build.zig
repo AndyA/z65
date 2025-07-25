@@ -4,8 +4,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const z65 = b.addExecutable(.{
-        .name = "z65",
+    const hiBasic = b.addExecutable(.{
+        .name = "hibasic",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
@@ -14,13 +14,13 @@ pub fn build(b: *std.Build) void {
     });
 
     const clap = b.dependency("clap", .{});
-    z65.root_module.addImport("clap", clap.module("clap"));
+    hiBasic.root_module.addImport("clap", clap.module("clap"));
 
-    b.installArtifact(z65);
+    b.installArtifact(hiBasic);
 
     const run_step = b.step("run", "Run the app");
 
-    const run_cmd = b.addRunArtifact(z65);
+    const run_cmd = b.addRunArtifact(hiBasic);
     run_step.dependOn(&run_cmd.step);
 
     run_cmd.step.dependOn(b.getInstallStep());
@@ -30,7 +30,7 @@ pub fn build(b: *std.Build) void {
     }
 
     const exe_tests = b.addTest(.{
-        .root_module = z65.root_module,
+        .root_module = hiBasic.root_module,
     });
 
     const run_exe_tests = b.addRunArtifact(exe_tests);
