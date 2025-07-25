@@ -26,7 +26,6 @@ flood_col   = FNzp(1)
 height      = 70
 width       = 72
 
-
 code_size% = 1300
 DIM code code_size% + 200
 DIM screen 8191

@@ -3,7 +3,7 @@ https://github.com/qiongzhu/multiarch-on-aarch64
 ## TODO
 
 - OSFILE
-  - don't alloc
+  - ~~don't alloc~~ ✘
   - implement more functions
 - keyboard input handling
   - tty to cooked mode
@@ -14,7 +14,7 @@ https://github.com/qiongzhu/multiarch-on-aarch64
   - sdl
   - svg
 - handle plain text basic
-  - read and write
+  - ~~read and write~~ ✔
   - watch
 - CLI options
   - load
@@ -26,3 +26,15 @@ https://github.com/qiongzhu/multiarch-on-aarch64
 - OSCLI fixes
   - pick command based on first word
   - make optionality more formally correct?
+
+## CLI
+
+```
+z64 [OPTIONS] <prog>
+
+  -c, --chain <PROG>  CHAIN "prog"
+      --watch <PROG>  CHAIN "prog" when it changes
+  -q, --quit          Quit after running
+  -e          <CMD>   Execute BBC Basic. May be used more than once
+      --help
+```
