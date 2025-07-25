@@ -176,7 +176,8 @@ test ".initFromValue" {
         const value = fp.getValue();
         const diff = adjustedDiff(tc.value, value);
         if (diff > MAX_DIFF) {
-            std.debug.print("tc.exp: {x:0>2} fp.ext {x:0>2} tc.mant: {x:0>8} fp.mant: {x:0>8} value: {d}, diff: {d}\n", .{
+            std.debug.print("tc.exp: {x:0>2} fp.ext {x:0>2} tc.mant: {x:0>8}" ++
+                " fp.mant: {x:0>8} value: {d}, diff: {d}\n", .{
                 tc.exp,   fp.exp,
                 tc.mant,  fp.mant,
                 tc.value, diff,
