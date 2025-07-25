@@ -159,11 +159,7 @@ test ".getValue" {
         const diff = adjustedDiff(tc.value, value);
         if (diff > MAX_DIFF) {
             std.debug.print("exp: {x:0>2} mant: {x:0>8} fp: {d}, got: {d}, diff: {d}\n", .{
-                tc.exp,
-                tc.mant,
-                tc.value,
-                value,
-                diff,
+                tc.exp, tc.mant, tc.value, value, diff,
             });
         }
         try std.testing.expect(diff <= MAX_DIFF);
@@ -178,9 +174,7 @@ test ".initFromValue" {
         if (diff > MAX_DIFF) {
             std.debug.print("tc.exp: {x:0>2} fp.ext {x:0>2} tc.mant: {x:0>8}" ++
                 " fp.mant: {x:0>8} value: {d}, diff: {d}\n", .{
-                tc.exp,   fp.exp,
-                tc.mant,  fp.mant,
-                tc.value, diff,
+                tc.exp, fp.exp, tc.mant, fp.mant, tc.value, diff,
             });
         }
         try std.testing.expect(diff <= MAX_DIFF);
