@@ -125,9 +125,8 @@ NEXT
 PRINT "[36mCode size: "; P% - code; ", allocated: "; code_size%; "[0m"
 IF P% - code > code_size% THEN PRINT "[31mCode overflow![0m" : STOP
 
-FOR A = 0 TO 16
-  PROCfloat(A)
-NEXT
+PROCfloat(1.99999)
+PROCfloat(2)
 END
 
 PRINT "// &12345678"
