@@ -27,12 +27,10 @@ pub fn BasicFP(comptime T: type) type {
             const exp = @floor(@log2(v)) + 129;
             if (exp < 1) return zero;
             if (exp > 255) return BasicFPError.TooBig;
-            const mant = v / @exp2(exp - 128 - 32);
-            const u_mant: u32 = @intFromFloat(@floor(mant));
+            const u_mant: u32 = @intFromFloat(@floor(v / @exp2(exp - 128 - 32)));
             const u_exp: u8 = @intFromFloat(exp);
             var sm: SM = @bitCast(u_mant);
             sm.negative = negative;
-            // std.debug.print("u_mant: {x:0>8}, exp: {x:0>2}\n", .{ u_mant, u_exp });
             return Self{ .exp = u_exp, .mant = @bitCast(sm) };
         }
 
