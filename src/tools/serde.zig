@@ -1,14 +1,14 @@
 const std = @import("std");
 const ct = @import("cpu_tools.zig");
 
-pub fn serde(comptime T: type) type {
+pub fn serdeEx(comptime T: type, comptime big_endian: bool) type {
     comptime {
         switch (@typeInfo(T)) {
             .@"struct" => |info| {
                 var serdes: [info.fields.len]type = undefined;
                 var bytes = 0;
                 for (info.fields, 0..) |field, i| {
-                    serdes[i] = serde(field.type);
+                    serdes[i] = serdeEx(field.type, big_endian);
                     bytes += serdes[i].byteSize;
                 }
 
@@ -46,16 +46,33 @@ pub fn serde(comptime T: type) type {
                     pub fn read(cpu: anytype, addr: u16) T {
                         var raw_value: [byteSize]u8 = undefined;
                         ct.peekBytes(cpu, addr, &raw_value);
-                        return std.mem.littleToNative(T, @bitCast(raw_value));
+                        if (big_endian) {
+                            return std.mem.bigToNative(T, @bitCast(raw_value));
+                        } else {
+                            return std.mem.littleToNative(T, @bitCast(raw_value));
+                        }
                     }
 
                     pub fn write(cpu: anytype, addr: u16, value: T) void {
-                        const raw_value: [byteSize]u8 = @bitCast(std.mem.nativeToLittle(T, value));
-                        ct.pokeBytes(cpu, addr, &raw_value);
+                        if (big_endian) {
+                            const raw_value: [byteSize]u8 = @bitCast(std.mem.nativeToBig(T, value));
+                            ct.pokeBytes(cpu, addr, &raw_value);
+                        } else {
+                            const raw_value: [byteSize]u8 = @bitCast(std.mem.nativeToLittle(T, value));
+                            ct.pokeBytes(cpu, addr, &raw_value);
+                        }
                     }
                 };
             },
             else => @compileError("SerDe can only be used with structs or integers"),
         }
     }
+}
+
+pub fn serde(comptime T: type) type {
+    return serdeEx(T, false);
+}
+
+pub fn serdeBigEndian(comptime T: type) type {
+    return serdeEx(T, true);
 }

@@ -1,0 +1,226 @@
+REM Floating point storage
+REM Andy Armstrong <andy@hexten.net>
+
+oswrch      = &FFEE
+osnewl      = &FFE7
+
+var_base    = &480
+
+ZP%         = &70
+
+vp          = FNzp(2)
+acc0        = FNzp(4)
+
+DIM var_name 255
+
+code_size% = 300
+DIM code code_size% + 200
+
+FOR pass = 0 TO 2 STEP 2
+P% = code
+[OPT pass
+
+.debug        PHA
+              LDA vp + 1
+              JSR hexbyte
+              LDA vp + 0
+              JSR hexbyte
+              JSR osnewl
+              PLA
+              RTS
+
+.find_var     LDA var_name
+              SEC
+              SBC #ASC"@"
+              ASL A
+              ADC #var_base MOD 256
+              STA vp + 0
+              LDA #0
+              ADC #var_base DIV 256
+              STA vp + 1
+
+.fv1          LDA vp + 1
+              ORA vp + 0
+              BEQ fv6
+              LDY #2
+.fv2          LDA var_name - 1, Y
+              CMP (vp), Y
+              BNE fv3
+              INY
+              BNE fv2
+.fv3          CMP #&0D
+              BNE fv4
+              LDA (vp), Y
+              BEQ fv5
+.fv4          LDY #0
+              LDA (vp), Y
+              PHA
+              INY
+              LDA (vp), Y
+              STA vp + 1
+              PLA
+              STA vp + 0
+              JMP fv1
+
+.fv5          INY
+              CLC
+              TYA
+              ADC vp + 0
+              TAX
+              LDA vp + 1
+              ADC #0
+              TAY
+              RTS
+
+.fv6          SEC
+              RTS
+
+.hexbyte      PHA
+              LSR A : LSR A : LSR A : LSR A
+              JSR hexnyb
+              PLA
+.hexnyb       PHA
+              AND #15
+              CLC
+              ADC #ASC"0"
+              CMP #ASC"9" + 1
+              BCC hexnyb1
+              ADC #ASC"a" - ASC"9" - 2
+.hexnyb1      JSR oswrch
+              PLA
+              RTS
+
+.hexword      PHA
+              LDA acc0 + 3
+              JSR hexbyte
+              LDA acc0 + 2
+              JSR hexbyte
+              LDA acc0 + 1
+              JSR hexbyte
+              LDA acc0 + 0
+              JSR hexbyte
+              PLA
+              RTS
+
+.endian       PHA
+              LDA acc0 + 0
+              PHA
+              LDA acc0 + 1
+              PHA
+              LDA acc0 + 2
+              PHA
+              LDA acc0 + 3
+              STA acc0 + 0
+              PLA
+              STA acc0 + 1
+              PLA
+              STA acc0 + 2
+              PLA
+              STA acc0 + 3
+              PLA
+              RTS
+
+]
+NEXT
+PRINT "[36mCode size: "; P% - code; ", allocated: "; code_size%; "[0m"
+IF P% - code > code_size% THEN PRINT "[31mCode overflow![0m" : STOP
+
+FOR A = 0 TO 16
+  PROCfloat(A)
+NEXT
+END
+
+PRINT "// &12345678"
+PROCfloat(&12345678)
+PRINT "// -&12345678"
+PROCfloat(-&12345678)
+PRINT "// &1234"
+PROCfloat(&1234)
+PRINT "// PI"
+PROCfloat(PI)
+PRINT "// PI + 0.0000001"
+PROCfloat(PI + 0.0000001)
+
+PROCfloat(0)
+PRINT "// &01020304"
+PROCfloat(&01020304)
+PRINT "// -&01020304"
+PROCfloat(-&01020304)
+PRINT "// &8000001"
+PROCfloat(&8000001)
+PRINT "// -&8000001"
+PROCfloat(-&8000001)
+PRINT "// &4000001"
+PROCfloat(&4000001)
+PRINT "// -&4000001"
+PROCfloat(-&4000001)
+
+REPEAT
+  READ value
+  PROCfloat(value)
+UNTIL value = 0
+
+A = 1
+REPEAT
+  PROCfloat(A)
+  A = A / 2
+UNTIL A = 0
+
+A = -1
+REPEAT
+  PROCfloat(A)
+  A = A / 2
+UNTIL A = 0
+
+A = 1
+REPEAT
+  PROCfloat(A)
+  A = A * 2
+UNTIL A = 0
+
+END
+
+DATA 0.5, 1, 2, -0.5, -1, -2, 10 ^ 10, 2 ^ 10
+DATA 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+DATA -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -17
+DATA 0
+
+DEF PROCfloat(num)
+  LOCAL ABC, @%, res%, mant%, exp%, add%, I%
+  @% = 0
+  $var_name = "ABC"
+  ABC=num
+  res% = USR find_var
+  IF res% AND &01000000 THEN STOP
+  addr% = (res% DIV 256) AND &FFFF
+  PRINT "TC(0x";
+  A% = ?addr% : CALL hexbyte
+  PRINT ", 0x";
+  !acc0 = addr%!1 : CALL endian : CALL hexword
+  PRINT ", "; FNnum(num); "),"
+ENDPROC
+
+DEF FNnum(num)
+  LOCAL rep$, e%
+  rep$ = STR$(num)
+  e% = INSTR(rep$, "E")
+  IF e% = 0 THEN =rep$
+  IF MID$(rep$, e% + 1, 1) = "-" THEN =LEFT$(rep$, e%-1) + "e" + MID$(rep$, e%+1)
+=LEFT$(rep$, e%-1) + "e+" + MID$(rep$, e%+1)
+
+=""
+
+DEF FNzp(size%)
+  LOCAL S%
+  S% = ZP%
+  ZP% = ZP% + size%
+  IF ZP% >= &90 THEN STOP
+=S%
+
+DEF FNprstr(msg$)
+  [OPT pass
+    JSR prstr
+    EQUS msg$
+    EQUB 0
+  ]
+=""
