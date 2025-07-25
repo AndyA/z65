@@ -3,7 +3,12 @@
     .version = "0.0.0",
     .fingerprint = 0x798861c22d8c616f, // Changing this has security and trust implications.
     .minimum_zig_version = "0.15.0-dev.1108+27212a3e6",
-    .dependencies = .{},
+    .dependencies = .{
+        .clap = .{
+            .url = "git+https://github.com/Hejsil/zig-clap#50be7bc7bfe5470bb90bb7c868b88f98078865a6",
+            .hash = "clap-0.10.0-oBajB43oAQCJM-H_eIjWNJAgFd1cFubnaVud5YS-t3f-",
+        },
+    },
     .paths = .{
         "build.zig",
         "build.zig.zon",

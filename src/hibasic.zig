@@ -30,6 +30,42 @@ fn isFileCommand(tok: u8) bool {
         tok == @intFromEnum(kw.KeywordsEnum.CHAIN);
 }
 
+pub const HiBasicConfig = struct {
+    prog_name: ?[]const u8 = null,
+    chain: bool = false,
+    quit: bool = false,
+    sync: bool = false,
+    exec: []const []const u8 = &[_][]u8{},
+};
+
+pub const HiBasicExec = struct {
+    const Self = @This();
+    alloc: std.mem.Allocator,
+    source: []const u8,
+    reader: std.io.Reader,
+
+    pub fn init(alloc: std.mem.Allocator, source: []const u8) !Self {
+        const dup_src = try alloc.dupe(u8, source);
+        return Self{
+            .alloc = alloc,
+            .source = dup_src,
+            .reader = std.io.Reader.fixed(dup_src),
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.alloc.free(self.source);
+    }
+
+    pub fn readLine(self: *Self) !?[]const u8 {
+        return self.reader.takeDelimiterExclusive('\n') catch |err|
+            switch (err) {
+                error.EndOfStream => null,
+                else => err,
+            };
+    }
+};
+
 pub const HiBasic = struct {
     const Self = @This();
     const LOAD_ADDR = @intFromEnum(Symbols.HIMEM);
@@ -40,33 +76,65 @@ pub const HiBasic = struct {
     const CMD_BUF = 0x700;
 
     alloc: std.mem.Allocator,
+    config: HiBasicConfig,
     reader: *std.io.Reader,
     writer: *std.io.Writer,
-
     ram: *[0x10000]u8,
-    last_modified: i128 = 0,
+
     started: bool = false,
-    prog_hash: u256 = 0,
     current_file: ?[]const u8 = null,
-    auto_load: bool = true,
-    auto_save: bool = true,
+    exec: ?HiBasicExec = null,
+
+    last_modified: i128 = 0,
+    prog_hash: u256 = 0,
 
     pub fn init(
         alloc: std.mem.Allocator,
+        config: HiBasicConfig,
         reader: *std.io.Reader,
         writer: *std.io.Writer,
         ram: *[0x10000]u8,
     ) !Self {
+        var buf: std.ArrayListUnmanaged(u8) = .empty;
+        var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+        defer w.deinit();
+
+        if (config.prog_name) |prog| {
+            if (config.chain)
+                try w.writer.print("CHAIN \"{s}\"\n", .{prog})
+            else
+                try w.writer.print("LOAD \"{s}\"\n", .{prog});
+        }
+
+        for (config.exec) |line|
+            try w.writer.print("{s}\n", .{line});
+
+        if (config.quit)
+            try w.writer.print("*QUIT", .{});
+
+        var output = w.toArrayList();
+        defer output.deinit(alloc);
+
         return Self{
             .alloc = alloc,
+            .config = config,
             .reader = reader,
             .writer = writer,
             .ram = ram,
+            .exec = try HiBasicExec.init(alloc, output.items),
         };
     }
 
     pub fn deinit(self: *Self) void {
         self.clearCurrentFile();
+        self.freeExec();
+    }
+
+    pub fn freeExec(self: *Self) void {
+        if (self.exec) |*exec| {
+            exec.deinit();
+            self.exec = null;
+        }
     }
 
     pub fn commandMode(self: *Self, cpu: anytype) bool {
@@ -89,16 +157,20 @@ pub const HiBasic = struct {
             self.alloc.free(file);
         }
         self.current_file = try self.alloc.dupe(u8, name);
-        // std.debug.print("Editing {s}\n", .{self.current_file.?});
     }
 
     pub fn @"hook:readline"(self: *Self, cpu: anytype) !?[]const u8 {
         if (!commandMode(self, cpu))
             return null;
 
-        if (!self.started) {
-            self.started = true;
-            try self.onStartup(cpu);
+        if (self.exec) |*exec| {
+            const line = try exec.readLine();
+            if (line) |ln| {
+                try self.writer.print("{s}\n", .{ln});
+                return ln;
+            }
+            self.freeExec();
+            return null;
         }
 
         const hash = hashBytes(self.getProgram(cpu));
@@ -114,7 +186,7 @@ pub const HiBasic = struct {
             return line;
 
         if (self.current_file) |file| {
-            if (self.auto_load) {
+            if (self.config.sync) {
                 const lm = try lastModified(file);
                 if (lm == 0) return line;
                 const changed = self.last_modified != 0 and self.last_modified != lm;
@@ -218,16 +290,6 @@ pub const HiBasic = struct {
         try osfile.writeFile(file, source);
     }
 
-    fn onStartup(self: *Self, cpu: anytype) !void {
-        if (self.current_file) |file| {
-            self.loadSource(cpu, file) catch |err| {
-                if (err == error.FileNotFound) return;
-                return err;
-            };
-            self.last_modified = try lastModified(file);
-        }
-    }
-
     fn onCodeChange(self: *Self, cpu: anytype) !void {
         const prog = self.getProgram(cpu);
         if (prog.len == 2) { // NEW?
@@ -235,7 +297,7 @@ pub const HiBasic = struct {
         }
 
         if (self.current_file) |file| {
-            if (self.auto_save) {
+            if (self.config.sync) {
                 try self.saveSource(cpu, file);
             }
         }
@@ -246,11 +308,6 @@ pub const HiBasic = struct {
         @memcpy(self.ram[LOAD_ADDR .. LOAD_ADDR + rom_image.len], rom_image);
         cpu.PC = @intCast(LOAD_ADDR);
         cpu.A = 0x01;
-    }
-
-    pub fn shutDown(self: *Self, cpu: anytype) !void {
-        _ = cpu;
-        try self.writer.print("\nBye!\n", .{});
     }
 
     pub fn getPage(self: Self, cpu: anytype) u16 {

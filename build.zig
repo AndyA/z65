@@ -13,6 +13,9 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const clap = b.dependency("clap", .{});
+    z65.root_module.addImport("clap", clap.module("clap"));
+
     b.installArtifact(z65);
 
     const run_step = b.step("run", "Run the app");

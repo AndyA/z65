@@ -58,6 +58,14 @@ const StarCommands = struct {
         std.debug.print("*SPOOL \"{s}\"\n", .{args.name});
     }
 
+    pub fn @"*QUIT"(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
+        _ = args;
+        cpu.stop();
+    }
+
     pub fn @"*!<shell:[]u8*>"(
         cpu: anytype,
         args: anytype,
