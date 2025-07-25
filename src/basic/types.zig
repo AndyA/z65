@@ -110,19 +110,17 @@ const test_cases = [_]TestCase{
     TC(0x82, 0x00000000, 2),
 
     TC(0x80, 0x00000000, 0.5),
-    // TC(0x02, 0x00000000, 5.877471754e-39),
-    // TC(0x01, 0x00000000, 2.938735877e-39),
+    TC(0x02, 0x00000000, 5.877471754e-39),
+    TC(0x01, 0x00000000, 2.938735877e-39),
 
     TC(0x81, 0x80000000, -1),
     TC(0x80, 0x80000000, -0.5),
-    // TC(0x01, 0x80000000, -2.938735877e-39),
-    // TC(0x00, 0x80000000, -1.469367939e-39),
 
     TC(0x81, 0x00000000, 1),
     TC(0x82, 0x00000000, 2),
 
-    // TC(0xfe, 0x00000000, 4.253529587e+37),
-    // TC(0xff, 0x00000000, 8.507059173e+37),
+    TC(0xfe, 0x00000000, 4.253529587e+37),
+    TC(0xff, 0x00000000, 8.507059173e+37),
 
     // Some random values
     TC(0x7f, 0x2ee013a4, 0.3415533197),
@@ -175,12 +173,15 @@ test ".getValue" {
 test ".initFromValue" {
     for (test_cases) |tc| {
         const fp = try BasicFP64.initFromValue(tc.value);
-        // std.debug.print(
-        //     "tc.exp: {x:0>2}, fp.exp: {x:0>2}, tc.mant: {x:0>8}, fp.mant: {x:0>8} ({d})\n",
-        //     .{ tc.exp, fp.exp, tc.mant, fp.mant, tc.value },
-        // );
-        try std.testing.expect(fp.exp == tc.exp);
-        const delta = @as(i64, fp.mant) - @as(i64, tc.mant);
-        try std.testing.expect(delta < 2);
+        const value = fp.getValue();
+        const diff = adjustedDiff(tc.value, value);
+        if (diff > MAX_DIFF) {
+            std.debug.print("tc.exp: {x:0>2} fp.ext {x:0>2} tc.mant: {x:0>8} fp.mant: {x:0>8} value: {d}, diff: {d}\n", .{
+                tc.exp,   fp.exp,
+                tc.mant,  fp.mant,
+                tc.value, diff,
+            });
+        }
+        try std.testing.expect(diff <= MAX_DIFF);
     }
 }
