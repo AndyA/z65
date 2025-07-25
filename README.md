@@ -67,3 +67,6 @@ https://github.com/qiongzhu/multiarch-on-aarch64
 - OSCLI fixes
   - pick command based on first word
   - make optionality more formally correct?
+- Commands
+  - `*EDIT` edit current program in `$EDITOR`
+  - `*JSB` run current program in jsbeeb at http://localhost:????/
