@@ -41,15 +41,15 @@ pub const Instructions = struct {
     }
 
     pub fn ADC(cpu: anytype, ea: u16) void {
-        cpu.A = cpu.alu.adc(cpu, cpu.A, cpu.peek8(ea));
+        cpu.A = cpu.alu.adc(cpu, cpu.A, cpu.read8(ea));
     }
 
     pub fn AND(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A & cpu.peek8(ea));
+        cpu.A = Self.set_nz(cpu, cpu.A & cpu.read8(ea));
     }
 
     pub fn ASL(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, Self.shl(cpu, cpu.peek8(ea)));
+        cpu.write8(ea, Self.shl(cpu, cpu.read8(ea)));
     }
 
     pub fn ASLA(cpu: anytype) void {
@@ -69,14 +69,14 @@ pub const Instructions = struct {
     }
 
     pub fn BIT(cpu: anytype, ea: u16) void {
-        const byte = cpu.peek8(ea);
+        const byte = cpu.read8(ea);
         cpu.P.Z = (cpu.A & byte) == 0;
         cpu.P.N = (byte & 0x80) != 0;
         cpu.P.V = (byte & 0x40) != 0;
     }
 
     pub fn BITA(cpu: anytype, ea: u16) void {
-        const byte = cpu.peek8(ea);
+        const byte = cpu.read8(ea);
         cpu.P.Z = (cpu.A & byte) == 0;
     }
 
@@ -121,19 +121,19 @@ pub const Instructions = struct {
     }
 
     pub fn CMP(cpu: anytype, ea: u16) void {
-        cpu.alu.cmp(cpu, cpu.A, cpu.peek8(ea));
+        cpu.alu.cmp(cpu, cpu.A, cpu.read8(ea));
     }
 
     pub fn CPX(cpu: anytype, ea: u16) void {
-        cpu.alu.cmp(cpu, cpu.X, cpu.peek8(ea));
+        cpu.alu.cmp(cpu, cpu.X, cpu.read8(ea));
     }
 
     pub fn CPY(cpu: anytype, ea: u16) void {
-        cpu.alu.cmp(cpu, cpu.Y, cpu.peek8(ea));
+        cpu.alu.cmp(cpu, cpu.Y, cpu.read8(ea));
     }
 
     pub fn DEC(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, Self.set_nz(cpu, cpu.peek8(ea) -% 1));
+        cpu.write8(ea, Self.set_nz(cpu, cpu.read8(ea) -% 1));
     }
 
     pub fn DEX(cpu: anytype) void {
@@ -145,11 +145,11 @@ pub const Instructions = struct {
     }
 
     pub fn EOR(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A ^ cpu.peek8(ea));
+        cpu.A = Self.set_nz(cpu, cpu.A ^ cpu.read8(ea));
     }
 
     pub fn INC(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, Self.set_nz(cpu, cpu.peek8(ea) +% 1));
+        cpu.write8(ea, Self.set_nz(cpu, cpu.read8(ea) +% 1));
     }
 
     pub fn INX(cpu: anytype) void {
@@ -170,19 +170,19 @@ pub const Instructions = struct {
     }
 
     pub fn LDA(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.peek8(ea));
+        cpu.A = Self.set_nz(cpu, cpu.read8(ea));
     }
 
     pub fn LDX(cpu: anytype, ea: u16) void {
-        cpu.X = Self.set_nz(cpu, cpu.peek8(ea));
+        cpu.X = Self.set_nz(cpu, cpu.read8(ea));
     }
 
     pub fn LDY(cpu: anytype, ea: u16) void {
-        cpu.Y = Self.set_nz(cpu, cpu.peek8(ea));
+        cpu.Y = Self.set_nz(cpu, cpu.read8(ea));
     }
 
     pub fn LSR(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, Self.shr(cpu, cpu.peek8(ea)));
+        cpu.write8(ea, Self.shr(cpu, cpu.read8(ea)));
     }
 
     pub fn LSRA(cpu: anytype) void {
@@ -194,7 +194,7 @@ pub const Instructions = struct {
     }
 
     pub fn ORA(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A | cpu.peek8(ea));
+        cpu.A = Self.set_nz(cpu, cpu.A | cpu.read8(ea));
     }
 
     pub fn PHA(cpu: anytype) void {
@@ -217,7 +217,7 @@ pub const Instructions = struct {
     }
 
     pub fn ROL(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, Self.rol(cpu, cpu.peek8(ea)));
+        cpu.write8(ea, Self.rol(cpu, cpu.read8(ea)));
     }
 
     pub fn ROLA(cpu: anytype) void {
@@ -225,7 +225,7 @@ pub const Instructions = struct {
     }
 
     pub fn ROR(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, Self.ror(cpu, cpu.peek8(ea)));
+        cpu.write8(ea, Self.ror(cpu, cpu.read8(ea)));
     }
 
     pub fn RORA(cpu: anytype) void {
@@ -242,7 +242,7 @@ pub const Instructions = struct {
     }
 
     pub fn SBC(cpu: anytype, ea: u16) void {
-        cpu.A = cpu.alu.sbc(cpu, cpu.A, cpu.peek8(ea));
+        cpu.A = cpu.alu.sbc(cpu, cpu.A, cpu.read8(ea));
     }
 
     pub fn SEC(cpu: anytype) void {
@@ -258,15 +258,15 @@ pub const Instructions = struct {
     }
 
     pub fn STA(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, cpu.A);
+        cpu.write8(ea, cpu.A);
     }
 
     pub fn STX(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, cpu.X);
+        cpu.write8(ea, cpu.X);
     }
 
     pub fn STY(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, cpu.Y);
+        cpu.write8(ea, cpu.Y);
     }
 
     pub fn TAX(cpu: anytype) void {
@@ -319,19 +319,19 @@ pub const Instructions = struct {
     }
 
     pub fn STZ(cpu: anytype, ea: u16) void {
-        cpu.poke8(ea, 0x00);
+        cpu.write8(ea, 0x00);
     }
 
     pub fn TRB(cpu: anytype, ea: u16) void {
-        const byte = cpu.peek8(ea);
+        const byte = cpu.read8(ea);
         cpu.P.Z = (byte & cpu.A) == 0;
-        cpu.poke8(ea, byte & ~cpu.A);
+        cpu.write8(ea, byte & ~cpu.A);
     }
 
     pub fn TSB(cpu: anytype, ea: u16) void {
-        const byte = cpu.peek8(ea);
+        const byte = cpu.read8(ea);
         cpu.P.Z = (byte & cpu.A) == 0;
-        cpu.poke8(ea, byte | cpu.A);
+        cpu.write8(ea, byte | cpu.A);
     }
 
     pub fn BRA(cpu: anytype, ea: u16) void {
@@ -340,13 +340,13 @@ pub const Instructions = struct {
 
     fn bbr(comptime bit: u3, cpu: anytype, ea: ZpgRel) void {
         const zp, const dest = ea;
-        if (cpu.peek8(zp) & (1 << bit) == 0)
+        if (cpu.read8(zp) & (1 << bit) == 0)
             cpu.PC = dest;
     }
 
     fn bbs(comptime bit: u3, cpu: anytype, ea: ZpgRel) void {
         const zp, const dest = ea;
-        if (cpu.peek8(zp) & (1 << bit) != 0)
+        if (cpu.read8(zp) & (1 << bit) != 0)
             cpu.PC = dest;
     }
 
@@ -401,14 +401,14 @@ pub const Instructions = struct {
     }
 
     fn rmb(comptime bit: u3, cpu: anytype, ea: u16) void {
-        const byte = cpu.peek8(ea);
+        const byte = cpu.read8(ea);
         const mask: u8 = 1 << bit;
-        cpu.poke8(ea, byte & ~mask);
+        cpu.write8(ea, byte & ~mask);
     }
 
     fn smb(comptime bit: u3, cpu: anytype, ea: u16) void {
-        const byte = cpu.peek8(ea);
-        cpu.poke8(ea, byte | (1 << bit));
+        const byte = cpu.read8(ea);
+        cpu.write8(ea, byte | (1 << bit));
     }
 
     pub fn RMB0(cpu: anytype, ea: u16) void {

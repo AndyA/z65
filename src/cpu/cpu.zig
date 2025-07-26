@@ -155,15 +155,36 @@ pub fn CPU(
                 return byte;
             }
 
-            pub fn asm8(self: *Self, byte: u8) void {
-                self.poke8(self.PC, byte);
-                self.PC +%= 1;
+            pub fn read8(self: Self, addr: u16) u8 {
+                const byte = self.peek8(addr);
+                if (@hasDecl(OS, "hook:read")) {
+                    self.os.@"hook:read"(self, addr, byte);
+                }
+                return byte;
+            }
+
+            pub fn read16(self: Self, addr: u16) u16 {
+                const lo: u16 = self.read8(addr);
+                const hi: u16 = self.read8(addr +% 1);
+                return (hi << 8) | lo;
+            }
+
+            pub fn write8(self: *Self, addr: u16, byte: u8) void {
+                if (@hasDecl(OS, "hook:write")) {
+                    self.os.@"hook:write"(self, addr, byte);
+                }
+                self.poke8(addr, byte);
             }
 
             pub fn fetch16(self: *Self) u16 {
                 const lo: u16 = self.fetch8();
                 const hi: u16 = self.fetch8();
                 return (hi << 8) | lo;
+            }
+
+            pub fn asm8(self: *Self, byte: u8) void {
+                self.poke8(self.PC, byte);
+                self.PC +%= 1;
             }
 
             pub fn asm16(self: *Self, value: u16) void {
@@ -174,11 +195,11 @@ pub fn CPU(
 
             pub fn pop8(self: *Self) u8 {
                 self.S +%= 1;
-                return self.peek8(STACK | self.S);
+                return self.read8(STACK | self.S);
             }
 
             pub fn push8(self: *Self, byte: u8) void {
-                self.poke8(STACK | self.S, byte);
+                self.write8(STACK | self.S, byte);
                 self.S -%= 1;
             }
 

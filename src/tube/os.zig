@@ -127,6 +127,18 @@ pub fn TubeOS(comptime LangType: type) type {
             }
         }
 
+        pub fn @"hook:read"(self: *Self, cpu: anytype, addr: u16, byte: u8) void {
+            if (@hasDecl(LangType, "hook:read")) {
+                self.lang.@"hook:read"(cpu, addr, byte);
+            }
+        }
+
+        pub fn @"hook:write"(self: *Self, cpu: anytype, addr: u16, byte: u8) void {
+            if (@hasDecl(LangType, "hook:write")) {
+                self.lang.@"hook:write"(cpu, addr, byte);
+            }
+        }
+
         fn sendBuffer(self: *Self, cpu: anytype, addr: u16, ln: []const u8) void {
             _ = self;
             const buf_addr = cpu.peek16(addr);

@@ -3,8 +3,8 @@ pub const ZpgRel = struct { u8, u16 };
 pub const AddressModes = struct {
     const Self = @This();
     fn zp16(cpu: anytype, zp: u8) u16 {
-        const lo: u16 = cpu.peek8(zp);
-        const hi: u16 = cpu.peek8(zp +% 1);
+        const lo: u16 = cpu.read8(zp);
+        const hi: u16 = cpu.read8(zp +% 1);
         return @as(u16, (hi << 8) | lo);
     }
 
@@ -45,13 +45,13 @@ pub const AddressModes = struct {
     // 65c02
     pub fn @"(abs)"(cpu: anytype) u16 {
         const addr = cpu.fetch16();
-        return cpu.peek16(addr);
+        return cpu.read16(addr);
     }
 
     // 65c02
     pub fn @"(abs, X)"(cpu: anytype) u16 {
         const addr = cpu.fetch16() +% cpu.X;
-        return cpu.peek16(addr);
+        return cpu.read16(addr);
     }
 
     pub fn @"(abs)*"(cpu: anytype) u16 {
@@ -62,8 +62,8 @@ pub const AddressModes = struct {
             @branchHint(.unlikely);
             hi_addr -= 0x0100;
         }
-        const lo: u16 = cpu.peek8(lo_addr);
-        const hi: u16 = cpu.peek8(hi_addr);
+        const lo: u16 = cpu.read8(lo_addr);
+        const hi: u16 = cpu.read8(hi_addr);
         return @as(u16, (hi << 8) | lo);
     }
 
