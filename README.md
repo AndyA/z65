@@ -70,3 +70,6 @@ https://github.com/qiongzhu/multiarch-on-aarch64
 - Commands
   - `*EDIT` edit current program in `$EDITOR`
   - `*JSBEEB` run current program in jsbeeb at http://localhost:????/
+- Instrumentation
+  - make it possible to hook various parts of HiBasic
+    - statement start
