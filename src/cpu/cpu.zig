@@ -146,15 +146,34 @@ pub fn CPU(
                 self.poke8(addr +% 1, @intCast((value >> 8) & 0x00FF));
             }
 
-            pub fn fetch8(self: *Self) u8 {
+            /// Used to fetch the instruction opcode
+            pub fn ifetch8(self: *Self) u8 {
                 const byte = self.peek8(self.PC);
-                if (@hasDecl(OS, "hook:fetch")) {
-                    self.os.@"hook:fetch"(self, byte);
+                if (@hasDecl(OS, "hook:ifetch")) {
+                    self.os.@"hook:fetch"(self, self.PC, byte);
                 }
                 self.PC +%= 1;
                 return byte;
             }
 
+            /// Used to fetch subsequent bytes of the instruction
+            pub fn fetch8(self: *Self) u8 {
+                const byte = self.peek8(self.PC);
+                if (@hasDecl(OS, "hook:fetch")) {
+                    self.os.@"hook:fetch"(self, self.PC, byte);
+                }
+                self.PC +%= 1;
+                return byte;
+            }
+
+            /// Used to fetch subsequent bytes of the instruction
+            pub fn fetch16(self: *Self) u16 {
+                const lo: u16 = self.fetch8();
+                const hi: u16 = self.fetch8();
+                return (hi << 8) | lo;
+            }
+
+            /// Used when the CPU reads from memory
             pub fn read8(self: Self, addr: u16) u8 {
                 const byte = self.peek8(addr);
                 if (@hasDecl(OS, "hook:read")) {
@@ -163,23 +182,19 @@ pub fn CPU(
                 return byte;
             }
 
+            /// Used when the CPU reads from memory
             pub fn read16(self: Self, addr: u16) u16 {
                 const lo: u16 = self.read8(addr);
                 const hi: u16 = self.read8(addr +% 1);
                 return (hi << 8) | lo;
             }
 
+            /// Used when the CPU writes to memory
             pub fn write8(self: *Self, addr: u16, byte: u8) void {
                 if (@hasDecl(OS, "hook:write")) {
                     self.os.@"hook:write"(self, addr, byte);
                 }
                 self.poke8(addr, byte);
-            }
-
-            pub fn fetch16(self: *Self) u16 {
-                const lo: u16 = self.fetch8();
-                const hi: u16 = self.fetch8();
-                return (hi << 8) | lo;
             }
 
             pub fn asm8(self: *Self, byte: u8) void {
@@ -283,7 +298,7 @@ pub fn CPU(
 
             pub fn step(self: *Self) void {
                 self.pollInterrupts();
-                switch (self.fetch8()) {
+                switch (self.ifetch8()) {
                     inline 0...despatch.len - 1 => |op| despatch[op](self),
                 }
             }

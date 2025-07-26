@@ -121,9 +121,15 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.poke16(IRQV, irq_addr);
         }
 
-        pub fn @"hook:fetch"(self: *Self, cpu: anytype, byte: u8) void {
+        pub fn @"hook:ifetch"(self: *Self, cpu: anytype, addr: u16, byte: u8) void {
+            if (@hasDecl(LangType, "hook:ifetch")) {
+                self.lang.@"hook:fetch"(cpu, addr, byte);
+            }
+        }
+
+        pub fn @"hook:fetch"(self: *Self, cpu: anytype, addr: u16, byte: u8) void {
             if (@hasDecl(LangType, "hook:fetch")) {
-                self.lang.@"hook:fetch"(cpu, byte);
+                self.lang.@"hook:fetch"(cpu, addr, byte);
             }
         }
 
