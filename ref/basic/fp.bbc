@@ -25,7 +25,6 @@ P% = code
               JSR hexbyte
               LDA vp + 0
               JSR hexbyte
-              JSR osnewl
               PLA
               RTS
 
@@ -87,6 +86,9 @@ P% = code
 .vc1          LDA vp + 0
               ORA vp + 1
               BEQ vc4
+              JSR debug
+              LDA #ASC" "
+              JSR oswrch
               TXA
               JSR oswrch
               LDY #2
@@ -96,11 +98,8 @@ P% = code
               JSR oswrch
               INY
               BNE vc2
-.vc3          PHA
-              LDA #ASC" "
-              JSR oswrch
-              PLA
-              JSR hexbyte
+.vc3          JSR pad
+              JSR hd16
               JSR osnewl
               LDY #0
               LDA (vp), Y
@@ -112,6 +111,28 @@ P% = code
               STA vp + 0
               JMP vc1
 .vc4          RTS
+
+.pad          TYA
+              PHA
+              LDA #ASC" "
+.pad1         JSR oswrch
+              INY
+              CPY #16
+              BCC pad1
+              PLA
+              TAY
+              RTS
+
+.hd16         JSR hd8
+.hd8          JSR hd4
+.hd4          JSR hd2
+.hd2          JSR hd1
+.hd1          LDA #ASC" "
+              JSR oswrch
+              LDA (vp), Y
+              INY
+              JMP hexbyte
+      
 
 .vars         LDX #ASC"A"
 .va1          JSR vchain
