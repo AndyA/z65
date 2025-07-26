@@ -19,6 +19,7 @@ pub fn BasicFP(comptime T: type) type {
         const Self = @This();
         const Serde = serde.serdeBigEndian(Self);
         const zero = Self{ .exp = 0, .mant = 0 };
+
         exp: u8,
         mant: u32,
 
