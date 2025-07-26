@@ -38,6 +38,17 @@ pub const CPUOptions = struct {
     clear_decimal_on_int: bool = false,
 };
 
+const PSR = @import("status_reg.zig").PSR;
+
+pub const CPUState = struct {
+    A: u8 = 0,
+    X: u8 = 0,
+    Y: u8 = 0,
+    S: u8 = 0xff,
+    P: PSR = PSR{},
+    PC: u16 = 0,
+};
+
 // Baseline (glyph/M2 Air)
 //  Relative to real 65C02: 484.9250196
 //  Effective mHz: 1454.775059
@@ -101,7 +112,6 @@ pub fn CPU(
             pub const IRQV: u16 = 0xfffe;
             pub const RESETV: u16 = 0xfffc;
             pub const NMIV: u16 = 0xfffa;
-            const PSR = @import("status_reg.zig").PSR;
 
             alu: ALU = ALU{},
             mem: Memory,
@@ -125,6 +135,26 @@ pub fn CPU(
                     .int_source = int_source,
                     .os = os,
                 };
+            }
+
+            pub fn getState(self: Self) CPUState {
+                return CPUState{
+                    .A = self.A,
+                    .X = self.X,
+                    .Y = self.Y,
+                    .S = self.S,
+                    .P = self.P,
+                    .PC = self.PC,
+                };
+            }
+
+            pub fn setState(self: *Self, state: CPUState) void {
+                self.A = state.A;
+                self.X = state.X;
+                self.Y = state.Y;
+                self.S = state.S;
+                self.P = state.P;
+                self.PC = state.PC;
             }
 
             pub fn peek8(self: Self, addr: u16) u8 {
