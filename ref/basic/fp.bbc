@@ -83,8 +83,7 @@ P% = code
               STA vp + 0
               LDA var_base + 1, Y
               STA vp + 1
-.vc1          LDA vp + 0
-              ORA vp + 1
+.vc1          LDA vp + 1
               BEQ vc4
               JSR debug
               LDA #ASC" "
