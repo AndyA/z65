@@ -69,4 +69,4 @@ https://github.com/qiongzhu/multiarch-on-aarch64
   - make optionality more formally correct?
 - Commands
   - `*EDIT` edit current program in `$EDITOR`
-  - `*JSB` run current program in jsbeeb at http://localhost:????/
+  - `*JSBEEB` run current program in jsbeeb at http://localhost:????/

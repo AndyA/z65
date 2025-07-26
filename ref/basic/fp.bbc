@@ -102,22 +102,14 @@ P% = code
               PLA
               RTS
 
-.endian       PHA
-              LDA acc0 + 0
-              PHA
-              LDA acc0 + 1
-              PHA
-              LDA acc0 + 2
-              PHA
-              LDA acc0 + 3
-              STA acc0 + 0
-              PLA
-              STA acc0 + 1
-              PLA
-              STA acc0 + 2
-              PLA
+.endian       LDA acc0 + 0
+              LDX acc0 + 3
               STA acc0 + 3
-              PLA
+              STX acc0 + 0
+              LDA acc0 + 1
+              LDX acc0 + 2
+              STA acc0 + 2
+              STX acc0 + 1
               RTS
 
 ]
@@ -127,7 +119,6 @@ IF P% - code > code_size% THEN PRINT "[31mCode overflow![0m" : STOP
 
 PROCfloat(1.99999)
 PROCfloat(2)
-END
 
 PRINT "// &12345678"
 PROCfloat(&12345678)
@@ -171,12 +162,6 @@ REPEAT
   A = A / 2
 UNTIL A = 0
 
-A = 1
-REPEAT
-  PROCfloat(A)
-  A = A * 2
-UNTIL A = 0
-
 END
 
 DATA 0.5, 1, 2, -0.5, -1, -2, 10 ^ 10, 2 ^ 10
@@ -206,8 +191,6 @@ DEF FNnum(num)
   IF e% = 0 THEN =rep$
   IF MID$(rep$, e% + 1, 1) = "-" THEN =LEFT$(rep$, e%-1) + "e" + MID$(rep$, e%+1)
 =LEFT$(rep$, e%-1) + "e+" + MID$(rep$, e%+1)
-
-=""
 
 DEF FNzp(size%)
   LOCAL S%
