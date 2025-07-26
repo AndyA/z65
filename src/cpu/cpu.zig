@@ -41,12 +41,21 @@ pub const CPUOptions = struct {
 const PSR = @import("status_reg.zig").PSR;
 
 pub const CPUState = struct {
+    const Self = @This();
+
     A: u8 = 0,
     X: u8 = 0,
     Y: u8 = 0,
     S: u8 = 0xff,
     P: PSR = PSR{},
     PC: u16 = 0,
+
+    pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+        const args = .{ self.PC, self.P, self.A, self.X, self.Y, self.S };
+        try writer.print(
+            \\{{"pc":{d},"p":"{f}","a":{d},"x":{d},"y":{d},"s":{d}}}
+        , args);
+    }
 };
 
 // Baseline (glyph/M2 Air)
@@ -346,10 +355,7 @@ pub fn CPU(
             }
 
             pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
-                const args = .{ self.PC, self.P, self.A, self.X, self.Y, self.S };
-                try writer.print(
-                    \\{{"pc":{d},"p":"{f}","a":{d},"x":{d},"y":{d},"s":{d}}}
-                , args);
+                try self.getState().format(writer);
             }
 
             pub fn asmi(self: *Self, instr: InstructionSet) void {
