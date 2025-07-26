@@ -117,59 +117,23 @@ NEXT
 PRINT "[36mCode size: "; P% - code; ", allocated: "; code_size%; "[0m"
 IF P% - code > code_size% THEN PRINT "[31mCode overflow![0m" : STOP
 
-PROCfloat(1.99999)
-PROCfloat(2)
-
-PRINT "// &12345678"
-PROCfloat(&12345678)
-PRINT "// -&12345678"
-PROCfloat(-&12345678)
-PRINT "// &1234"
-PROCfloat(&1234)
-PRINT "// PI"
-PROCfloat(PI)
-PRINT "// PI + 0.0000001"
-PROCfloat(PI + 0.0000001)
-
-PROCfloat(0)
-PRINT "// &01020304"
-PROCfloat(&01020304)
-PRINT "// -&01020304"
-PROCfloat(-&01020304)
-PRINT "// &8000001"
-PROCfloat(&8000001)
-PRINT "// -&8000001"
-PROCfloat(-&8000001)
-PRINT "// &4000001"
-PROCfloat(&4000001)
-PRINT "// -&4000001"
-PROCfloat(-&4000001)
-
 REPEAT
-  READ value
-  PROCfloat(value)
+  READ value$
+  value = EVAL value$
+  PROCfloat(value$, value)
 UNTIL value = 0
-
-A = 1
-REPEAT
-  PROCfloat(A)
-  A = A / 2
-UNTIL A = 0
-
-A = -1
-REPEAT
-  PROCfloat(A)
-  A = A / 2
-UNTIL A = 0
 
 END
 
+DATA 1.99999999, 2, 2.00000001
+DATA PI, PI + 0.00000001, PI - 0.00000001
+DATA 1.234E37, 1.234E-37
 DATA 0.5, 1, 2, -0.5, -1, -2, 10 ^ 10, 2 ^ 10
 DATA 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
 DATA -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -17
 DATA 0
 
-DEF PROCfloat(num)
+DEF PROCfloat(label$, num)
   LOCAL ABC, @%, res%, mant%, exp%, add%, I%
   @% = 0
   $var_name = "ABC"
@@ -181,7 +145,7 @@ DEF PROCfloat(num)
   A% = ?addr% : CALL hexbyte
   PRINT ", 0x";
   !acc0 = addr%!1 : CALL endian : CALL hexword
-  PRINT ", "; FNnum(num); "),"
+  PRINT ", "; FNnum(num); "), // "; label$
 ENDPROC
 
 DEF FNnum(num)
