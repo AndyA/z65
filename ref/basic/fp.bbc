@@ -91,11 +91,17 @@ P% = code
               JSR oswrch
               LDY #2
 .vc2          LDA (vp), Y
-              BEQ vc3
+              CMP #32
+              BCC vc3
               JSR oswrch
               INY
               BNE vc2
-.vc3          JSR osnewl
+.vc3          PHA
+              LDA #ASC" "
+              JSR oswrch
+              PLA
+              JSR hexbyte
+              JSR osnewl
               LDY #0
               LDA (vp), Y
               PHA
