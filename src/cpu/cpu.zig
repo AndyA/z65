@@ -38,6 +38,10 @@ pub const CPUOptions = struct {
     clear_decimal_on_int: bool = false,
 };
 
+// Baseline (glyph/M2 Air)
+//  Relative to real 65C02: 484.9250196
+//  Effective mHz: 1454.775059
+
 pub fn CPU(
     comptime InstructionSet: type,
     comptime AddressModes: type,
@@ -144,6 +148,9 @@ pub fn CPU(
 
             pub fn fetch8(self: *Self) u8 {
                 const byte = self.peek8(self.PC);
+                if (@hasDecl(OS, "hook:fetch")) {
+                    self.os.@"hook:fetch"(self, byte);
+                }
                 self.PC +%= 1;
                 return byte;
             }

@@ -121,6 +121,12 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.poke16(IRQV, irq_addr);
         }
 
+        pub fn @"hook:fetch"(self: *Self, cpu: anytype, byte: u8) void {
+            if (@hasDecl(LangType, "hook:fetch")) {
+                self.lang.@"hook:fetch"(cpu, byte);
+            }
+        }
+
         fn sendBuffer(self: *Self, cpu: anytype, addr: u16, ln: []const u8) void {
             _ = self;
             const buf_addr = cpu.peek16(addr);
