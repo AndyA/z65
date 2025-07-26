@@ -75,6 +75,50 @@ P% = code
 .fv6          SEC
               RTS
 
+.vchain       TXA
+              SEC
+              SBC #ASC"@"
+              ASL A
+              TAY
+              LDA var_base + 0, Y
+              STA vp + 0
+              LDA var_base + 1, Y
+              STA vp + 1
+.vc1          LDA vp + 0
+              ORA vp + 1
+              BEQ vc4
+              TXA
+              JSR oswrch
+              LDY #2
+.vc2          LDA (vp), Y
+              BEQ vc3
+              JSR oswrch
+              INY
+              BNE vc2
+.vc3          JSR osnewl
+              LDY #0
+              LDA (vp), Y
+              PHA
+              INY
+              LDA (vp), Y
+              STA vp + 1
+              PLA
+              STA vp + 0
+              JMP vc1
+.vc4          RTS
+
+.vars         LDX #ASC"A"
+.va1          JSR vchain
+              INX
+              CPX #ASC"Z" + 1
+              BCC va1
+              LDX #ASC"a"
+.va2          JSR vchain
+              INX
+              CPX #ASC"z" + 1
+              BCC va2
+              RTS
+
 .hexbyte      PHA
               LSR A : LSR A : LSR A : LSR A
               JSR hexnyb
