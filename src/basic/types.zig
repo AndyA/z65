@@ -3,6 +3,17 @@ const serde = @import("../tools/serde.zig");
 
 pub const BasicFPError = error{TooBig};
 
+// String
+//    word value -> pointer to value, null means empty string
+// String value
+//    byte alloc -> allocated length
+//    byte len   -> used length
+//    byte* str  -> chars
+// Array
+//    byte dimskip -> offset of data
+//    word* dim    -> dimensions
+//    byte* data   -> data
+
 pub fn BasicFP(comptime T: type) type {
     return struct {
         const Self = @This();
