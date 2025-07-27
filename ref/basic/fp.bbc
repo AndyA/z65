@@ -200,6 +200,7 @@ PRINT "  // Some random values"
 FOR I% = 1 TO 10
   V = RND
   PROCfloat(STR$(V), V)
+  PROCfloat("1 / " + STR$(V), 1 / V)
 NEXT
 
 PRINT "};"
