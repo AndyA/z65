@@ -187,11 +187,15 @@ NEXT
 PRINT "[36mCode size: "; P% - code; ", allocated: "; code_size%; "[0m"
 IF P% - code > code_size% THEN PRINT "[31mCode overflow![0m" : STOP
 
+PRINT "const test_cases = [_]TestCase{"
+
 REPEAT
   READ value$
   value = EVAL value$
   PROCfloat(value$, value)
 UNTIL value = 0
+
+PRINT "};"
 
 END
 
@@ -211,7 +215,7 @@ DEF PROCfloat(label$, num)
   res% = USR find_var
   IF res% AND &01000000 THEN STOP
   addr% = (res% DIV 256) AND &FFFF
-  PRINT "TC(0x";
+  PRINT "  TC(0x";
   A% = ?addr% : CALL hexbyte
   PRINT ", 0x";
   !acc0 = addr%!1 : CALL endian : CALL hexword
