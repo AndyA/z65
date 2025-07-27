@@ -195,6 +195,13 @@ REPEAT
   PROCfloat(value$, value)
 UNTIL value = 0
 
+PRINT
+PRINT "  // Some random values"
+FOR I% = 1 TO 10
+  V = RND
+  PROCfloat(STR$(V), V)
+NEXT
+
 PRINT "};"
 
 END
