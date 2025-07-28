@@ -130,6 +130,15 @@ fn Echo(char: u8) type {
     });
 }
 
+fn Print(str: []const u8) type {
+    return serde(struct {
+        fn run(self: *@This(), vdu: *VDU) !void {
+            _ = self;
+            try vdu.writer.print("{s}", .{str});
+        }
+    });
+}
+
 const VDUDespatch = [_]type{
     NoOp, //   0 0 Does nothing
     NextToPrinter, //   1 1 Send next character to printer only
@@ -143,7 +152,7 @@ const VDUDespatch = [_]type{
     Echo(9), //   9 0 Move cursor forward one character
     Echo(10), //  10 0 Move cursor down one line
     Echo(11), //  11 0 Move cursor up one line
-    Echo(12), //  12 0 Clear text area
+    Print("\x1b[2J"), //  12 0 Clear text area
     Echo(13), //  13 0 Carriage return
     NoOp, //  14 0 Paged mode on
     NoOp, //  15 0 Paged mode off
@@ -214,7 +223,7 @@ pub const VDU = struct {
 
     pub fn oswrch(self: *Self, char: u8) !void {
         if (self.q_size != 0) {
-            if (self.q_pos < self.q_size) self.queue[self.q_pos] = char;
+            if (self.q_pos < VDUMaxBytes) self.queue[self.q_pos] = char;
             self.q_pos += 1;
             if (self.q_pos == self.q_size) {
                 try self.runCommand();
