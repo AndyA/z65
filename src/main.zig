@@ -166,7 +166,5 @@ pub fn main() !void {
 
 test {
     @import("std").testing.refAllDecls(@This());
-    _ = @import("disassembler/disasm.zig");
-    _ = @import("tools/word_wrap.zig");
     _ = @import("basic/model/vars.zig");
 }

@@ -13,7 +13,8 @@ pub fn serdeEx(comptime T: type, comptime big_endian: bool) type {
                 }
 
                 return struct {
-                    pub const bytesSize = bytes;
+                    pub const BaseType = T;
+                    pub const byteSize: usize = bytes;
                     const fields = serdes;
 
                     pub fn read(cpu: anytype, addr: u16) T {
@@ -35,13 +36,40 @@ pub fn serdeEx(comptime T: type, comptime big_endian: bool) type {
                     }
                 };
             },
+            .array => |info| {
+                const child = serdeEx(info.child, big_endian);
+
+                return struct {
+                    pub const BaseType = T;
+                    pub const byteSize: usize = child.byteSize * info.len;
+
+                    pub fn read(cpu: anytype, addr: u16) T {
+                        var value: T = undefined;
+                        var offset: u16 = 0;
+                        for (0..info.len) |i| {
+                            value[i] = child.read(cpu, addr + offset);
+                            offset += child.byteSize;
+                        }
+                        return value;
+                    }
+
+                    pub fn write(cpu: anytype, addr: u16, value: T) void {
+                        var offset: u16 = 0;
+                        for (0..info.len) |i| {
+                            child.write(cpu, addr + offset, value[i]);
+                            offset += child.byteSize;
+                        }
+                    }
+                };
+            },
             .int => |info| {
                 if (info.bits & 0x03 != 0) {
                     @compileError("SerDe can only be used with multiples of 8 bits");
                 }
 
                 return struct {
-                    pub const byteSize = @divFloor(info.bits, 8);
+                    pub const BaseType = T;
+                    pub const byteSize: usize = @divFloor(info.bits, 8);
 
                     pub fn read(cpu: anytype, addr: u16) T {
                         var raw_value: [byteSize]u8 = undefined;

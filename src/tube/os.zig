@@ -2,6 +2,7 @@ const std = @import("std");
 const serde = @import("../tools/serde.zig").serde;
 const ct = @import("../tools/cpu_tools.zig");
 const constants = @import("constants.zig");
+const vdu = @import("vdu.zig");
 
 const TRAP_OPCODE: u8 = 0xBB;
 
@@ -24,6 +25,7 @@ pub fn TubeOS(comptime LangType: type) type {
         reader: *std.io.Reader,
         writer: *std.io.Writer,
         lang: *LangType,
+        vdu: vdu.VDU,
 
         pub fn init(
             alloc: std.mem.Allocator,
@@ -37,6 +39,7 @@ pub fn TubeOS(comptime LangType: type) type {
                 .reader = reader,
                 .writer = writer,
                 .lang = lang,
+                .vdu = vdu.VDU.init(writer),
             };
         }
 
@@ -250,7 +253,8 @@ pub fn TubeOS(comptime LangType: type) type {
         }
 
         fn doOSWRCH(self: *Self, cpu: anytype) !void {
-            try self.writer.print("{c}", .{cpu.A});
+            // try self.writer.print("{c}", .{cpu.A});
+            try self.vdu.oswrch(cpu.A);
         }
 
         fn doOSRDCH(self: *Self, cpu: anytype) !void {
