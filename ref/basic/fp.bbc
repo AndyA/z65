@@ -146,8 +146,8 @@ P% = code
 .hd2          JSR hd1
 .hd1          LDA #ASC" "
               JSR oswrch
-              LDA (vp), Y
               INY
+              LDA (vp), Y
               JMP hexbyte
       
 
