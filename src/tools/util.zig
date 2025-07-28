@@ -6,12 +6,12 @@ pub fn hashBytes(text: []const u8) u256 {
     return @bitCast(h.finalResult());
 }
 
-pub fn hexDump(mem: []const u8) void {
+pub fn hexDump(mem: []const u8, offset: u16) void {
     var pos: usize = 0;
     while (pos < mem.len) : (pos += 16) {
         var avail = @min(16, mem.len - pos);
         const bytes = mem[pos .. pos + avail];
-        std.debug.print("{x:0>4} |", .{pos});
+        std.debug.print("{x:0>4} |", .{pos +% offset});
         for (bytes) |byte|
             std.debug.print(" {x:0>2}", .{byte});
         while (avail < 16) : (avail += 1)
@@ -23,11 +23,6 @@ pub fn hexDump(mem: []const u8) void {
         }
         std.debug.print("\n", .{});
     }
-}
-
-pub fn hexSection(comptime title: []const u8, mem: []const u8) void {
-    std.debug.print("Data for {s}:\n", .{title});
-    hexDump(mem);
 }
 
 pub fn peek16(bytes: []const u8, addr: u16) u16 {

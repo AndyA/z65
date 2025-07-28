@@ -145,6 +145,27 @@ pub fn TubeOS(comptime LangType: type) type {
             }
         }
 
+        pub fn hexDump(self: Self, cpu: anytype, start: u16, end: u16) !void {
+            var pos = start;
+            var buf: [16]u8 = undefined;
+            while (pos < end) : (pos += 16) {
+                var avail = @min(16, end - pos);
+                const bytes = buf[0..avail];
+                ct.peekBytes(cpu, pos, bytes);
+                try self.writer.print("{x:0>4} |", .{pos});
+                for (bytes) |byte|
+                    try self.writer.print(" {x:0>2}", .{byte});
+                while (avail < 16) : (avail += 1)
+                    try self.writer.print("   ", .{});
+                try self.writer.print(" | ", .{});
+                for (bytes) |byte| {
+                    const rep = if (std.ascii.isPrint(byte)) byte else '.';
+                    try self.writer.print("{c}", .{rep});
+                }
+                try self.writer.print("\n", .{});
+            }
+        }
+
         fn sendBuffer(self: *Self, cpu: anytype, addr: u16, ln: []const u8) void {
             _ = self;
             const buf_addr = cpu.peek16(addr);

@@ -1,12 +1,8 @@
 const std = @import("std");
 const runner = @import("runner.zig");
-const constants = @import("../tube/constants.zig");
+const constants = @import("constants.zig");
 const util = @import("../tools/util.zig");
 const iters = @import("iters.zig");
-
-const HIMEM = @intFromEnum(constants.Symbols.HIMEM);
-const PAGE = @intFromEnum(constants.Symbols.PAGE);
-const ZP_TOP = 0x12;
 
 pub const CodeError = error{ProgramTooLarge};
 
@@ -22,49 +18,50 @@ pub fn validBinary(prog: []const u8) iters.BasicIterError![]const u8 {
 }
 
 pub fn getProgram(ram: *[0x10000]u8) ![]const u8 {
-    const top = util.peek16(ram, ZP_TOP);
-    return validBinary(ram[PAGE..top]);
+    const top = util.peek16(ram, constants.ZP.TOP);
+    return validBinary(ram[constants.PAGE..top]);
 }
 
 pub fn setProgram(ram: *[0x10000]u8, prog: []const u8) !void {
-    if (prog.len > HIMEM - PAGE - 0x100)
+    if (prog.len > constants.HIMEM - constants.PAGE - 0x100)
         return CodeError.ProgramTooLarge;
-    @memcpy(ram[PAGE .. PAGE + prog.len], try validBinary(prog));
+    @memcpy(ram[constants.PAGE .. constants.PAGE + prog.len], try validBinary(prog));
 }
 
 pub fn clearVariables(ram: *[0x10000]u8) void {
-    const vars = 0x0480;
+    const ZP = constants.ZP;
     // f523   a5 12      lf523     lda $12       ; top
     // f525   85 00                sta $00
     // f527   85 02                sta $02
     // f529   a5 13                lda $13
     // f52b   85 01                sta $01
     // f52d   85 03                sta $03
-    const top = util.peek16(ram, ZP_TOP);
-    util.poke16(ram, 0x00, top);
+    const top = util.peek16(ram, ZP.TOP);
+    util.poke16(ram, ZP.VARTOP, top);
     util.poke16(ram, 0x02, top);
     // f53d   a5 18      lf53d     lda $18
     // f53f   85 1d                sta $1d
-    ram[0x1d] = ram[0x18];
+    ram[0x1d] = ram[ZP.PAGE_HI];
     // f541   a5 06                lda $06
     // f543   85 04                sta $04
     // f545   a5 07                lda $07
     // f547   85 05                sta $05
-    util.poke16(ram, 0x04, util.peek16(ram, 0x06));
+    util.poke16(ram, ZP.SP, util.peek16(ram, ZP.HIMEM));
     // f549   a9 00                lda #$00
     // f54b   85 24                sta $24
     // f54d   85 26                sta $26
     // f54f   85 25                sta $25
     // f551   85 1c                sta $1c
-    ram[0x24] = 0x00;
-    ram[0x26] = 0x00;
-    ram[0x25] = 0x00;
     ram[0x1c] = 0x00;
+    ram[0x24] = 0x00;
+    ram[0x25] = 0x00;
+    ram[0x26] = 0x00;
     // f532   a2 80      lf532     ldx #$80
     // f534   a9 00                lda #$00
     // f536   9d 7f 04   lf536     sta $047f,x
     // f539   ca                   dex
     // f53a   d0 fa                bne lf536
+    const vars = constants.VAR_CHAINS;
     @memset(ram[vars .. vars + 0x80], 0x00);
 }
 

@@ -2,6 +2,7 @@ const std = @import("std");
 const ct = @import("tools/cpu_tools.zig");
 const cvt = @import("basic/converter.zig");
 const code = @import("basic/code.zig");
+const constants = @import("basic/constants.zig");
 const kw = @import("basic/keywords.zig");
 const osfile = @import("tube/osfile.zig");
 
@@ -69,11 +70,6 @@ pub const HiBasicExec = struct {
 pub const HiBasic = struct {
     const Self = @This();
     const LOAD_ADDR = @intFromEnum(Symbols.HIMEM);
-    const HIMEM = 0x06;
-    const NEXTP = 0x0b; // current program line pointer
-    const TOP = 0x12;
-    const PAGE_HI = 0x18;
-    const CMD_BUF = 0x700;
 
     alloc: std.mem.Allocator,
     config: HiBasicConfig,
@@ -139,9 +135,9 @@ pub const HiBasic = struct {
 
     pub fn commandMode(self: *Self, cpu: anytype) bool {
         _ = self;
-        const nextp = cpu.peek16(Self.NEXTP);
+        const nextp = cpu.peek16(constants.ZP.NEXTP);
         const buf = cpu.peek16(ct.getXY(cpu));
-        return nextp == CMD_BUF and buf == CMD_BUF;
+        return nextp == constants.CMD_BUF and buf == constants.CMD_BUF;
     }
 
     pub fn clearCurrentFile(self: *Self) void {
@@ -200,7 +196,7 @@ pub const HiBasic = struct {
 
     fn commandContext(self: Self, cpu: anytype, pred: fn (u8) bool) bool {
         _ = self;
-        var nextp = cpu.peek16(Self.NEXTP);
+        var nextp = cpu.peek16(constants.ZP.NEXTP);
         const cutoff = nextp -| 0x100;
         while (nextp > cutoff) {
             nextp -= 1;
@@ -313,25 +309,25 @@ pub const HiBasic = struct {
 
     pub fn getPage(self: Self, cpu: anytype) u16 {
         _ = self;
-        const page_hi: u16 = @intCast(cpu.peek8(PAGE_HI));
+        const page_hi: u16 = @intCast(cpu.peek8(constants.ZP.PAGE_HI));
         const page: u16 = page_hi << 8;
         return page;
     }
 
     pub fn getProgram(self: Self, cpu: anytype) []const u8 {
         const page = self.getPage(cpu);
-        const top: u16 = cpu.peek16(TOP);
+        const top: u16 = cpu.peek16(constants.ZP.TOP);
         return self.ram[page..top];
     }
 
     pub fn setProgram(self: *Self, cpu: anytype, prog: []const u8) !void {
         const page = self.getPage(cpu);
         const top: u16 = @intCast(page + prog.len);
-        const himem: u16 = cpu.peek16(HIMEM);
+        const himem: u16 = cpu.peek16(constants.ZP.HIMEM);
         if (top > himem)
             return HiBasicError.ProgramTooLarge;
         @memcpy(self.ram[page..top], prog);
-        cpu.poke16(TOP, top);
+        cpu.poke16(constants.ZP.TOP, top);
         self.prog_hash = hashBytes(prog);
     }
 

@@ -66,6 +66,13 @@ const StarCommands = struct {
         cpu.stop();
     }
 
+    pub fn @"*DUMP <start:u16x> <end:u16xr> "(
+        cpu: anytype,
+        args: anytype,
+    ) !void {
+        try cpu.os.hexDump(cpu, args.start, args.end.resolve(args.start));
+    }
+
     pub fn @"*!<shell:[]u8*>"(
         cpu: anytype,
         args: anytype,
