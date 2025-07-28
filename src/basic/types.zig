@@ -51,7 +51,7 @@ pub fn BasicFP(comptime T: type) type {
         }
 
         pub fn getValue(self: Self) T {
-            if (self.exp == 0 and self.mant == 0)
+            if (self.exp == 0)
                 return 0;
             const sm: SM = @bitCast(self.mant);
             const mant: u32 = 0x80000000 | @as(u32, sm.mag);
@@ -182,5 +182,19 @@ test ".initFromValue" {
             });
         }
         try std.testing.expect(diff <= MAX_DIFF);
+    }
+}
+
+test "round trip random" {
+    var r = std.Random.Xoroshiro128.init(0);
+    const rr = r.random();
+
+    for (1..100) |_| {
+        const exp = rr.int(u8);
+        const mant = if (exp == 0) @as(u32, 0) else rr.int(u32);
+        const want = BasicFP64{ .exp = exp, .mant = mant };
+        const got = try BasicFP64.initFromValue(want.getValue());
+        try std.testing.expectEqual(want.exp, got.exp);
+        try std.testing.expectEqual(want.mant, got.mant);
     }
 }
