@@ -5,10 +5,6 @@ const constants = @import("constants.zig");
 const StarCommands = struct {
     const Self = @This();
 
-    pub fn @"*/ <name:[]u8>"(cpu: anytype, args: anytype) !void {
-        try Self.@"*RUN <name:[]u8>"(cpu, args);
-    }
-
     pub fn @"*CAT"(cpu: anytype, args: anytype) !void {
         _ = cpu;
         _ = args;
@@ -37,6 +33,10 @@ const StarCommands = struct {
     pub fn @"*LOAD <name:[]u8> <start:u16x>"(cpu: anytype, args: anytype) !void {
         _ = cpu;
         std.debug.print("*LOAD \"{s}\" {x}\n", .{ args.name, args.start });
+    }
+
+    pub fn @"*/ <name:[]u8>"(cpu: anytype, args: anytype) !void {
+        try Self.@"*RUN <name:[]u8>"(cpu, args);
     }
 
     pub fn @"*RUN <name:[]u8>"(cpu: anytype, args: anytype) !void {
