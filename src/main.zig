@@ -23,9 +23,8 @@ const Tube65C02 = machine.CPU(
 
 fn hiBasic(alloc: std.mem.Allocator, config: hb.HiBasicConfig) !void {
     var r_buf: [256]u8 = undefined;
-    var w_buf: [0]u8 = undefined;
     var r = std.fs.File.stdin().reader(&r_buf);
-    var w = std.fs.File.stdout().writer(&w_buf);
+    var w = std.fs.File.stdout().writer(&.{});
 
     var ram: [0x10000]u8 = @splat(0);
     var lang = try hb.HiBasic.init(
