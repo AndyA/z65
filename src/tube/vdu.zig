@@ -211,6 +211,7 @@ pub const VDU = struct {
         self.q_size = 0;
         self.cmd = 0xff;
     }
+
     pub fn oswrch(self: *Self, char: u8) !void {
         if (self.q_size != 0) {
             if (self.q_pos < self.q_size) self.queue[self.q_pos] = char;
