@@ -174,14 +174,14 @@ const VDUDespatch = [_]type{
     CursorPos, //  31 2 Move text cursor to X,Y
 };
 
-fn max_bytes() comptime_int {
+fn max_bytes(serdes: anytype) comptime_int {
     var max = 0;
-    for (VDUDespatch) |c|
-        max = @max(max, c.byteSize);
+    for (serdes) |s|
+        max = @max(max, s.byteSize);
     return max;
 }
 
-pub const VDUMaxBytes = max_bytes();
+pub const VDUMaxBytes = max_bytes(VDUDespatch);
 
 pub const VDU = struct {
     const Self = @This();

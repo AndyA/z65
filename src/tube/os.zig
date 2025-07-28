@@ -17,6 +17,7 @@ const OSCLI = @import("oscli.zig").OSCLI;
 const RW_u40 = serde(u40);
 const RW_OSFILE = serde(OSFILE);
 
+// TODO VDUType
 pub fn TubeOS(comptime LangType: type) type {
     return struct {
         const Self = @This();
