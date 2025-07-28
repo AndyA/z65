@@ -68,7 +68,7 @@ const LogicalColour = serde(struct {
 const ScreenMode = serde(struct {
     mode: u8,
     fn run(self: *@This(), vdu: *VDU) !void {
-        try vdu.writer.print("Mode {d}\n", .{self.mode});
+        vdu.mode = self.mode;
     }
 });
 
@@ -176,9 +176,8 @@ const VDUDespatch = [_]type{
 
 fn max_bytes() comptime_int {
     var max = 0;
-    for (VDUDespatch) |c| {
+    for (VDUDespatch) |c|
         max = @max(max, c.byteSize);
-    }
     return max;
 }
 
@@ -213,6 +212,7 @@ pub const VDU = struct {
             },
             else => @panic("Bad VDU code"),
         }
+        self.reset();
     }
 
     pub fn reset(self: *Self) void {
@@ -225,19 +225,15 @@ pub const VDU = struct {
         if (self.q_size != 0) {
             if (self.q_pos < VDUMaxBytes) self.queue[self.q_pos] = char;
             self.q_pos += 1;
-            if (self.q_pos == self.q_size) {
+            if (self.q_pos == self.q_size)
                 try self.runCommand();
-                self.reset();
-            }
         } else {
             switch (char) {
                 inline 0...VDUDespatch.len - 1 => |code| {
                     self.cmd = char;
                     self.q_size = VDUDespatch[code].byteSize;
-                    if (self.q_size == 0) {
+                    if (self.q_size == 0)
                         try self.runCommand();
-                        self.reset();
-                    }
                 },
                 else => {
                     try self.writer.print("{c}", .{char});
@@ -248,18 +244,20 @@ pub const VDU = struct {
 };
 
 test VDU {
-    // const alloc = std.testing.allocator;
-    // var buf: std.ArrayListUnmanaged(u8) = .empty;
-    // var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
-    // defer w.deinit();
+    const alloc = std.testing.allocator;
+    var buf: std.ArrayListUnmanaged(u8) = .empty;
+    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+    defer w.deinit();
 
-    // var vdu = VDU.init(&w.writer);
-    // try vdu.oswrch('A');
-    // try vdu.oswrch(22);
-    // try vdu.oswrch(7);
-    // try vdu.oswrch('B');
+    var vdu = VDU.init(&w.writer);
+    try vdu.oswrch('A');
+    try vdu.oswrch(22);
+    try vdu.oswrch(7);
+    try vdu.oswrch('B');
 
-    // var output = w.toArrayList();
-    // defer output.deinit(alloc);
-    // std.debug.print("Output: {s}\n", .{output.items});
+    var output = w.toArrayList();
+    defer output.deinit(alloc);
+
+    try std.testing.expectEqual(7, vdu.mode);
+    try std.testing.expectEqualDeep("AB", output.items);
 }

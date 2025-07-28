@@ -169,14 +169,22 @@ pub fn TubeOS(comptime LangType: type) type {
             }
         }
 
+        fn raiseError(self: *Self, cpu: anytype, code: u8, msg: []const u8) void {
+            const err_buf: u16 = @intFromEnum(Symbols.OS_BASE);
+            cpu.poke8(err_buf + 0, 0x00);
+            cpu.poke8(err_buf + 1, code);
+            ct.pokeString(cpu, err_buf + 2, msg, 0x0d);
+            cpu.PC = err_buf + 0;
+            _ = self;
+        }
+
         fn sendBuffer(self: *Self, cpu: anytype, addr: u16, ln: []const u8) void {
             _ = self;
             const buf_addr = cpu.peek16(addr);
             const max_len = cpu.peek8(addr + 2);
             cpu.Y = @as(u8, @min(ln.len, max_len));
             cpu.P.C = false;
-            ct.pokeBytes(cpu, buf_addr, ln);
-            cpu.poke8(@intCast(buf_addr + ln.len), 0x0D); // CR-terminate}
+            ct.pokeString(cpu, buf_addr, ln, 0x0D);
         }
 
         fn sendLine(self: *Self, cpu: anytype, addr: u16, ln: []const u8) !void {
@@ -191,9 +199,14 @@ pub fn TubeOS(comptime LangType: type) type {
         fn doOSCLI(self: *Self, cpu: anytype) !void {
             var cmd_line = try ct.peekString(self.alloc, cpu, ct.getXY(cpu), 0x0D);
             defer cmd_line.deinit();
-            const res = try OSCLI.handle(cmd_line.items, cpu);
+            var res = try OSCLI.handle(cmd_line.items, cpu);
+
+            if (@hasDecl(LangType, "hook:oscli")) {
+                if (!res) res = try self.lang.@"hook:oscli"(cmd_line.items, cpu);
+            }
+
             if (!res)
-                std.debug.print("Bad command {s}\n", .{cmd_line.items});
+                self.raiseError(cpu, 254, "Bad command");
         }
 
         fn doOSBYTE(self: *Self, cpu: anytype) !void {

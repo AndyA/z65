@@ -47,5 +47,6 @@ pub const MOSVectors = enum(u16) {
 pub const Symbols = enum(u16) {
     PAGE = 0x800,
     HIMEM = 0xb800,
+    OS_BASE = 0xf800,
     MACHINE = 0x0000,
 };

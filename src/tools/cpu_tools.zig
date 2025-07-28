@@ -44,3 +44,8 @@ pub fn peekString(alloc: std.mem.Allocator, mem: anytype, addr: u16, sentinel: u
 
     return buf;
 }
+
+pub fn pokeString(mem: anytype, addr: u16, str: []const u8, sentinel: u8) void {
+    pokeBytes(mem, addr, str);
+    mem.poke8(@intCast(addr + str.len), sentinel);
+}
