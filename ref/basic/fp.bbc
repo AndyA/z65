@@ -3,24 +3,42 @@ REM Andy Armstrong <andy@hexten.net>
 
 oswrch      = &FFEE
 osnewl      = &FFE7
+zig_trace   = &FE90
 
 var_base    = &480
 
 ZP%         = &70
 
+scratch     = FNzp(4)
 vp          = FNzp(2)
 acc0        = FNzp(4)
 
 DIM var_name 255
 
-code_size% = 300
+code_size% = 400
 DIM code code_size% + 200
 
 FOR pass = 0 TO 2 STEP 2
 P% = code
 [OPT pass
 
-.debug        PHA
+.popcount_t   JSR trace
+.popcount     LDX #3
+              LDA #0
+.popc1        JSR pc8
+              DEX
+              BPL popc1
+              RTS
+
+.pc8          JSR pc4
+.pc4          JSR pc2
+.pc2          JSR pc1
+.pc1          LSR acc0, X
+              ADC #0
+              RTS
+
+
+.showaddr     PHA
               LDA vp + 1
               JSR hexbyte
               LDA vp + 0
@@ -85,7 +103,7 @@ P% = code
               STA vp + 1
 .vc1          LDA vp + 1
               BEQ vc4
-              JSR debug
+              JSR showaddr
               LDA #ASC" "
               JSR oswrch
               TXA
@@ -170,6 +188,29 @@ P% = code
               LDA acc0 + 0
               JSR hexbyte
               PLA
+              RTS
+
+.trace        STA scratch + 0
+              PHP : PLA : STA scratch + 1
+              PLA : STA scratch + 2
+              PLA : STA scratch + 3
+              LDA zig_trace : PHA
+              LDA #(trace_x - 1) DIV 256 : PHA
+              LDA #(trace_x - 1) MOD 256 : PHA
+              LDA scratch + 3 : PHA
+              LDA scratch + 2 : PHA
+              LDA #1 : STA zig_trace
+              LDA scratch + 1 : PHA
+              LDA scratch + 0
+              PLP
+              RTS
+
+.trace_x      STA scratch + 0
+              PHP : PLA : STA scratch + 1
+              PLA : STA zig_trace
+              LDA scratch + 1 : PHA
+              LDA scratch + 0
+              PLP
               RTS
 
 .endian       LDA acc0 + 0
