@@ -191,7 +191,7 @@ test "round trip random" {
 
     for (1..100) |_| {
         const exp = rr.int(u8);
-        const mant = if (exp == 0) @as(u32, 0) else rr.int(u32);
+        const mant = if (exp == 0) 0 else rr.int(u32);
         const want = BasicFP64{ .exp = exp, .mant = mant };
         const got = try BasicFP64.initFromValue(want.getValue());
         try std.testing.expectEqual(want.exp, got.exp);
