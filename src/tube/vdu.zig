@@ -167,7 +167,7 @@ const VDUDespatch = [_]type{
     GraphicsWindow, //  24 8 Define graphics window
     Plot, //  25 5 PLOT K,X,Y
     NoOp, //  26 0 Restore default windows
-    NoOp, //  27 0 ESCAPE value
+    Echo(27), //  27 0 ESCAPE value
     TextWindow, //  28 4 Define text window
     GraphicsOrigin, //  29 4 Define graphics origin
     NoOp, //  30 0 Home text cursor to top left of window
