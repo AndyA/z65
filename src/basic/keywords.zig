@@ -198,7 +198,8 @@ pub const KeywordsError = error{BadToken};
 const EnumField = std.builtin.Type.EnumField;
 const KeywordTable = [0x80]?Keyword;
 
-const keyword_list = main_keywords ++ lvalue_keywords ++ special_keywords;
+const real_keywords = main_keywords ++ lvalue_keywords;
+const keyword_list = real_keywords ++ special_keywords;
 const keyword_table = makeKeywordTable(&keyword_list);
 pub const KeywordsEnum = makeKeywordsEnum(&keyword_table);
 
