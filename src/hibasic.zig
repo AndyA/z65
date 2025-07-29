@@ -269,15 +269,16 @@ pub const HiBasic = struct {
         var buf: [0x10000]u8 = undefined;
         const prog = try std.fs.cwd().readFile(file, &buf);
 
-        const bin = try cvt.parseSource(self.alloc, prog);
-        defer self.alloc.free(bin);
+        const source = try cvt.stringifyBinary(self.alloc, self.getProgram(cpu));
+        defer self.alloc.free(source);
 
-        const current = self.getProgram(cpu);
-        if (!std.mem.eql(u8, bin, current)) {
+        if (!std.mem.eql(u8, prog, source)) {
+            const bin = try cvt.parseSource(self.alloc, prog);
+            defer self.alloc.free(bin);
+
             try self.setProgram(cpu, bin);
             code.clearVariables(self.ram);
         }
-
         self.last_modified = lm;
     }
 
