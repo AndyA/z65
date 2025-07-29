@@ -121,11 +121,20 @@ const CursorPos = serde(struct {
     }
 });
 
+fn EnableDisable(enabled: bool) type {
+    return serde(struct {
+        fn run(self: *@This(), vdu: *VDU) !void {
+            _ = self;
+            vdu.enabled = enabled;
+        }
+    });
+}
+
 fn Print(str: []const u8) type {
     return serde(struct {
         fn run(self: *@This(), vdu: *VDU) !void {
             _ = self;
-            try vdu.writer.print("{s}", .{str});
+            for (str) |c| try vdu.writec(c);
         }
     });
 }
@@ -137,7 +146,7 @@ const VDUDespatch = [_]type{
     NoOp, //   3 0 Disable printer
     NoOp, //   4 0 Write text at text cursor
     NoOp, //   5 0 Write text at graphics cursor
-    NoOp, //   6 0 Enable VDU drivers
+    EnableDisable(true), //   6 0 Enable VDU drivers
     Print("\x07"), //   7 0 Make a short beep (BEL)
     Print("\x08"), //   8 0 Move cursor back one character
     Print("\x09"), //   9 0 Move cursor forward one character
@@ -152,7 +161,7 @@ const VDUDespatch = [_]type{
     GraphicsColour, //  18 2 Define graphics colour
     LogicalColour, //  19 5 Define logical colour
     NoOp, //  20 0 Restore default logical colours
-    NoOp, //  21 0 Disable VDU drivers or delete current line
+    EnableDisable(false), //  21 0 Disable VDU drivers or delete current line
     ScreenMode, //  22 1 Select screen MODE
     DefineChar, //  23 9 Re-program display character
     GraphicsWindow, //  24 8 Define graphics window
@@ -181,6 +190,7 @@ pub const VDU = struct {
     queue: [VDUMaxBytes]u8 = undefined,
     q_pos: u8 = 0,
     q_size: u8 = 0,
+    enabled: bool = true,
 
     mode: u8 = 0,
     prev_pt: Point = Point{ .x = 0, .y = 0 },
@@ -212,6 +222,11 @@ pub const VDU = struct {
         self.cmd = 0xff;
     }
 
+    pub fn writec(self: Self, char: u8) !void {
+        if (self.enabled)
+            try self.writer.print("{c}", .{char});
+    }
+
     pub fn oswrch(self: *Self, char: u8) !void {
         if (self.q_size != 0) {
             if (self.q_pos < VDUMaxBytes)
@@ -228,7 +243,7 @@ pub const VDU = struct {
                         try self.runCommand();
                 },
                 else => {
-                    try self.writer.print("{c}", .{char});
+                    try self.writec(char);
                 },
             }
         }
