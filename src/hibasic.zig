@@ -83,6 +83,7 @@ pub const HiBasic = struct {
 
     last_modified: i128 = 0,
     prog_hash: u256 = 0,
+    source_hash: u256 = 0,
 
     pub fn init(
         alloc: std.mem.Allocator,
@@ -254,7 +255,7 @@ pub const HiBasic = struct {
     ) !bool {
         if (self.shouldIntercept(osf, cpu, name)) {
             const real_name = try self.defaultName(name);
-            try self.saveSource(cpu, real_name);
+            try self.saveSourceForced(cpu, real_name);
             try self.setCurrentFile(real_name);
             return true;
         }
@@ -280,11 +281,20 @@ pub const HiBasic = struct {
         self.last_modified = lm;
     }
 
-    pub fn saveSource(self: Self, cpu: anytype, file: []const u8) !void {
+    pub fn saveSource(self: *Self, cpu: anytype, file: []const u8) !void {
         const prog = self.getProgram(cpu);
         const source = try cvt.stringifyBinary(self.alloc, prog);
         defer self.alloc.free(source);
-        try osfile.writeFile(file, source);
+        const hash = hashBytes(source);
+        if (hash != self.source_hash) {
+            try osfile.writeFile(file, source);
+            self.source_hash = hash;
+        }
+    }
+
+    pub fn saveSourceForced(self: *Self, cpu: anytype, file: []const u8) !void {
+        self.source_hash = 0;
+        try self.saveSource(cpu, file);
     }
 
     fn onCodeChange(self: *Self, cpu: anytype) !void {
