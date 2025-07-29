@@ -22,11 +22,11 @@ FOR I% = 1 TO 1000 * mult : NEXT
 elapsed = TIME - start
 per_1000 = elapsed / mult
 PROCrelative("BBC B", 2, bbc_b, per_1000)
-PROCrelative("Tube", 3, tube, per_1000)
+PROCrelative("65C02 2nd Processor", 3, tube, per_1000)
 END
 
 DEF PROCrelative(sys$, cpu_mHz, baseline, per_1000)
   LOCAL speedup
   speedup = baseline / per_1000
-  PRINT "Relative to real "; sys$; ": "; speedup; " ("; speedup * cpu_mHz; " mHz)"
+  PRINT "Relative to a real "; sys$; ": "; speedup; " ("; speedup * cpu_mHz; " mHz)"
 ENDPROC
