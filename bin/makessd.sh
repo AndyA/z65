@@ -15,7 +15,7 @@ for prog in "$@"; do
   bins+=("$out")
 done
 
-dfsimage import "$ssd" "${bins[@]}"
+dfsimage import --replace "$ssd" "${bins[@]}"
 
 # vim:ts=2:sw=2:sts=2:et:ft=sh
 
