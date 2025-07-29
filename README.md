@@ -46,14 +46,14 @@ https://github.com/qiongzhu/multiarch-on-aarch64
   - ~~don't alloc~~ ✘
   - implement more functions
 - keyboard input handling
-  - tty to cooked mode
+  - tty to raw mode
   - runs on its own thread?
   - readline?
 - VDU emulations
+  - terminal colours
   - png canvas
   - sdl
   - svg
-  - terminal colours
 - handle plain text basic
   - ~~read and write~~ ✔
 - CLI options

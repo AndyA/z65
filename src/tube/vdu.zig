@@ -58,10 +58,10 @@ const GraphicsColour = serde(struct {
 
 const LogicalColour = serde(struct {
     colour: u8,
-    simple: u8,
+    logical: u8,
     rgb: RGB,
     fn run(self: *@This(), vdu: *VDU) !void {
-        try vdu.writer.print("LogicalColour {d}, {d}, {f}\n", .{ self.colour, self.simple, self.rgb });
+        try vdu.writer.print("LogicalColour {d}, {d}, {f}\n", .{ self.colour, self.logical, self.rgb });
     }
 });
 
@@ -94,7 +94,7 @@ const Plot = serde(struct {
     pt: Point,
     fn run(self: *@This(), vdu: *VDU) !void {
         try vdu.writer.print("Plot {d}, {f}\n", .{ self.cmd, self.pt });
-        vdu.old_pt = vdu.last_pt;
+        vdu.prev_pt = vdu.last_pt;
         vdu.last_pt = self.pt;
     }
 });
@@ -121,15 +121,6 @@ const CursorPos = serde(struct {
     }
 });
 
-fn Echo(char: u8) type {
-    return serde(struct {
-        fn run(self: *@This(), vdu: *VDU) !void {
-            _ = self;
-            try vdu.writer.print("{c}", .{char});
-        }
-    });
-}
-
 fn Print(str: []const u8) type {
     return serde(struct {
         fn run(self: *@This(), vdu: *VDU) !void {
@@ -147,13 +138,13 @@ const VDUDespatch = [_]type{
     NoOp, //   4 0 Write text at text cursor
     NoOp, //   5 0 Write text at graphics cursor
     NoOp, //   6 0 Enable VDU drivers
-    Echo(7), //   7 0 Make a short beep (BEL)
-    Echo(8), //   8 0 Move cursor back one character
-    Echo(9), //   9 0 Move cursor forward one character
-    Echo(10), //  10 0 Move cursor down one line
-    Echo(11), //  11 0 Move cursor up one line
+    Print("\x07"), //   7 0 Make a short beep (BEL)
+    Print("\x08"), //   8 0 Move cursor back one character
+    Print("\x09"), //   9 0 Move cursor forward one character
+    Print("\x0a"), //  10 0 Move cursor down one line
+    Print("\x0b"), //  11 0 Move cursor up one line
     Print("\x1b[2J"), //  12 0 Clear text area
-    Echo(13), //  13 0 Carriage return
+    Print("\x0d"), //  13 0 Carriage return
     NoOp, //  14 0 Paged mode on
     NoOp, //  15 0 Paged mode off
     NoOp, //  16 0 Clear graphics area
@@ -167,7 +158,7 @@ const VDUDespatch = [_]type{
     GraphicsWindow, //  24 8 Define graphics window
     Plot, //  25 5 PLOT K,X,Y
     NoOp, //  26 0 Restore default windows
-    Echo(27), //  27 0 ESCAPE value
+    Print("\x1b"), //  27 0 ESCAPE value
     TextWindow, //  28 4 Define text window
     GraphicsOrigin, //  29 4 Define graphics origin
     NoOp, //  30 0 Home text cursor to top left of window
@@ -192,7 +183,7 @@ pub const VDU = struct {
     q_size: u8 = 0,
 
     mode: u8 = 0,
-    old_pt: Point = Point{ .x = 0, .y = 0 },
+    prev_pt: Point = Point{ .x = 0, .y = 0 },
     last_pt: Point = Point{ .x = 0, .y = 0 },
 
     pub fn init(writer: *std.io.Writer) Self {
@@ -223,7 +214,8 @@ pub const VDU = struct {
 
     pub fn oswrch(self: *Self, char: u8) !void {
         if (self.q_size != 0) {
-            if (self.q_pos < VDUMaxBytes) self.queue[self.q_pos] = char;
+            if (self.q_pos < VDUMaxBytes)
+                self.queue[self.q_pos] = char;
             self.q_pos += 1;
             if (self.q_pos == self.q_size)
                 try self.runCommand();
