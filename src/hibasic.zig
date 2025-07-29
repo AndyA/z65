@@ -263,7 +263,7 @@ pub const HiBasic = struct {
         return false;
     }
 
-    fn loadSource(self: *Self, cpu: anytype, file: []const u8) !void {
+    pub fn loadSource(self: *Self, cpu: anytype, file: []const u8) !void {
         const lm = try lastModified(file);
 
         var buf: [0x10000]u8 = undefined;
