@@ -293,7 +293,7 @@ DEF PROCkeywords
     token = ?pos
     flags = pos?1
     pos = pos + 2
-    PRINT "K("""; kw$; """, 0x"; FNhx(token); ", 0x"; FNhx(flags); "),"
+    PRINT "KW("""; kw$; """, 0x"; FNhx(token); ", 0x"; FNhx(flags); "),"
   UNTIL pos >= end
 ENDPROC
 
