@@ -280,6 +280,39 @@ DEF FNnum(num)
   IF MID$(rep$, e% + 1, 1) = "-" THEN =LEFT$(rep$, e%-1) + "e" + MID$(rep$, e%+1)
 =LEFT$(rep$, e%-1) + "e+" + MID$(rep$, e%+1)
 
+DEF PROCkeywords
+  LOCAL pos, end, kw$, token, flags
+  pos = &B871
+  end = &BB74
+  REPEAT
+    kw$ = ""
+    REPEAT
+      kw$ = kw$ + CHR$(?pos)
+      pos = pos + 1
+    UNTIL ?pos AND &80
+    token = ?pos
+    flags = pos?1
+    pos = pos + 2
+    PRINT "K("""; kw$; """, 0x"; FNhx(token); ", 0x"; FNhx(flags); "),"
+  UNTIL pos >= end
+ENDPROC
+
+DEF FNhx(I%)
+  LOCAL rep$
+  rep$ = STR$~I%
+  IF LEN(rep$) < 2 THEN rep$ = "0" + rep$
+=FNlc(rep$)
+
+DEF FNlc(str$)
+  LOCAL I%, out$, C%
+  out$ = str$ : out$ = ""
+  FOR I% = 1 TO LEN(str$)
+    C% = ASC(MID$(str$, I%, 1))
+    IF C% >= ASC "A" AND C% <= ASC "Z" THEN C% = C% + ASC "a" - ASC "A"
+    out$ = out$ + CHR$(C%)
+  NEXT
+=out$
+
 DEF FNzp(size%)
   LOCAL S%
   S% = ZP%

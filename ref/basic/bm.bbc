@@ -1,5 +1,5 @@
-REM Constants from a real machine
-REM BBC B = 18.576
+REM Constants from jsbeeb
+
 bbc_b = 18.576
 tube = 8.900
 
