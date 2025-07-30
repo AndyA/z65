@@ -2488,7 +2488,7 @@ ca70   84 2a                sty $2a
 ca72   86 2b                stx $2b
 ca74   60                   rts
 ca75   4c 42 c9   lca75     jmp lc942
-ca78   20 06 cb             jsr lcb06          ; HIMEM
+ca78   20 06 cb             jsr lcb06          ; HIMEM=
 ca7b   a5 2a                lda $2a
 ca7d   85 06                sta $06
 ca7f   85 04                sta $04
@@ -2496,7 +2496,7 @@ ca81   a5 2b                lda $2b
 ca83   85 07                sta $07
 ca85   85 05                sta $05
 ca87   4c b6 c3             jmp nextcmd
-ca8a   20 06 cb             jsr lcb06          ; LOMEM
+ca8a   20 06 cb             jsr lcb06          ; LOMEM=
 ca8d   a5 2a                lda $2a
 ca8f   85 00                sta $00
 ca91   85 02                sta $02
@@ -2505,7 +2505,7 @@ ca95   85 01                sta $01
 ca97   85 03                sta $03
 ca99   20 32 f5             jsr lf532
 ca9c   f0 07                beq lcaa5
-ca9e   20 06 cb             jsr lcb06          ; PAGE
+ca9e   20 06 cb             jsr lcb06          ; PAGE=
 caa1   a5 2b                lda $2b
 caa3   85 18                sta $18
 caa5   4c b6 c3   lcaa5     jmp nextcmd
@@ -2535,7 +2535,7 @@ cadb   e6 0a      lcadb     inc $0a
 cadd   20 72 d0             jsr atend
 cae0   a9 00                lda #$00
 cae2   f0 e9                beq lcacd
-cae4   20 06 cb             jsr lcb06          ; TIME
+cae4   20 06 cb             jsr lcb06          ; TIME=
 cae7   a2 2a                ldx #$2a
 cae9   a0 00                ldy #$00
 caeb   84 2e                sty $2e
@@ -8249,7 +8249,7 @@ f727   20 65 f6             jsr lf665          ; LOAD
 f72a   4c 0e c3             jmp lc30e
 f72d   20 65 f6             jsr lf665          ; CHAIN
 f730   4c 17 f5             jmp lf517
-f733   20 ac f7             jsr lf7ac          ; PTR
+f733   20 ac f7             jsr lf7ac          ; PTR=
 f736   48                   pha
 f737   20 2e d0             jsr ld02e
 f73a   20 09 cb             jsr lcb09
