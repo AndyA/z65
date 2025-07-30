@@ -112,10 +112,10 @@ fn help(comptime params: anytype, full: bool) !void {
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const alloc = gpa.allocator();
-
+    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    // defer _ = gpa.deinit();
+    // const alloc = gpa.allocator();
+    const alloc = std.heap.page_allocator;
     const parsers = comptime .{
         .prog = clap.parsers.string,
         .line = clap.parsers.string,
