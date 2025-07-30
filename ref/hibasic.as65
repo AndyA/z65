@@ -1227,7 +1227,6 @@ c095   85 28                sta $28
 c097   20 49 c0             jsr lc049
 c09a   a0 ff                ldy #$ff
 c09c   d0 e8                bne lc086
-
 c09e   48         lc09e     pha
 c09f   18                   clc
 c0a0   98                   tya
@@ -1245,7 +1244,6 @@ c0b2   91 37                sta ($37),y
 c0b4   c9 0d                cmp #$0d
 c0b6   d0 f7                bne lc0af
 c0b8   60                   rts
-
 c0b9   29 0f      lc0b9     and #$0f
 c0bb   85 3d                sta $3d
 c0bd   84 3e                sty $3e
@@ -1297,7 +1295,6 @@ c10d   91 39                sta ($39),y
 c10f   88                   dey
 c110   d0 f9                bne lc10b
 c112   a0 03                ldy #$03
-
 c114   a5 3e      enclinen  lda $3e
 c116   09 40                ora #$40
 c118   91 37                sta ($37),y
@@ -1325,7 +1322,6 @@ c13e   20 63 c1             jsr bumpp
 c141   a0 00                ldy #$00
 c143   18         lc143     clc
 c144   60                   rts
-
 c145   c9 7b      lc145     cmp #$7b
 c147   b0 fa                bcs lc143
 c149   c9 5f                cmp #$5f
@@ -1341,13 +1337,11 @@ c15b   60         lc15b     rts
 c15c   c9 2e      lc15c     cmp #$2e
 c15e   d0 f5                bne lc155
 c160   60                   rts
-
 c161   b1 37      fetch1    lda ($37),y
 c163   e6 37      bumpp     inc $37
 c165   d0 02                bne lc169
 c167   e6 38                inc $38
 c169   60         lc169     rts
-
 c16a   20 63 c1   lc16a     jsr bumpp
 c16d   b1 37                lda ($37),y
 c16f   60                   rts
@@ -1391,7 +1385,6 @@ c1bb   d0 05                bne lc1c2
 c1bd   a5 3b                lda $3b
 c1bf   d0 41                bne lc202
 c1c1   60                   rts
-
 c1c2   c9 2e      lc1c2     cmp #$2e
 c1c4   f0 0e                beq lc1d4
 c1c6   20 55 c1             jsr lc155
@@ -1533,7 +1526,7 @@ c2cd   73                   ???                ;%01110011 's'
 c2ce   69 6e                adc #$6e
 c2d0   67                   ???                ;%01100111 'g'
 c2d1   20 2c 00             jsr $002c
-c2d4   20 72 d0             jsr ld072
+c2d4   20 72 d0             jsr ld072          ; OLD
 c2d7   a5 18                lda $18
 c2d9   85 38                sta $38
 c2db   a9 00                lda #$00
@@ -1541,15 +1534,15 @@ c2dd   85 37                sta $37
 c2df   91 37                sta ($37),y
 c2e1   20 72 f6             jsr lf672
 c2e4   d0 28                bne lc30e
-c2e6   20 72 d0             jsr ld072
+c2e6   20 72 d0             jsr ld072          ; END
 c2e9   20 72 f6             jsr lf672
 c2ec   d0 23                bne lc311
-c2ee   20 72 d0             jsr ld072
+c2ee   20 72 d0             jsr ld072          ; STOP
 c2f1   00                   brk
 c2f2   00                   brk
 c2f3   fa                   ???                ;%11111010
 c2f4   00                   brk
-c2f5   20 72 d0             jsr ld072
+c2f5   20 72 d0             jsr ld072          ; NEW
 c2f8   a9 0d      lc2f8     lda #$0d
 c2fa   a4 18                ldy $18
 c2fc   84 13                sty $13
@@ -1626,7 +1619,7 @@ c38e   20 88 d0   lc38e     jsr ld088
 c391   a6 0b                ldx $0b
 c393   a4 0c                ldy $0c
 c395   20 f7 ff             jsr $fff7
-c398   a9 0d      lc398     lda #$0d
+c398   a9 0d      lc398     lda #$0d           ; DATA / DEF / REM
 c39a   a4 0a                ldy $0a
 c39c   88                   dey
 c39d   c8         lc39d     iny
@@ -1675,7 +1668,7 @@ c3f7   d0 01                bne lc3fa
 c3f9   e8                   inx
 c3fa   20 4c cd   lc3fa     jsr lcd4c
 c3fd   c6 0a                dec $0a
-c3ff   20 9d cd             jsr lcd9d
+c3ff   20 9d cd             jsr lcd9d          ; LET
 c402   f0 22                beq lc426
 c404   90 10      lc404     bcc lc416
 c406   20 97 f5             jsr lf597
@@ -1905,7 +1898,7 @@ c5b0   f0 ec                beq lc59e
 c5b2   c9 8b                cmp #$8b
 c5b4   f0 e8                beq lc59e
 c5b6   d0 38                bne lc5f0
-c5b8   20 b6 c2             jsr getnext
+c5b8   20 b6 c2             jsr getnext        ; PRINT
 c5bb   c9 23                cmp #$23
 c5bd   f0 8a                beq lc549
 c5bf   c6 0a                dec $0a
@@ -2047,15 +2040,15 @@ c6d0   b1 19                lda ($19),y
 c6d2   c9 22                cmp #$22
 c6d4   d0 af                bne lc685
 c6d6   f0 e7                beq lc6bf
-c6d8   20 72 d0             jsr ld072
+c6d8   20 72 d0             jsr ld072          ; CLG
 c6db   a9 10                lda #$10
 c6dd   d0 08                bne lc6e7
-c6df   20 72 d0             jsr ld072
+c6df   20 72 d0             jsr ld072          ; CLS
 c6e2   20 2b f4             jsr lf42b
 c6e5   a9 0c                lda #$0c
 c6e7   20 ee ff   lc6e7     jsr $ffee
 c6ea   4c b6 c3             jmp lc3b6
-c6ed   20 33 d3             jsr ld333
+c6ed   20 33 d3             jsr ld333          ; CALL
 c6f0   20 09 cb             jsr lcb09
 c6f3   20 97 f5             jsr lf597
 c6f6   a0 00                ldy #$00
@@ -2093,7 +2086,7 @@ c740   ae 60 04             ldx $0460
 c743   ac 64 04             ldy $0464
 c746   6c 2a 00             jmp ($002a)
 c749   4c 45 d0   lc749     jmp ld045
-c74c   20 fa cf             jsr lcffa
+c74c   20 fa cf             jsr lcffa          ; DELETE
 c74f   90 f8                bcc lc749
 c751   20 97 f5             jsr lf597
 c754   20 b6 c2             jsr getnext
@@ -2142,7 +2135,7 @@ c7b7   85 38                sta $38
 c7b9   a9 01                lda #$01
 c7bb   85 37                sta $37
 c7bd   60                   rts
-c7be   20 84 c7             jsr lc784
+c7be   20 84 c7             jsr lc784          ; RENUMBER
 c7c1   a2 39                ldx #$39
 c7c3   20 10 f6             jsr lf610
 c7c6   20 72 f6             jsr lf672
@@ -2277,7 +2270,7 @@ c8c1   90 03                bcc lc8c6
 c8c3   e6 38                inc $38
 c8c5   18                   clc
 c8c6   60         lc8c6     rts
-c8c7   20 84 c7   k_auto    jsr lc784
+c8c7   20 84 c7   k_auto    jsr lc784          ; AUTO
 c8ca   a5 2a                lda $2a
 c8cc   48                   pha
 c8cd   20 ed f5             jsr lf5ed
@@ -2338,7 +2331,7 @@ c943   0a                   asl a
 c944   42                   ???                ;%01000010 'B'
 c945   61 64                adc ($64,x)
 c947   20 de 00             jsr $00de
-c94a   20 b6 c2   lc94a     jsr getnext
+c94a   20 b6 c2   lc94a     jsr getnext        ; DIM
 c94d   98                   tya
 c94e   18                   clc
 c94f   65 0b                adc $0b
@@ -2495,7 +2488,7 @@ ca70   84 2a                sty $2a
 ca72   86 2b                stx $2b
 ca74   60                   rts
 ca75   4c 42 c9   lca75     jmp lc942
-ca78   20 06 cb             jsr lcb06
+ca78   20 06 cb             jsr lcb06          ; HIMEM
 ca7b   a5 2a                lda $2a
 ca7d   85 06                sta $06
 ca7f   85 04                sta $04
@@ -2503,7 +2496,7 @@ ca81   a5 2b                lda $2b
 ca83   85 07                sta $07
 ca85   85 05                sta $05
 ca87   4c b6 c3             jmp lc3b6
-ca8a   20 06 cb             jsr lcb06
+ca8a   20 06 cb             jsr lcb06          ; LOMEM
 ca8d   a5 2a                lda $2a
 ca8f   85 00                sta $00
 ca91   85 02                sta $02
@@ -2512,14 +2505,14 @@ ca95   85 01                sta $01
 ca97   85 03                sta $03
 ca99   20 32 f5             jsr lf532
 ca9c   f0 07                beq lcaa5
-ca9e   20 06 cb             jsr lcb06
+ca9e   20 06 cb             jsr lcb06          ; PAGE
 caa1   a5 2b                lda $2b
 caa3   85 18                sta $18
 caa5   4c b6 c3   lcaa5     jmp lc3b6
-caa8   20 72 d0             jsr ld072
+caa8   20 72 d0             jsr ld072          ; CLEAR
 caab   20 23 f5             jsr lf523
 caae   f0 f5                beq lcaa5
-cab0   20 fa cf             jsr lcffa
+cab0   20 fa cf             jsr lcffa          ; TRACE
 cab3   b0 0b                bcs lcac0
 cab5   c9 ee                cmp #$ee
 cab7   f0 19                beq lcad2
@@ -2542,7 +2535,7 @@ cadb   e6 0a      lcadb     inc $0a
 cadd   20 72 d0             jsr ld072
 cae0   a9 00                lda #$00
 cae2   f0 e9                beq lcacd
-cae4   20 06 cb             jsr lcb06
+cae4   20 06 cb             jsr lcb06          ; TIME
 cae7   a2 2a                ldx #$2a
 cae9   a0 00                ldy #$00
 caeb   84 2e                sty $2e
@@ -2566,7 +2559,7 @@ cb15   20 f2 e5   lcb15     jsr le5f2
 cb18   f0 f8      lcb18     beq lcb12
 cb1a   30 e9                bmi lcb05
 cb1c   4c d4 da             jmp ldad4
-cb1f   a5 0b                lda $0b
+cb1f   a5 0b                lda $0b            ; PROC
 cb21   85 19                sta $19
 cb23   a5 0c                lda $0c
 cb25   85 1a                sta $1a
@@ -2580,7 +2573,7 @@ cb36   a0 03      lcb36     ldy #$03
 cb38   a9 00                lda #$00
 cb3a   91 2a                sta ($2a),y
 cb3c   f0 1e                beq lcb5c
-cb3e   ba         lcb3e     tsx
+cb3e   ba         lcb3e     tsx                ; LOCAL
 cb3f   e0 fc                cpx #$fc
 cb41   b0 43                bcs lcb86
 cb43   20 9d cd             jsr lcd9d
@@ -2602,7 +2595,7 @@ cb67   c9 2c                cmp #$2c
 cb69   f0 d3                beq lcb3e
 cb6b   4c b1 c3             jmp lc3b1
 cb6e   4c b3 c3   lcb6e     jmp lc3b3
-cb71   ba                   tsx
+cb71   ba                   tsx                ; ENDPROC
 cb72   e0 fc                cpx #$fc
 cb74   b0 0a                bcs lcb80
 cb76   ad ff 01             lda $01ff
@@ -2618,7 +2611,7 @@ cb8b   20 ea 00             jsr $00ea
 cb8e   19 42 61             ora $6142,y
 cb91   64                   ???                ;%01100100 'd'
 cb92   20 eb 00             jsr $00eb
-cb95   20 43 c0             jsr evalint
+cb95   20 43 c0             jsr evalint        ; GCOL
 cb98   a5 2a                lda $2a
 cb9a   48                   pha
 cb9b   20 f5 ca             jsr lcaf5
@@ -2626,12 +2619,12 @@ cb9e   20 6d d0             jsr ld06d
 cba1   a9 12                lda #$12
 cba3   20 ee ff             jsr $ffee
 cba6   4c f5 cb             jmp lcbf5
-cba9   a9 11                lda #$11
+cba9   a9 11                lda #$11           ; COLOUR / COLOR
 cbab   48                   pha
 cbac   20 43 c0             jsr evalint
 cbaf   20 72 d0             jsr ld072
 cbb2   4c f5 cb             jmp lcbf5
-cbb5   a9 16                lda #$16
+cbb5   a9 16                lda #$16           ; MODE
 cbb7   48                   pha
 cbb8   20 43 c0             jsr evalint
 cbbb   20 72 d0             jsr ld072
@@ -2666,13 +2659,13 @@ cbf5   68         lcbf5     pla
 cbf6   20 ee ff             jsr $ffee
 cbf9   20 71 cc             jsr wrch
 cbfc   4c b6 c3             jmp lc3b6
-cbff   a9 04                lda #$04
+cbff   a9 04                lda #$04           ; MOVE
 cc01   d0 02                bne lcc05
-cc03   a9 05                lda #$05
+cc03   a9 05                lda #$05           ; DRAW
 cc05   48         lcc05     pha
 cc06   20 33 d3             jsr ld333
 cc09   4c 18 cc             jmp lcc18
-cc0c   20 43 c0             jsr evalint
+cc0c   20 43 c0             jsr evalint        ; PLOT
 cc0f   a5 2a                lda $2a
 cc11   48                   pha
 cc12   20 c1 c2             jsr lc2c1
@@ -2696,7 +2689,7 @@ cc3f   20 ee ff             jsr $ffee
 cc42   4c b6 c3             jmp lc3b6
 cc45   a5 2b      lcc45     lda $2b
 cc47   20 ee ff             jsr $ffee
-cc4a   20 b6 c2   lcc4a     jsr getnext
+cc4a   20 b6 c2   lcc4a     jsr getnext        ; VDU
 cc4d   c9 3a      lcc4d     cmp #$3a
 cc4f   f0 1d                beq lcc6e
 cc51   c9 0d                cmp #$0d
@@ -2713,10 +2706,8 @@ cc68   c9 3b                cmp #$3b
 cc6a   d0 e1                bne lcc4d
 cc6c   f0 d7                beq lcc45
 cc6e   4c b1 c3   lcc6e     jmp lc3b1
-
 cc71   a5 2a      wrch      lda $2a
 cc73   6c 0e 02             jmp ($020e)
-
 cc76   a0 01      lcc76     ldy #$01
 cc78   b1 37                lda ($37),y
 cc7a   a0 f6                ldy #$f6
@@ -3344,7 +3335,7 @@ d0d4   84 0a                sty $0a
 d0d6   60         ld0d6     rts
 d0d7   4c 11 c3   ld0d7     jmp lc311
 d0da   4c 29 c4   ld0da     jmp lc429
-d0dd   20 33 d3             jsr ld333
+d0dd   20 33 d3             jsr ld333          ; IF
 d0e0   f0 f8                beq ld0da
 d0e2   10 03                bpl ld0e7
 d0e4   20 fa db             jsr ldbfa
@@ -5136,7 +5127,7 @@ decb   20 cb db             jsr ldbcb
 dece   d0 37                bne ldf07
 ded0   60                   rts
 ded1   4c c1 d1   lded1     jmp ld1c1
-ded4   20 15 cb             jsr lcb15
+ded4   20 15 cb             jsr lcb15          ; TAN
 ded7   20 e4 e1             jsr le1e4
 deda   a5 4a                lda $4a
 dedc   48                   pha
@@ -5259,7 +5250,7 @@ dfc4   20 72 6f             jsr $6f72
 dfc7   6f                   ???                ;%01101111 'o'
 dfc8   74                   ???                ;%01110100 't'
 dfc9   00                   brk
-dfca   20 15 cb             jsr lcb15
+dfca   20 15 cb             jsr lcb15          ; SQR
 dfcd   20 f0 d9   ldfcd     jsr ld9f0
 dfd0   f0 2a                beq ldffc
 dfd2   30 eb                bmi ldfbf
@@ -5294,7 +5285,7 @@ e00d   85 4b      le00d     sta $4b
 e00f   a9 04                lda #$04
 e011   85 4c                sta $4c
 e013   60                   rts
-e014   20 15 cb   le014     jsr lcb15
+e014   20 15 cb   le014     jsr lcb15          ; LN
 e017   20 f0 d9   le017     jsr ld9f0
 e01a   f0 02                beq le01e
 e01c   10 0c                bpl le02a
@@ -5403,9 +5394,9 @@ e0dd   20 16 dd             jsr ldd16
 e0e0   c6 48                dec $48
 e0e2   d0 e2                bne le0c6
 e0e4   60                   rts
-e0e5   20 eb e0             jsr le0eb
+e0e5   20 eb e0             jsr le0eb          ; ACS
 e0e8   4c 38 e1             jmp le138
-e0eb   20 15 cb   le0eb     jsr lcb15
+e0eb   20 15 cb   le0eb     jsr lcb15          ; ASN
 e0ee   20 f0 d9             jsr ld9f0
 e0f1   10 08                bpl le0fb
 e0f3   46 2e                lsr $2e
@@ -5422,7 +5413,7 @@ e10f   20 66 e2   le10f     jsr le266
 e112   20 cb db             jsr ldbcb
 e115   a9 ff      le115     lda #$ff
 e117   60                   rts
-e118   20 15 cb             jsr lcb15
+e118   20 15 cb             jsr lcb15          ; ATN
 e11b   20 f0 d9   le11b     jsr ld9f0
 e11e   f0 f5                beq le115
 e120   10 0a                bpl le12c
@@ -5491,7 +5482,7 @@ e1a0   cb                   ???                ;%11001011
 e1a1   20 e4 e1             jsr le1e4
 e1a4   e6 4a                inc $4a
 e1a6   4c af e1             jmp le1af
-e1a9   20 15 cb             jsr lcb15
+e1a9   20 15 cb             jsr lcb15          ; SIN
 e1ac   20 e4 e1             jsr le1e4
 e1af   a5 4a      le1af     lda $4a
 e1b1   29 02                and #$02
@@ -5612,7 +5603,7 @@ e2a3   00                   brk
 e2a4   00                   brk
 e2a5   00                   brk
 e2a6   00                   brk
-e2a7   20 15 cb             jsr lcb15
+e2a7   20 15 cb             jsr lcb15          ; EXP
 e2aa   a5 30      le2aa     lda $30
 e2ac   c9 87                cmp #$87
 e2ae   90 1e                bcc le2ce
@@ -5706,13 +5697,13 @@ e341   48                   pha
 e342   20 6c de             jsr lde6c
 e345   4c 3b e3             jmp le33b
 e348   60         le348     rts
-e349   20 fe ca             jsr lcafe
+e349   20 fe ca             jsr lcafe          ; ADVAL
 e34c   a6 2a                ldx $2a
 e34e   a9 80                lda #$80
 e350   20 f4 ff             jsr $fff4
 e353   8a                   txa
 e354   4c d1 e6             jmp le6d1
-e357   20 fe ca             jsr lcafe
+e357   20 fe ca             jsr lcafe          ; NOT
 e35a   a2 03                ldx #$03
 e35c   b5 2a      le35c     lda $2a,x
 e35e   49 ff                eor #$ff
@@ -5721,17 +5712,17 @@ e362   ca                   dex
 e363   10 f7                bpl le35c
 e365   a9 40                lda #$40
 e367   60                   rts
-e368   20 6e e3             jsr le36e
+e368   20 6e e3             jsr le36e          ; POS
 e36b   86 2a                stx $2a
 e36d   60                   rts
-e36e   a9 86      le36e     lda #$86
+e36e   a9 86      le36e     lda #$86           ; VPOS
 e370   20 f4 ff             jsr $fff4
 e373   98                   tya
 e374   4c cf e6             jmp le6cf
-e377   20 14 e0             jsr le014
+e377   20 14 e0             jsr le014          ; LOG
 e37a   a0 83                ldy #$83
 e37c   d0 05                bne le383
-e37e   20 15 cb             jsr lcb15
+e37e   20 15 cb             jsr lcb15          ; RAD
 e381   a0 79                ldy #$79
 e383   a9 e2      le383     lda #$e2
 e385   84 4b                sty $4b
@@ -5739,14 +5730,14 @@ e387   85 4c                sta $4c
 e389   20 6c de             jsr lde6c
 e38c   a9 ff                lda #$ff
 e38e   60                   rts
-e38f   20 15 cb             jsr lcb15
+e38f   20 15 cb             jsr lcb15          ; DEG
 e392   a0 7e                ldy #$7e
 e394   d0 ed                bne le383
-e396   20 0f e1             jsr le10f
+e396   20 0f e1             jsr le10f          ; PI
 e399   e6 30                inc $30
 e39b   a8                   tay
 e39c   60                   rts
-e39d   20 fe ca             jsr lcafe
+e39d   20 fe ca             jsr lcafe          ; USR
 e3a0   20 39 c7             jsr lc739
 e3a3   85 2a                sta $2a
 e3a5   86 2b                stx $2b
@@ -5757,7 +5748,7 @@ e3ab   85 2d                sta $2d
 e3ad   d8                   cld
 e3ae   a9 40                lda #$40
 e3b0   60                   rts
-e3b1   20 f2 e5             jsr le5f2
+e3b1   20 f2 e5             jsr le5f2          ; EVAL
 e3b4   d0 41                bne le3f7
 e3b6   e6 36                inc $36
 e3b8   a4 36                ldy $36
@@ -5795,7 +5786,7 @@ e3f2   85 19                sta $19
 e3f4   a5 27                lda $27
 e3f6   60                   rts
 e3f7   4c 29 c4   le3f7     jmp lc429
-e3fa   20 f2 e5             jsr le5f2
+e3fa   20 f2 e5             jsr le5f2          ; VAL
 e3fd   d0 f8                bne le3f7
 e3ff   a4 36      le3ff     ldy $36
 e401   a9 00                lda #$00
@@ -5827,7 +5818,7 @@ e437   90 03                bcc le43c
 e439   20 96 e5             jsr le596
 e43c   85 27      le43c     sta $27
 e43e   4c eb e3             jmp le3eb
-e441   20 f2 e5             jsr le5f2
+e441   20 f2 e5             jsr le5f2          ; INT
 e444   f0 37                beq le47d
 e446   10 1b                bpl le463
 e448   a5 2e                lda $2e
@@ -5844,38 +5835,38 @@ e45b   20 dd dc             jsr ldcdd
 e45e   20 fd db   le45e     jsr ldbfd
 e461   a9 40                lda #$40
 e463   60         le463     rts
-e464   20 f2 e5             jsr le5f2
+e464   20 f2 e5             jsr le5f2          ; ASC
 e467   d0 14                bne le47d
 e469   a5 36                lda $36
 e46b   f0 1f                beq le48c
 e46d   ad 00 06             lda $0600
 e470   4c cf e6             jmp le6cf
-e473   20 b1 e7             jsr le7b1
+e473   20 b1 e7             jsr le7b1          ; INKEY
 e476   98                   tya
 e477   d0 13                bne le48c
 e479   8a                   txa
 e47a   4c d1 e6             jmp le6d1
 e47d   4c 29 c4   le47d     jmp lc429
-e480   20 b8 f7             jsr lf7b8
+e480   20 b8 f7             jsr lf7b8          ; EOF
 e483   aa                   tax
 e484   a9 7f                lda #$7f
 e486   20 f4 ff             jsr $fff4
 e489   8a                   txa
 e48a   f0 02                beq le48e
-e48c   a2 ff      le48c     ldx #$ff
+e48c   a2 ff      le48c     ldx #$ff           ; TRUE
 e48e   86 2a      le48e     stx $2a
 e490   86 2b                stx $2b
 e492   86 2c                stx $2c
 e494   86 2d                stx $2d
 e496   a9 40      le496     lda #$40
 e498   60                   rts
-e499   a2 00      le499     ldx #$00
+e499   a2 00      le499     ldx #$00           ; FALSE
 e49b   f0 f1                beq le48e
 e49d   20 f0 d9   le49d     jsr ld9f0
 e4a0   f0 f7                beq le499
 e4a2   10 17                bpl le4bb
 e4a4   30 e6                bmi le48c
-e4a6   20 f2 e5             jsr le5f2
+e4a6   20 f2 e5             jsr le5f2          ; SGN
 e4a9   f0 d2                beq le47d
 e4ab   30 f0                bmi le49d
 e4ad   a5 2d                lda $2d
@@ -5887,7 +5878,7 @@ e4b7   a5 2d                lda $2d
 e4b9   30 d1                bmi le48c
 e4bb   a9 01      le4bb     lda #$01
 e4bd   4c cf e6   le4bd     jmp le6cf
-e4c0   20 f8 ca             jsr lcaf8
+e4c0   20 f8 ca             jsr lcaf8          ; POINT(
 e4c3   20 97 f5             jsr lf597
 e4c6   20 c1 c2             jsr lc2c1
 e4c9   20 70 e6             jsr le670
@@ -5905,7 +5896,7 @@ e4e0   20 f1 ff             jsr $fff1
 e4e3   a5 2e                lda $2e
 e4e5   30 a5                bmi le48c
 e4e7   10 d4                bpl le4bd
-e4e9   20 3f d3             jsr ld33f
+e4e9   20 3f d3             jsr ld33f          ; INSTR(
 e4ec   d0 8f                bne le47d
 e4ee   e0 2c                cpx #$2c
 e4f0   d0 18                bne le50a
@@ -5970,7 +5961,7 @@ e568   d0 d9                bne le543
 e56a   e6 38                inc $38
 e56c   d0 d5                bne le543
 e56e   4c 29 c4   le56e     jmp lc429
-e571   20 f2 e5             jsr le5f2
+e571   20 f2 e5             jsr le5f2          ; ABS
 e574   f0 f8                beq le56e
 e576   30 06                bmi le57e
 e578   24 2d      le578     bit $2d
@@ -6138,7 +6129,7 @@ e6a9   10 bb                bpl le666
 e6ab   84 1b                sty $1b
 e6ad   a9 40                lda #$40
 e6af   60                   rts
-e6b0   c8                   iny
+e6b0   c8                   iny                ; TO
 e6b1   b1 19                lda ($19),y
 e6b3   c9 50                cmp #$50
 e6b5   d0 92                bne le649
@@ -6146,11 +6137,11 @@ e6b7   e6 1b                inc $1b
 e6b9   a5 12                lda $12
 e6bb   a4 13                ldy $13
 e6bd   b0 12                bcs le6d1
-e6bf   a4 18                ldy $18
+e6bf   a4 18                ldy $18            ; PAGE
 e6c1   a9 00                lda #$00
 e6c3   f0 0c                beq le6d1
 e6c5   4c 29 c4   le6c5     jmp lc429
-e6c8   20 f2 e5             jsr le5f2
+e6c8   20 f2 e5             jsr le5f2          ; LEN
 e6cb   d0 f8                bne le6c5
 e6cd   a5 36                lda $36
 e6cf   a0 00      le6cf     ldy #$00
@@ -6161,21 +6152,21 @@ e6d7   85 2c                sta $2c
 e6d9   85 2d                sta $2d
 e6db   a9 40                lda #$40
 e6dd   60                   rts
-e6de   a5 1e                lda $1e
+e6de   a5 1e                lda $1e            ; COUNT
 e6e0   90 ed                bcc le6cf
-e6e2   a5 00                lda $00
+e6e2   a5 00                lda $00            ; LOMEM
 e6e4   a4 01                ldy $01
 e6e6   90 e9                bcc le6d1
-e6e8   a5 06                lda $06
+e6e8   a5 06                lda $06            ; HIMEM
 e6ea   a4 07                ldy $07
 e6ec   90 e3                bcc le6d1
-e6ee   a4 09                ldy $09
+e6ee   a4 09                ldy $09            ; ERL
 e6f0   a5 08                lda $08
 e6f2   90 dd                bcc le6d1
-e6f4   a0 00                ldy #$00
+e6f4   a0 00                ldy #$00           ; ERR
 e6f6   b1 fd                lda ($fd),y
 e6f8   90 d7                bcc le6d1
-e6fa   a2 2a                ldx #$2a
+e6fa   a2 2a                ldx #$2a           ; TIME
 e6fc   a0 00                ldy #$00
 e6fe   a9 01                lda #$01
 e700   20 f1 ff             jsr $fff1
@@ -6208,7 +6199,7 @@ e73d   20 47 f6             jsr lf647
 e740   a9 40                lda #$40
 e742   85 11                sta $11
 e744   60                   rts
-e745   a4 1b                ldy $1b
+e745   a4 1b                ldy $1b            ; MOD / RND
 e747   b1 19                lda ($19),y
 e749   c9 28                cmp #$28
 e74b   f0 b9                beq le706
@@ -6274,15 +6265,15 @@ e7b4   a9 81                lda #$81
 e7b6   a6 2a                ldx $2a
 e7b8   a4 2b                ldy $2b
 e7ba   4c f4 ff             jmp $fff4
-e7bd   20 e0 ff             jsr $ffe0
+e7bd   20 e0 ff             jsr $ffe0          ; GET
 e7c0   4c cf e6             jmp le6cf
-e7c3   20 e0 ff             jsr $ffe0
+e7c3   20 e0 ff             jsr $ffe0          ; GET$
 e7c6   8d 00 06   le7c6     sta $0600
 e7c9   a9 01                lda #$01
 e7cb   85 36                sta $36
 e7cd   a9 00                lda #$00
 e7cf   60                   rts
-e7d0   20 3f d3             jsr ld33f
+e7d0   20 3f d3             jsr ld33f          ; LEFT$(
 e7d3   d0 62                bne le837
 e7d5   e0 2c                cpx #$2c
 e7d7   d0 61                bne le83a
@@ -6297,7 +6288,7 @@ e7eb   b0 02                bcs le7ef
 e7ed   85 36                sta $36
 e7ef   a9 00      le7ef     lda #$00
 e7f1   60                   rts
-e7f2   20 3f d3             jsr ld33f
+e7f2   20 3f d3             jsr ld33f          ; RIGHT$(
 e7f5   d0 40                bne le837
 e7f7   e0 2c                cpx #$2c
 e7f9   d0 3f                bne le83a
@@ -6324,7 +6315,7 @@ e823   c6 2a                dec $2a
 e825   d0 f4                bne le81b
 e827   a9 00      le827     lda #$00
 e829   60         le829     rts
-e82a   20 b1 e7             jsr le7b1
+e82a   20 b1 e7             jsr le7b1          ; INKEY$
 e82d   8a                   txa
 e82e   c0 00                cpy #$00
 e830   f0 94                beq le7c6
@@ -6333,7 +6324,7 @@ e834   85 36                sta $36
 e836   60                   rts
 e837   4c 29 c4   le837     jmp lc429
 e83a   4c c8 c2   le83a     jmp lc2c8
-e83d   20 3f d3             jsr ld33f
+e83d   20 3f d3             jsr ld33f          ; MID$(
 e840   d0 f5                bne le837
 e842   e0 2c                cpx #$2c
 e844   d0 f4                bne le83a
@@ -6380,7 +6371,7 @@ e891   d0 f4                bne le887
 e893   84 36                sty $36
 e895   a9 00                lda #$00
 e897   60                   rts
-e898   20 ab c2             jsr lc2ab
+e898   20 ab c2             jsr lc2ab          ; STR$
 e89b   a0 ff                ldy #$ff
 e89d   c9 7e                cmp #$7e
 e89f   f0 04                beq le8a5
@@ -6403,7 +6394,7 @@ e8bd   20 f5 d6   le8bd     jsr ld6f5
 e8c0   a9 00                lda #$00
 e8c2   60                   rts
 e8c3   4c 29 c4   le8c3     jmp lc429
-e8c6   20 f8 ca             jsr lcaf8
+e8c6   20 f8 ca             jsr lcaf8          ; STRING$(
 e8c9   20 97 f5             jsr lf597
 e8cc   20 c1 c2             jsr lc2c1
 e8cf   20 70 e6             jsr le670
@@ -6512,7 +6503,7 @@ e98f   1e 42 61             asl $6142,x
 e992   64                   ???                ;%01100100 'd'
 e993   20 63 61             jsr $6163
 e996   6c 6c 00             jmp ($006c)
-e999   a9 a4                lda #$a4
+e999   a9 a4                lda #$a4           ; FN
 e99b   85 27      le99b     sta $27
 e99d   ba                   tsx
 e99e   8a                   txa
@@ -6547,7 +6538,7 @@ e9cc   c8                   iny
 e9cd   18                   clc
 e9ce   e9 01      le9ce     sbc #$01
 e9d0   85 37                sta $37
-e9d2   98                   tya
+e9d2   98                   tya                ; ERROR
 e9d3   e9 00                sbc #$00
 e9d5   85 38                sta $38
 e9d7   a0 02                ldy #$02
@@ -6815,7 +6806,7 @@ ebbb   d0 f4                bne lebb1
 ebbd   98                   tya
 ebbe   84 36      lebbe     sty $36
 ebc0   60                   rts
-ebc1   20 fe ca             jsr lcafe
+ebc1   20 fe ca             jsr lcafe          ; CHR$
 ebc4   a5 2a      lebc4     lda $2a
 ebc6   4c c6 e7             jmp le7c6
 ebc9   a0 00      lebc9     ldy #$00
@@ -6884,7 +6875,7 @@ ec49   3a                   ???                ;%00111010 ':'
 ec4a   e0 8b                cpx #$8b
 ec4c   f1 3a                sbc ($3a),y
 ec4e   e0 0d                cpx #$0d
-ec50   20 43 c0             jsr evalint
+ec50   20 43 c0             jsr evalint        ; SOUND
 ec53   a2 03                ldx #$03
 ec55   a5 2a      lec55     lda $2a
 ec57   48                   pha
@@ -6905,7 +6896,7 @@ ec6e   85 3e                sta $3e
 ec70   a0 07                ldy #$07
 ec72   a2 05      lec72     ldx #$05
 ec74   d0 1d                bne lec93
-ec76   20 43 c0             jsr evalint
+ec76   20 43 c0             jsr evalint        ; ENVELOPE
 ec79   a2 0d                ldx #$0d
 ec7b   a5 2a      lec7b     lda $2a
 ec7d   48                   pha
@@ -6930,7 +6921,7 @@ ec9a   a2 37                ldx #$37
 ec9c   a0 00                ldy #$00
 ec9e   20 f1 ff             jsr $fff1
 eca1   4c b6 c3             jmp lc3b6
-eca4   20 43 c0             jsr evalint
+eca4   20 43 c0             jsr evalint        ; WIDTH
 eca7   20 6d d0             jsr ld06d
 ecaa   a4 2a                ldy $2a
 ecac   88                   dey
@@ -7060,7 +7051,7 @@ ed95   20 09 cb             jsr lcb09
 ed98   a5 2a                lda $2a
 ed9a   85 1f                sta $1f
 ed9c   4c 11 c3             jmp lc311
-ed9f   c8                   iny
+ed9f   c8                   iny                ; LIST
 eda0   b1 0b                lda ($0b),y
 eda2   c9 4f                cmp #$4f
 eda4   f0 e7                beq led8d
@@ -7177,7 +7168,7 @@ ee8f   d0 ab                bne lee3c
 ee91   00         lee91     brk
 ee92   20 4e 6f             jsr $6f4e
 ee95   20 e3 00             jsr $00e3
-ee98   20 e4 cd   lee98     jsr lcde4
+ee98   20 e4 cd   lee98     jsr lcde4          ; NEXT
 ee9b   d0 09                bne leea6
 ee9d   a6 26                ldx $26
 ee9f   f0 f0                beq lee91
@@ -7326,7 +7317,7 @@ efc0   00         lefc0     brk
 efc1   24 4e                bit $4e
 efc3   6f                   ???                ;%01101111 'o'
 efc4   20 b8 00             jsr $00b8
-efc7   20 9d cd             jsr lcd9d
+efc7   20 9d cd             jsr lcd9d          ; FOR
 efca   f0 db                beq lefa7
 efcc   b0 d9                bcs lefa7
 efce   20 97 f5             jsr lf597
@@ -7410,7 +7401,7 @@ f081   a9 05                lda #$05
 f083   85 4c                sta $4c
 f085   20 a3 db             jsr ldba3
 f088   4c 3a f0             jmp lf03a
-f08b   20 9d f1             jsr lf19d
+f08b   20 9d f1             jsr lf19d          ; GOSUB
 f08e   20 72 d0   lf08e     jsr ld072
 f091   a4 25                ldy $25
 f093   c0 1a                cpy #$1a
@@ -7432,7 +7423,7 @@ f0b2   00         lf0b2     brk
 f0b3   26 4e                rol $4e
 f0b5   6f                   ???                ;%01101111 'o'
 f0b6   20 e4 00             jsr $00e4
-f0b9   20 72 d0             jsr ld072
+f0b9   20 72 d0             jsr ld072          ; RETURN
 f0bc   a6 25                ldx $25
 f0be   f0 f2                beq lf0b2
 f0c0   c6 25                dec $25
@@ -7441,7 +7432,7 @@ f0c5   bd e5 05             lda $05e5,x
 f0c8   84 0b                sty $0b
 f0ca   85 0c                sta $0c
 f0cc   4c b6 c3             jmp lc3b6
-f0cf   20 9d f1             jsr lf19d
+f0cf   20 9d f1             jsr lf19d          ; GOTO
 f0d2   20 72 d0             jsr ld072
 f0d5   a5 20      lf0d5     lda $20
 f0d7   f0 03                beq lf0dc
@@ -7474,7 +7465,7 @@ f10f   ee 20 73             inc $7320
 f112   79 6e 74             adc $746e,y
 f115   61 78                adc ($78,x)
 f117   00                   brk
-f118   20 b6 c2             jsr getnext
+f118   20 b6 c2             jsr getnext        ; ON
 f11b   c9 85                cmp #$85
 f11d   f0 d6                beq lf0f5
 f11f   c6 0a                dec $0a
@@ -7622,7 +7613,7 @@ f23f   4c dd f1             jmp lf1dd
 f242   68         lf242     pla
 f243   68                   pla
 f244   4c b3 c3             jmp lc3b3
-f247   20 b6 c2             jsr getnext
+f247   20 b6 c2             jsr getnext        ; INPUT
 f24a   c9 23                cmp #$23
 f24c   f0 84                beq lf1d2
 f24e   c9 86                cmp #$86
@@ -7702,7 +7693,7 @@ f2df   a9 00      lf2df     lda #$00
 f2e1   85 27                sta $27
 f2e3   20 3c c4             jsr lc43c
 f2e6   4c 5d f2             jmp lf25d
-f2e9   a0 00                ldy #$00
+f2e9   a0 00                ldy #$00           ; RESTORE
 f2eb   84 3d                sty $3d
 f2ed   a4 18                ldy $18
 f2ef   84 3e                sty $3e
@@ -7727,7 +7718,7 @@ f318   20 b6 c2   lf318     jsr getnext
 f31b   c9 2c                cmp #$2c
 f31d   f0 03                beq lf322
 f31f   4c b1 c3             jmp lc3b1
-f322   20 9d cd   lf322     jsr lcd9d
+f322   20 9d cd   lf322     jsr lcd9d          ; READ
 f325   f0 f1                beq lf318
 f327   b0 0c                bcs lf335
 f329   20 53 f3             jsr lf353
@@ -7799,7 +7790,7 @@ f3ae   f5 00                sbc $00,x
 f3b0   c8         lf3b0     iny
 f3b1   84 1b                sty $1b
 f3b3   60         lf3b3     rts
-f3b4   20 33 d3             jsr ld333
+f3b4   20 33 d3             jsr ld333          ; UNTIL
 f3b7   20 67 d0             jsr ld067
 f3ba   20 09 cb             jsr lcb09
 f3bd   a6 24                ldx $24
@@ -7821,7 +7812,7 @@ f3de   20 6d 61             jsr $616d
 f3e1   6e 79 20             ror $2079
 f3e4   f5 73                sbc $73,x
 f3e6   00                   brk
-f3e7   a6 24                ldx $24
+f3e7   a6 24                ldx $24            ; REPEAT
 f3e9   e0 14                cpx #$14
 f3eb   b0 ec                bcs lf3d9
 f3ed   20 88 d0             jsr ld088
@@ -7977,7 +7968,7 @@ f50d   91 3d                sta ($3d),y
 f50f   c9 0d                cmp #$0d
 f511   d0 f7                bne lf50a
 f513   60         lf513     rts
-f514   20 72 d0             jsr ld072
+f514   20 72 d0             jsr ld072          ; RUN
 f517   20 23 f5   lf517     jsr lf523
 f51a   a5 18                lda $18
 f51c   85 0c                sta $0c
@@ -8210,7 +8201,7 @@ f6bd   a4 36      lf6bd     ldy $36
 f6bf   a9 0d                lda #$0d
 f6c1   99 00 06             sta $0600,y
 f6c4   60                   rts
-f6c5   20 d5 f6             jsr lf6d5
+f6c5   20 d5 f6             jsr lf6d5          ; OSCLI
 f6c8   a2 00                ldx #$00
 f6ca   a0 06                ldy #$06
 f6cc   20 f7 ff             jsr $fff7
@@ -8231,7 +8222,7 @@ f6ef   86 3b                stx $3b
 f6f1   84 3c                sty $3c
 f6f3   a9 00                lda #$00
 f6f5   60                   rts
-f6f6   20 72 f6             jsr lf672
+f6f6   20 72 f6             jsr lf672          ; SAVE
 f6f9   20 e0 f6             jsr lf6e0
 f6fc   86 3f                stx $3f
 f6fe   84 40                sty $40
@@ -8254,11 +8245,11 @@ f71e   a8                   tay
 f71f   a2 37                ldx #$37
 f721   20 dd ff             jsr $ffdd
 f724   4c b6 c3             jmp lc3b6
-f727   20 65 f6             jsr lf665
+f727   20 65 f6             jsr lf665          ; LOAD
 f72a   4c 0e c3             jmp lc30e
-f72d   20 65 f6             jsr lf665
+f72d   20 65 f6             jsr lf665          ; CHAIN
 f730   4c 17 f5             jmp lf517
-f733   20 ac f7             jsr lf7ac
+f733   20 ac f7             jsr lf7ac          ; PTR
 f736   48                   pha
 f737   20 2e d0             jsr ld02e
 f73a   20 09 cb             jsr lcb09
@@ -8268,8 +8259,8 @@ f73f   a2 2a                ldx #$2a
 f741   a9 01                lda #$01
 f743   20 da ff             jsr $ffda
 f746   4c b6 c3             jmp lc3b6
-f749   38                   sec
-f74a   a9 00                lda #$00
+f749   38                   sec                ; EXT
+f74a   a9 00                lda #$00           ; PTR
 f74c   2a                   rol a
 f74d   2a                   rol a
 f74e   48                   pha
@@ -8279,7 +8270,7 @@ f754   68                   pla
 f755   20 da ff             jsr $ffda
 f758   a9 40                lda #$40
 f75a   60                   rts
-f75b   20 ac f7             jsr lf7ac
+f75b   20 ac f7             jsr lf7ac          ; BPUT
 f75e   48                   pha
 f75f   20 c1 c2             jsr lc2c1
 f762   20 64 d0             jsr ld064
@@ -8289,15 +8280,14 @@ f769   a8                   tay
 f76a   a5 2a                lda $2a
 f76c   20 d4 ff             jsr $ffd4
 f76f   4c b6 c3             jmp lc3b6
-
-f772   20 b8 f7   kbget     jsr lf7b8
+f772   20 b8 f7   kbget     jsr lf7b8          ; BGET
 f775   20 d7 ff             jsr $ffd7
 f778   4c cf e6             jmp le6cf
-f77b   a9 40                lda #$40
+f77b   a9 40                lda #$40           ; OPENIN
 f77d   d0 06                bne lf785
-f77f   a9 80                lda #$80
+f77f   a9 80                lda #$80           ; OPENOUT
 f781   d0 02                bne lf785
-f783   a9 c0                lda #$c0
+f783   a9 c0                lda #$c0           ; OPENUP
 f785   48         lf785     pha
 f786   20 f2 e5             jsr le5f2
 f789   d0 0e                bne lf799
@@ -8308,7 +8298,7 @@ f792   68                   pla
 f793   20 ce ff             jsr $ffce
 f796   4c cf e6             jmp le6cf
 f799   4c 29 c4   lf799     jmp lc429
-f79c   20 ac f7             jsr lf7ac
+f79c   20 ac f7             jsr lf7ac          ; CLOSE
 f79f   20 6d d0             jsr ld06d
 f7a2   a4 2a                ldy $2a
 f7a4   a9 00                lda #$00
@@ -8337,7 +8327,7 @@ f7d0   20 e3 ff   lf7d0     jsr $ffe3
 f7d3   20 6a c1   lf7d3     jsr lc16a
 f7d6   10 f8                bpl lf7d0
 f7d8   6c 37 00             jmp ($0037)
-f7db   20 72 d0             jsr ld072
+f7db   20 72 d0             jsr ld072          ; REPORT
 f7de   20 28 f4             jsr lf428
 f7e1   a0 01                ldy #$01
 f7e3   b1 fd      lf7e3     lda ($fd),y
