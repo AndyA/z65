@@ -1,5 +1,4 @@
 import json
-import re
 import sys
 from dataclasses import dataclass
 from functools import cached_property
@@ -217,27 +216,27 @@ with open("ref/hibasic.as65", "r") as f:
     lines = f.readlines()
     listing = Listing.from_lines(lines)
 
-for line in listing.lines:
-    text = line.text.strip()
-    if kws := KW_BY_ADDR.get(line.address):
-        words = [kw.keyword for kw in kws]
-        text = re.sub(r"\s*;.*$", "", text)
-        text = text.ljust(47) + "; " + " / ".join(words)
-    print(text)
+# for line in listing.lines:
+#     text = line.text.strip()
+#     if kws := KW_BY_ADDR.get(line.address):
+#         words = [kw.keyword for kw in kws]
+#         text = re.sub(r"\s*;.*$", "", text)
+#         text = text.ljust(47) + "; " + " / ".join(words)
+#     print(text)
 
-if False:
-    trace_files = sys.argv[1:]
-    for trace_file in trace_files:
-        steps = load_steps(trace_file)
-        print(f"Loaded {len(steps)} steps from {trace_file}")
+# if False:
+trace_files = sys.argv[1:]
+for trace_file in trace_files:
+    steps = load_steps(trace_file)
+    print(f"Loaded {len(steps)} steps from {trace_file}")
 
-        last_pc = None
-        for step in steps:
-            if last_pc is not None and (step.pc <= last_pc or step.pc > last_pc + 3):
-                print()
-            last_pc = step.pc
-            print(step, end="")
-            line = listing.by_address.get(step.pc, None)
-            if line := listing.by_address.get(step.pc, None):
-                print(f" | {line.text.strip()}", end="")
+    last_pc = None
+    for step in steps:
+        if last_pc is not None and (step.pc <= last_pc or step.pc > last_pc + 3):
             print()
+        last_pc = step.pc
+        print(step, end="")
+        line = listing.by_address.get(step.pc, None)
+        if line := listing.by_address.get(step.pc, None):
+            print(f" | {line.text.strip()}", end="")
+        print()
