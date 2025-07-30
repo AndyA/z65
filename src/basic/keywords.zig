@@ -156,15 +156,6 @@ fn makeKeywordTable(keywords: []const Keyword) KeywordTable {
     return table;
 }
 
-fn makeEnumField(comptime name: []const u8, comptime opcode: u8) EnumField {
-    var z_name: [name.len:0]u8 = @splat(' ');
-    @memcpy(&z_name, name);
-    return .{
-        .name = &z_name,
-        .value = opcode,
-    };
-}
-
 fn makeKeywordsEnum(table: *const KeywordTable) type {
     comptime {
         var used: usize = 0;
@@ -176,7 +167,10 @@ fn makeKeywordsEnum(table: *const KeywordTable) type {
         var index: usize = 0;
         for (keyword_table, 0..) |kw, rel_token| {
             if (kw) |k| {
-                fields[index] = makeEnumField(k.name, @as(u8, rel_token + 0x80));
+                fields[index] = .{
+                    .name = k.name[0..k.name.len :0],
+                    .value = rel_token + 0x80,
+                };
                 index += 1;
             }
         }

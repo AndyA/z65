@@ -19,17 +19,6 @@ fn collectInstructionSet(comptime T: type, defs: *ISEnumDefs) void {
     }
 }
 
-const EnumField = std.builtin.Type.EnumField;
-
-fn makeEnumField(comptime name: []const u8, comptime opcode: u8) EnumField {
-    var z_name: [name.len:0]u8 = @splat(' ');
-    @memcpy(&z_name, name);
-    return .{
-        .name = &z_name,
-        .value = opcode,
-    };
-}
-
 fn makeInstructionSet(comptime defs: *const ISEnumDefs) type {
     comptime {
         var used: usize = 0;
@@ -37,11 +26,11 @@ fn makeInstructionSet(comptime defs: *const ISEnumDefs) type {
             if (def != null) used += 1;
         }
 
-        var fields: [used]EnumField = undefined;
+        var fields: [used]std.builtin.Type.EnumField = undefined;
         var index: usize = 0;
         for (defs, 0..) |def, opcode| {
             if (def) |d| {
-                fields[index] = makeEnumField(d, @as(u8, opcode));
+                fields[index] = .{ .name = d[0..d.len :0], .value = opcode };
                 index += 1;
             }
         }
