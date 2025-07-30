@@ -282,18 +282,37 @@ DEF FNnum(num)
 =LEFT$(rep$, e%-1) + "e+" + MID$(rep$, e%+1)
 
 DEF PROCkeywords
-  LOCAL pos, end, kw$
+  LOCAL pos, end, kw$, tok
   pos = &B871
   end = &BB74
+  des_lo = &BAE6
+  des_hi = &BB58
+
   REPEAT
     kw$ = ""
     REPEAT
       kw$ = kw$ + CHR$(?pos)
       pos = pos + 1
     UNTIL ?pos AND &80
-    PRINT "KW("""; kw$; """, 0x"; FNhx(?pos); ", 0x"; FNhx(pos?1); "),"
+    tok = ?pos
+    addr = des_lo?tok + des_hi?tok * 256
+    PRINT "KW("""; kw$; """, 0x"; FNhx(tok); ", 0x"; FNhx(pos?1); "),";
+    IF addr >= &B800 AND addr < &F800 THEN PRINT " // 0x"; FNlc(STR$~addr);
+    PRINT
     pos = pos + 2
   UNTIL pos >= end
+ENDPROC
+
+DEF PROCdespatch
+  LOCAL des_lo, des_hi, tok, addr
+  des_lo = &BAE6
+  des_hi = &BB58
+
+  FOR tok = &80 TO &FF
+    addr = des_lo?tok + des_hi?tok * 256
+    PRINT ~tok; " -> "; ~addr
+  NEXT
+
 ENDPROC
 
 DEF FNhx(I%)

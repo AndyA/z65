@@ -9,6 +9,7 @@ pub const ZP = struct {
     pub const NEXTP = 0x0b; // current program line pointer
     pub const TOP = 0x12; // current TOP
     pub const PAGE_HI = 0x18;
+    pub const ACC0 = 0x2a; // int acc
 };
 
 pub const CMD_BUF = 0x700;

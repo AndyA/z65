@@ -342,21 +342,4 @@ pub const HiBasic = struct {
         cpu.poke16(constants.ZP.TOP, top);
         self.prog_hash = hashBytes(prog);
     }
-
-    fn saveBinSnapshot(self: Self, cpu: anytype, file: []const u8) !void {
-        const prog = self.getProgram(cpu);
-        const fh = try std.fs.cwd().createFile(file, .{ .truncate = true });
-        defer fh.close();
-        try fh.writeAll(prog);
-    }
-
-    fn loadBinSnapshot(self: *Self, cpu: anytype, file: []const u8) !bool {
-        const prog = std.fs.cwd().readFileAlloc(self.alloc, file, 0x10000) catch |err| {
-            if (err == error.FileNotFound) return false;
-            return err;
-        };
-        defer self.alloc.free(prog);
-        try self.setProgram(cpu, prog);
-        return true;
-    }
 };
