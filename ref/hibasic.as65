@@ -798,7 +798,7 @@ bd06   85 28      lbd06     sta $28
 bd08   4c be c3             jmp lc3be
 bd0b   a9 03      lbd0b     lda #$03
 bd0d   85 28                sta $28
-bd0f   20 b6 c2   lbd0f     jsr lc2b6
+bd0f   20 b6 c2   lbd0f     jsr getnext
 bd12   c9 5d                cmp #$5d
 bd14   f0 ee                beq lbd04
 bd16   20 88 d0             jsr ld088
@@ -897,7 +897,7 @@ bdd3   20 b8 ec             jsr lecb8
 bdd6   20 49 c0             jsr lc049
 bdd9   84 4f                sty $4f
 bddb   a2 03      lbddb     ldx #$03
-bddd   20 b6 c2             jsr lc2b6
+bddd   20 b6 c2             jsr getnext
 bde0   a0 00                ldy #$00
 bde2   84 3d                sty $3d
 bde4   c9 3a                cmp #$3a
@@ -990,7 +990,7 @@ be91   d0 de                bne lbe71
 be93   60         lbe93     rts
 be94   e0 22      lbe94     cpx #$22
 be96   b0 41                bcs lbed9
-be98   20 43 c0             jsr lc043
+be98   20 43 c0             jsr evalint
 be9b   18                   clc
 be9c   a5 2a                lda $2a
 be9e   ed 40 04             sbc $0440
@@ -1025,11 +1025,11 @@ bed5   10 f1                bpl lbec8
 bed7   30 d9                bmi lbeb2
 bed9   e0 29      lbed9     cpx #$29
 bedb   b0 18                bcs lbef5
-bedd   20 b6 c2             jsr lc2b6
+bedd   20 b6 c2             jsr getnext
 bee0   c9 23                cmp #$23
 bee2   d0 18                bne lbefc
 bee4   20 51 c0             jsr lc051
-bee7   20 43 c0   lbee7     jsr lc043
+bee7   20 43 c0   lbee7     jsr evalint
 beea   a5 2b      lbeea     lda $2b
 beec   f0 dc                beq lbeca
 beee   00         lbeee     brk
@@ -1039,27 +1039,27 @@ bef1   79 74 65             adc $6574,y
 bef4   00                   brk
 bef5   e0 36      lbef5     cpx #$36
 bef7   d0 68                bne lbf61
-bef9   20 b6 c2             jsr lc2b6
+bef9   20 b6 c2             jsr getnext
 befc   c9 28      lbefc     cmp #$28
 befe   d0 37                bne lbf37
-bf00   20 43 c0             jsr lc043
-bf03   20 b6 c2             jsr lc2b6
+bf00   20 43 c0             jsr evalint
+bf03   20 b6 c2             jsr getnext
 bf06   c9 29                cmp #$29
 bf08   d0 13                bne lbf1d
-bf0a   20 b6 c2             jsr lc2b6
+bf0a   20 b6 c2             jsr getnext
 bf0d   c9 2c                cmp #$2c
 bf0f   d0 1e                bne lbf2f
 bf11   20 4e c0             jsr lc04e
-bf14   20 b6 c2             jsr lc2b6
+bf14   20 b6 c2             jsr getnext
 bf17   c9 59                cmp #$59
 bf19   d0 14                bne lbf2f
 bf1b   f0 cd                beq lbeea
 bf1d   c9 2c      lbf1d     cmp #$2c
 bf1f   d0 0e                bne lbf2f
-bf21   20 b6 c2             jsr lc2b6
+bf21   20 b6 c2             jsr getnext
 bf24   c9 58                cmp #$58
 bf26   d0 07                bne lbf2f
-bf28   20 b6 c2             jsr lc2b6
+bf28   20 b6 c2             jsr getnext
 bf2b   c9 29                cmp #$29
 bf2d   f0 bb                beq lbeea
 bf2f   00         lbf2f     brk
@@ -1069,12 +1069,12 @@ bf33   64                   ???                ;%01100100 'd'
 bf34   65 78                adc $78
 bf36   00                   brk
 bf37   c6 0a      lbf37     dec $0a
-bf39   20 43 c0             jsr lc043
-bf3c   20 b6 c2             jsr lc2b6
+bf39   20 43 c0             jsr evalint
+bf3c   20 b6 c2             jsr getnext
 bf3f   c9 2c                cmp #$2c
 bf41   d0 14                bne lbf57
 bf43   20 4e c0             jsr lc04e
-bf46   20 b6 c2             jsr lc2b6
+bf46   20 b6 c2             jsr getnext
 bf49   c9 58                cmp #$58
 bf4b   f0 0a                beq lbf57
 bf4d   c9 59                cmp #$59
@@ -1089,16 +1089,16 @@ bf61   e0 2f      lbf61     cpx #$2f
 bf63   b0 2b                bcs lbf90
 bf65   e0 2d                cpx #$2d
 bf67   b0 09                bcs lbf72
-bf69   20 b6 c2             jsr lc2b6
+bf69   20 b6 c2             jsr getnext
 bf6c   c9 41                cmp #$41
 bf6e   f0 19                beq lbf89
 bf70   c6 0a                dec $0a
-bf72   20 43 c0   lbf72     jsr lc043
-bf75   20 b6 c2             jsr lc2b6
+bf72   20 43 c0   lbf72     jsr evalint
+bf75   20 b6 c2             jsr getnext
 bf78   c9 2c                cmp #$2c
 bf7a   d0 de                bne lbf5a
 bf7c   20 4e c0             jsr lc04e
-bf7f   20 b6 c2             jsr lc2b6
+bf7f   20 b6 c2             jsr getnext
 bf82   c9 58                cmp #$58
 bf84   f0 d4                beq lbf5a
 bf86   4c 2f bf             jmp lbf2f
@@ -1109,27 +1109,27 @@ bf90   e0 32      lbf90     cpx #$32
 bf92   b0 16                bcs lbfaa
 bf94   e0 31                cpx #$31
 bf96   f0 0c                beq lbfa4
-bf98   20 b6 c2             jsr lc2b6
+bf98   20 b6 c2             jsr getnext
 bf9b   c9 23                cmp #$23
 bf9d   d0 03                bne lbfa2
 bf9f   4c e7 be             jmp lbee7
 bfa2   c6 0a      lbfa2     dec $0a
-bfa4   20 43 c0   lbfa4     jsr lc043
+bfa4   20 43 c0   lbfa4     jsr evalint
 bfa7   4c 57 bf             jmp lbf57
 bfaa   e0 33      lbfaa     cpx #$33
 bfac   f0 0b                beq lbfb9
 bfae   b0 24                bcs lbfd4
-bfb0   20 b6 c2             jsr lc2b6
+bfb0   20 b6 c2             jsr getnext
 bfb3   c9 28                cmp #$28
 bfb5   f0 0a                beq lbfc1
 bfb7   c6 0a                dec $0a
-bfb9   20 43 c0   lbfb9     jsr lc043
+bfb9   20 43 c0   lbfb9     jsr evalint
 bfbc   a0 03      lbfbc     ldy #$03
 bfbe   4c 4c be   lbfbe     jmp lbe4c
 bfc1   20 4e c0   lbfc1     jsr lc04e
 bfc4   20 4e c0             jsr lc04e
-bfc7   20 43 c0             jsr lc043
-bfca   20 b6 c2             jsr lc2b6
+bfc7   20 43 c0             jsr evalint
+bfca   20 b6 c2             jsr getnext
 bfcd   c9 29                cmp #$29
 bfcf   f0 eb                beq lbfbc
 bfd1   4c 2f bf             jmp lbf2f
@@ -1141,33 +1141,33 @@ bfdc   29 1f                and #$1f
 bfde   48                   pha
 bfdf   e0 37                cpx #$37
 bfe1   b0 2f                bcs lc012
-bfe3   20 b6 c2             jsr lc2b6
+bfe3   20 b6 c2             jsr getnext
 bfe6   c9 23                cmp #$23
 bfe8   d0 04                bne lbfee
 bfea   68                   pla
 bfeb   4c e7 be             jmp lbee7
 bfee   c6 0a      lbfee     dec $0a
-bff0   20 43 c0             jsr lc043
+bff0   20 43 c0             jsr evalint
 bff3   68                   pla
 bff4   85 37                sta $37
-bff6   20 b6 c2             jsr lc2b6
+bff6   20 b6 c2             jsr getnext
 bff9   c9 2c                cmp #$2c
 bffb   f0 03                beq lc000
 bffd   4c 57 bf             jmp lbf57
-c000   20 b6 c2   lc000     jsr lc2b6
+c000   20 b6 c2   lc000     jsr getnext
 c003   29 1f                and #$1f
 c005   c5 37                cmp $37
 c007   d0 06                bne lc00f
 c009   20 4e c0             jsr lc04e
 c00c   4c 57 bf             jmp lbf57
 c00f   4c 2f bf   lc00f     jmp lbf2f
-c012   20 43 c0   lc012     jsr lc043
+c012   20 43 c0   lc012     jsr evalint
 c015   68                   pla
 c016   85 37                sta $37
-c018   20 b6 c2             jsr lc2b6
+c018   20 b6 c2             jsr getnext
 c01b   c9 2c                cmp #$2c
 c01d   d0 13                bne lc032
-c01f   20 b6 c2             jsr lc2b6
+c01f   20 b6 c2             jsr getnext
 c022   29 1f                and #$1f
 c024   c5 37                cmp $37
 c026   d0 e7                bne lc00f
@@ -1177,12 +1177,12 @@ c02d   f0 03                beq lc032
 c02f   4c ee be             jmp lbeee
 c032   4c 5a bf   lc032     jmp lbf5a
 c035   d0 25      lc035     bne lc05c
-c037   20 43 c0             jsr lc043
+c037   20 43 c0             jsr evalint
 c03a   a5 2a                lda $2a
 c03c   85 28                sta $28
 c03e   a0 00                ldy #$00
 c040   4c 4c be             jmp lbe4c
-c043   20 33 d3   lc043     jsr ld333
+c043   20 33 d3   evalint   jsr ld333
 c046   20 0b cb             jsr lcb0b
 c049   a4 1b      lc049     ldy $1b
 c04b   84 0a                sty $0a
@@ -1211,7 +1211,7 @@ c075   f0 15                beq lc08c
 c077   4c 45 d0             jmp ld045
 c07a   8a         lc07a     txa
 c07b   48                   pha
-c07c   20 43 c0             jsr lc043
+c07c   20 43 c0             jsr evalint
 c07f   a2 29                ldx #$29
 c081   20 47 f6             jsr lf647
 c084   68                   pla
@@ -1227,6 +1227,7 @@ c095   85 28                sta $28
 c097   20 49 c0             jsr lc049
 c09a   a0 ff                ldy #$ff
 c09c   d0 e8                bne lc086
+
 c09e   48         lc09e     pha
 c09f   18                   clc
 c0a0   98                   tya
@@ -1244,6 +1245,7 @@ c0b2   91 37                sta ($37),y
 c0b4   c9 0d                cmp #$0d
 c0b6   d0 f7                bne lc0af
 c0b8   60                   rts
+
 c0b9   29 0f      lc0b9     and #$0f
 c0bb   85 3d                sta $3d
 c0bd   84 3e                sty $3e
@@ -1295,7 +1297,8 @@ c10d   91 39                sta ($39),y
 c10f   88                   dey
 c110   d0 f9                bne lc10b
 c112   a0 03                ldy #$03
-c114   a5 3e      lc114     lda $3e
+
+c114   a5 3e      enclinen  lda $3e
 c116   09 40                ora #$40
 c118   91 37                sta ($37),y
 c11a   88                   dey
@@ -1316,12 +1319,13 @@ c132   4a                   lsr a
 c133   4a                   lsr a
 c134   49 54                eor #$54
 c136   91 37                sta ($37),y
-c138   20 63 c1             jsr lc163
-c13b   20 63 c1             jsr lc163
-c13e   20 63 c1             jsr lc163
+c138   20 63 c1             jsr bumpp
+c13b   20 63 c1             jsr bumpp
+c13e   20 63 c1             jsr bumpp
 c141   a0 00                ldy #$00
 c143   18         lc143     clc
 c144   60                   rts
+
 c145   c9 7b      lc145     cmp #$7b
 c147   b0 fa                bcs lc143
 c149   c9 5f                cmp #$5f
@@ -1337,12 +1341,14 @@ c15b   60         lc15b     rts
 c15c   c9 2e      lc15c     cmp #$2e
 c15e   d0 f5                bne lc155
 c160   60                   rts
-c161   b1 37      lc161     lda ($37),y
-c163   e6 37      lc163     inc $37
+
+c161   b1 37      fetch1    lda ($37),y
+c163   e6 37      bumpp     inc $37
 c165   d0 02                bne lc169
 c167   e6 38                inc $38
 c169   60         lc169     rts
-c16a   20 63 c1   lc16a     jsr lc163
+
+c16a   20 63 c1   lc16a     jsr bumpp
 c16d   b1 37                lda ($37),y
 c16f   60                   rts
 c170   a0 00      lc170     ldy #$00
@@ -1353,7 +1359,7 @@ c178   c9 0d                cmp #$0d
 c17a   f0 ed                beq lc169
 c17c   c9 20                cmp #$20
 c17e   d0 05                bne lc185
-c180   20 63 c1   lc180     jsr lc163
+c180   20 63 c1   lc180     jsr bumpp
 c183   d0 f1                bne lc176
 c185   c9 26      lc185     cmp #$26
 c187   d0 12                bne lc19b
@@ -1385,6 +1391,7 @@ c1bb   d0 05                bne lc1c2
 c1bd   a5 3b                lda $3b
 c1bf   d0 41                bne lc202
 c1c1   60                   rts
+
 c1c2   c9 2e      lc1c2     cmp #$2e
 c1c4   f0 0e                beq lc1d4
 c1c6   20 55 c1             jsr lc155
@@ -1396,7 +1403,7 @@ c1d2   90 34                bcc lc208
 c1d4   b1 37      lc1d4     lda ($37),y
 c1d6   20 5c c1             jsr lc15c
 c1d9   90 06                bcc lc1e1
-c1db   20 63 c1             jsr lc163
+c1db   20 63 c1             jsr bumpp
 c1de   4c d4 c1             jmp lc1d4
 c1e1   a2 ff      lc1e1     ldx #$ff
 c1e3   86 3b                stx $3b
@@ -1408,7 +1415,7 @@ c1ef   a0 00      lc1ef     ldy #$00
 c1f1   b1 37      lc1f1     lda ($37),y
 c1f3   20 45 c1             jsr lc145
 c1f6   90 e9                bcc lc1e1
-c1f8   20 63 c1             jsr lc163
+c1f8   20 63 c1             jsr bumpp
 c1fb   4c f1 c1             jmp lc1f1
 c1fe   c9 41      lc1fe     cmp #$41
 c200   b0 09                bcs lc20b
@@ -1494,7 +1501,7 @@ c290   c8                   iny
 c291   b1 37      lc291     lda ($37),y
 c293   20 45 c1             jsr lc145
 c296   90 06                bcc lc29e
-c298   20 63 c1             jsr lc163
+c298   20 63 c1             jsr bumpp
 c29b   4c 91 c2             jmp lc291
 c29e   88         lc29e     dey
 c29f   68                   pla
@@ -1510,11 +1517,11 @@ c2af   b1 19                lda ($19),y
 c2b1   c9 20                cmp #$20
 c2b3   f0 f6                beq lc2ab
 c2b5   60         lc2b5     rts
-c2b6   a4 0a      lc2b6     ldy $0a
+c2b6   a4 0a      getnext   ldy $0a
 c2b8   e6 0a                inc $0a
 c2ba   b1 0b                lda ($0b),y
 c2bc   c9 20                cmp #$20
-c2be   f0 f6                beq lc2b6
+c2be   f0 f6                beq getnext
 c2c0   60         lc2c0     rts
 c2c1   20 ab c2   lc2c1     jsr lc2ab
 c2c4   c9 2c                cmp #$2c
@@ -1587,7 +1594,7 @@ c348   20 fa cf             jsr lcffa
 c34b   90 06                bcc lc353
 c34d   20 90 f4             jsr lf490
 c350   4c 0e c3             jmp lc30e
-c353   20 b6 c2   lc353     jsr lc2b6
+c353   20 b6 c2   lc353     jsr getnext
 c356   c9 c6                cmp #$c6
 c358   b0 72                bcs lc3cc
 c35a   90 7e                bcc lc3da
@@ -1890,7 +1897,7 @@ c59e   4c b1 c3   lc59e     jmp lc3b1
 c5a1   a9 00      lc5a1     lda #$00
 c5a3   85 14                sta $14
 c5a5   85 15                sta $15
-c5a7   20 b6 c2             jsr lc2b6
+c5a7   20 b6 c2             jsr getnext
 c5aa   c9 3a                cmp #$3a
 c5ac   f0 f0                beq lc59e
 c5ae   c9 0d                cmp #$0d
@@ -1898,7 +1905,7 @@ c5b0   f0 ec                beq lc59e
 c5b2   c9 8b                cmp #$8b
 c5b4   f0 e8                beq lc59e
 c5b6   d0 38                bne lc5f0
-c5b8   20 b6 c2             jsr lc2b6
+c5b8   20 b6 c2             jsr getnext
 c5bb   c9 23                cmp #$23
 c5bd   f0 8a                beq lc549
 c5bf   c6 0a                dec $0a
@@ -1917,7 +1924,7 @@ c5d9   18         lc5d9     clc
 c5da   ad 00 04             lda $0400
 c5dd   85 14                sta $14
 c5df   66 15      lc5df     ror $15
-c5e1   20 b6 c2   lc5e1     jsr lc2b6
+c5e1   20 b6 c2   lc5e1     jsr getnext
 c5e4   c9 3a                cmp #$3a
 c5e6   f0 b3                beq lc59b
 c5e8   c9 0d                cmp #$0d
@@ -1976,7 +1983,7 @@ c64f   a9 1f                lda #$1f
 c651   20 ee ff             jsr $ffee
 c654   68                   pla
 c655   20 ee ff             jsr $ffee
-c658   20 71 cc             jsr lcc71
+c658   20 71 cc             jsr wrch
 c65b   4c 85 c6             jmp lc685
 c65e   20 f8 ca   lc65e     jsr lcaf8
 c661   20 ab c2             jsr lc2ab
@@ -2013,7 +2020,7 @@ c69f   c9 89                cmp #$89
 c6a1   f0 d3                beq lc676
 c6a3   38                   sec
 c6a4   60         lc6a4     rts
-c6a5   20 b6 c2   lc6a5     jsr lc2b6
+c6a5   20 b6 c2   lc6a5     jsr getnext
 c6a8   20 8b c6             jsr lc68b
 c6ab   90 f7                bcc lc6a4
 c6ad   c9 22                cmp #$22
@@ -2089,7 +2096,7 @@ c749   4c 45 d0   lc749     jmp ld045
 c74c   20 fa cf             jsr lcffa
 c74f   90 f8                bcc lc749
 c751   20 97 f5             jsr lf597
-c754   20 b6 c2             jsr lc2b6
+c754   20 b6 c2             jsr getnext
 c757   c9 2c                cmp #$2c
 c759   d0 ee                bne lc749
 c75b   20 fa cf             jsr lcffa
@@ -2115,7 +2122,7 @@ c789   20 fa cf             jsr lcffa
 c78c   20 97 f5             jsr lf597
 c78f   a9 0a                lda #$0a
 c791   20 cf e6             jsr le6cf
-c794   20 b6 c2             jsr lc2b6
+c794   20 b6 c2             jsr getnext
 c797   c9 2c                cmp #$2c
 c799   d0 0d                bne lc7a8
 c79b   20 fa cf             jsr lcffa
@@ -2236,7 +2243,7 @@ c87a   a5 0b                lda $0b
 c87c   85 37                sta $37
 c87e   a5 0c                lda $0c
 c880   85 38                sta $38
-c882   20 14 c1             jsr lc114
+c882   20 14 c1             jsr enclinen
 c885   a4 0a      lc885     ldy $0a
 c887   d0 ae                bne lc837
 c889   18         lc889     clc
@@ -2270,7 +2277,7 @@ c8c1   90 03                bcc lc8c6
 c8c3   e6 38                inc $38
 c8c5   18                   clc
 c8c6   60         lc8c6     rts
-c8c7   20 84 c7             jsr lc784
+c8c7   20 84 c7   k_auto    jsr lc784
 c8ca   a5 2a                lda $2a
 c8cc   48                   pha
 c8cd   20 ed f5             jsr lf5ed
@@ -2331,7 +2338,7 @@ c943   0a                   asl a
 c944   42                   ???                ;%01000010 'B'
 c945   61 64                adc ($64,x)
 c947   20 de 00             jsr $00de
-c94a   20 b6 c2   lc94a     jsr lc2b6
+c94a   20 b6 c2   lc94a     jsr getnext
 c94d   98                   tya
 c94e   18                   clc
 c94f   65 0b                adc $0b
@@ -2376,7 +2383,7 @@ c99a   a9 01                lda #$01
 c99c   48                   pha
 c99d   20 cf e6             jsr le6cf
 c9a0   20 97 f5   lc9a0     jsr lf597
-c9a3   20 43 c0             jsr lc043
+c9a3   20 43 c0             jsr evalint
 c9a6   a5 2b                lda $2b
 c9a8   29 c0                and #$c0
 c9aa   05 2c                ora $2c
@@ -2394,7 +2401,7 @@ c9be   c8                   iny
 c9bf   98                   tya
 c9c0   48                   pha
 c9c1   20 4c ca             jsr lca4c
-c9c4   20 b6 c2             jsr lc2b6
+c9c4   20 b6 c2             jsr getnext
 c9c7   c9 2c                cmp #$2c
 c9c9   f0 d5                beq lc9a0
 c9cb   c9 29                cmp #$29
@@ -2445,7 +2452,7 @@ ca1e   c4 02      lca1e     cpy $02
 ca20   d0 f5                bne lca17
 ca22   e4 38                cpx $38
 ca24   d0 f1                bne lca17
-ca26   20 b6 c2   lca26     jsr lc2b6
+ca26   20 b6 c2   lca26     jsr getnext
 ca29   c9 2c                cmp #$2c
 ca2b   f0 03                beq lca30
 ca2d   4c b1 c3             jmp lc3b1
@@ -2518,7 +2525,7 @@ cab5   c9 ee                cmp #$ee
 cab7   f0 19                beq lcad2
 cab9   c9 87                cmp #$87
 cabb   f0 1e                beq lcadb
-cabd   20 43 c0             jsr lc043
+cabd   20 43 c0             jsr evalint
 cac0   20 72 d0   lcac0     jsr ld072
 cac3   a5 2a                lda $2a
 cac5   85 21                sta $21
@@ -2590,7 +2597,7 @@ cb5c   ba         lcb5c     tsx
 cb5d   fe 06 01             inc $0106,x
 cb60   a4 1b                ldy $1b
 cb62   84 0a                sty $0a
-cb64   20 b6 c2             jsr lc2b6
+cb64   20 b6 c2             jsr getnext
 cb67   c9 2c                cmp #$2c
 cb69   f0 d3                beq lcb3e
 cb6b   4c b1 c3             jmp lc3b1
@@ -2611,7 +2618,7 @@ cb8b   20 ea 00             jsr $00ea
 cb8e   19 42 61             ora $6142,y
 cb91   64                   ???                ;%01100100 'd'
 cb92   20 eb 00             jsr $00eb
-cb95   20 43 c0             jsr lc043
+cb95   20 43 c0             jsr evalint
 cb98   a5 2a                lda $2a
 cb9a   48                   pha
 cb9b   20 f5 ca             jsr lcaf5
@@ -2621,12 +2628,12 @@ cba3   20 ee ff             jsr $ffee
 cba6   4c f5 cb             jmp lcbf5
 cba9   a9 11                lda #$11
 cbab   48                   pha
-cbac   20 43 c0             jsr lc043
+cbac   20 43 c0             jsr evalint
 cbaf   20 72 d0             jsr ld072
 cbb2   4c f5 cb             jmp lcbf5
 cbb5   a9 16                lda #$16
 cbb7   48                   pha
-cbb8   20 43 c0             jsr lc043
+cbb8   20 43 c0             jsr evalint
 cbbb   20 72 d0             jsr ld072
 cbbe   20 ea f6             jsr lf6ea
 cbc1   e0 ff                cpx #$ff
@@ -2657,7 +2664,7 @@ cbf0   84 05                sty $05
 cbf2   20 2b f4   lcbf2     jsr lf42b
 cbf5   68         lcbf5     pla
 cbf6   20 ee ff             jsr $ffee
-cbf9   20 71 cc             jsr lcc71
+cbf9   20 71 cc             jsr wrch
 cbfc   4c b6 c3             jmp lc3b6
 cbff   a9 04                lda #$04
 cc01   d0 02                bne lcc05
@@ -2665,7 +2672,7 @@ cc03   a9 05                lda #$05
 cc05   48         lcc05     pha
 cc06   20 33 d3             jsr ld333
 cc09   4c 18 cc             jmp lcc18
-cc0c   20 43 c0             jsr lc043
+cc0c   20 43 c0             jsr evalint
 cc0f   a5 2a                lda $2a
 cc11   48                   pha
 cc12   20 c1 c2             jsr lc2c1
@@ -2683,13 +2690,13 @@ cc30   a5 37                lda $37
 cc32   20 ee ff             jsr $ffee
 cc35   a5 38                lda $38
 cc37   20 ee ff             jsr $ffee
-cc3a   20 71 cc             jsr lcc71
+cc3a   20 71 cc             jsr wrch
 cc3d   a5 2b                lda $2b
 cc3f   20 ee ff             jsr $ffee
 cc42   4c b6 c3             jmp lc3b6
 cc45   a5 2b      lcc45     lda $2b
 cc47   20 ee ff             jsr $ffee
-cc4a   20 b6 c2   lcc4a     jsr lc2b6
+cc4a   20 b6 c2   lcc4a     jsr getnext
 cc4d   c9 3a      lcc4d     cmp #$3a
 cc4f   f0 1d                beq lcc6e
 cc51   c9 0d                cmp #$0d
@@ -2697,17 +2704,19 @@ cc53   f0 19                beq lcc6e
 cc55   c9 8b                cmp #$8b
 cc57   f0 15                beq lcc6e
 cc59   c6 0a                dec $0a
-cc5b   20 43 c0             jsr lc043
-cc5e   20 71 cc             jsr lcc71
-cc61   20 b6 c2             jsr lc2b6
+cc5b   20 43 c0             jsr evalint
+cc5e   20 71 cc             jsr wrch
+cc61   20 b6 c2             jsr getnext
 cc64   c9 2c                cmp #$2c
 cc66   f0 e2                beq lcc4a
 cc68   c9 3b                cmp #$3b
 cc6a   d0 e1                bne lcc4d
 cc6c   f0 d7                beq lcc45
 cc6e   4c b1 c3   lcc6e     jmp lc3b1
-cc71   a5 2a      lcc71     lda $2a
+
+cc71   a5 2a      wrch      lda $2a
 cc73   6c 0e 02             jmp ($020e)
+
 cc76   a0 01      lcc76     ldy #$01
 cc78   b1 37                lda ($37),y
 cc7a   a0 f6                ldy #$f6
@@ -6458,7 +6467,7 @@ e93c   e6 0c                inc $0c
 e93e   b0 de                bcs le91e
 e940   c8         le940     iny
 e941   84 0a                sty $0a
-e943   20 b6 c2             jsr lc2b6
+e943   20 b6 c2             jsr getnext
 e946   98                   tya
 e947   aa                   tax
 e948   18                   clc
@@ -6560,7 +6569,7 @@ e9f6   85 0c                sta $0c
 e9f8   a9 00      le9f8     lda #$00
 e9fa   48                   pha
 e9fb   85 0a                sta $0a
-e9fd   20 b6 c2             jsr lc2b6
+e9fd   20 b6 c2             jsr getnext
 ea00   c9 28                cmp #$28
 ea02   f0 4d                beq lea51
 ea04   c6 0a                dec $0a
@@ -6636,7 +6645,7 @@ ea77   e8                   inx
 ea78   8a                   txa
 ea79   48                   pha
 ea7a   20 11 eb             jsr leb11
-ea7d   20 b6 c2             jsr lc2b6
+ea7d   20 b6 c2             jsr getnext
 ea80   c9 2c                cmp #$2c
 ea82   f0 cd                beq lea51
 ea84   c9 29                cmp #$29
@@ -6819,20 +6828,20 @@ ebd5   a6 0c                ldx $0c
 ebd7   e0 07                cpx #$07
 ebd9   f0 2a                beq lec05
 ebdb   a6 0b                ldx $0b
-ebdd   20 61 c1   lebdd     jsr lc161
+ebdd   20 61 c1   lebdd     jsr fetch1
 ebe0   c9 0d                cmp #$0d
 ebe2   d0 19                bne lebfd
 ebe4   e4 37                cpx $37
 ebe6   a5 0c                lda $0c
 ebe8   e5 38                sbc $38
 ebea   90 19                bcc lec05
-ebec   20 61 c1             jsr lc161
+ebec   20 61 c1             jsr fetch1
 ebef   09 00                ora #$00
 ebf1   30 12                bmi lec05
 ebf3   85 09                sta $09
-ebf5   20 61 c1             jsr lc161
+ebf5   20 61 c1             jsr fetch1
 ebf8   85 08                sta $08
-ebfa   20 61 c1             jsr lc161
+ebfa   20 61 c1             jsr fetch1
 ebfd   e4 37      lebfd     cpx $37
 ebff   a5 0c                lda $0c
 ec01   e5 38                sbc $38
@@ -6875,7 +6884,7 @@ ec49   3a                   ???                ;%00111010 ':'
 ec4a   e0 8b                cpx #$8b
 ec4c   f1 3a                sbc ($3a),y
 ec4e   e0 0d                cpx #$0d
-ec50   20 43 c0             jsr lc043
+ec50   20 43 c0             jsr evalint
 ec53   a2 03                ldx #$03
 ec55   a5 2a      lec55     lda $2a
 ec57   48                   pha
@@ -6896,7 +6905,7 @@ ec6e   85 3e                sta $3e
 ec70   a0 07                ldy #$07
 ec72   a2 05      lec72     ldx #$05
 ec74   d0 1d                bne lec93
-ec76   20 43 c0             jsr lc043
+ec76   20 43 c0             jsr evalint
 ec79   a2 0d                ldx #$0d
 ec7b   a5 2a      lec7b     lda $2a
 ec7d   48                   pha
@@ -6921,7 +6930,7 @@ ec9a   a2 37                ldx #$37
 ec9c   a0 00                ldy #$00
 ec9e   20 f1 ff             jsr $fff1
 eca1   4c b6 c3             jmp lc3b6
-eca4   20 43 c0             jsr lc043
+eca4   20 43 c0             jsr evalint
 eca7   20 6d d0             jsr ld06d
 ecaa   a4 2a                ldy $2a
 ecac   88                   dey
@@ -7068,14 +7077,14 @@ edba   a9 7f                lda #$7f
 edbc   85 2b                sta $2b
 edbe   28                   plp
 edbf   90 11                bcc ledd2
-edc1   20 b6 c2             jsr lc2b6
+edc1   20 b6 c2             jsr getnext
 edc4   c9 2c                cmp #$2c
 edc6   f0 13                beq leddb
 edc8   20 ed f5             jsr lf5ed
 edcb   20 97 f5             jsr lf597
 edce   c6 0a                dec $0a
 edd0   10 0c                bpl ledde
-edd2   20 b6 c2   ledd2     jsr lc2b6
+edd2   20 b6 c2   ledd2     jsr getnext
 edd5   c9 2c                cmp #$2c
 edd7   f0 02                beq leddb
 edd9   c6 0a                dec $0a
@@ -7264,7 +7273,7 @@ ef57   e9 0f                sbc #$0f
 ef59   85 26                sta $26
 ef5b   a4 1b                ldy $1b
 ef5d   84 0a                sty $0a
-ef5f   20 b6 c2             jsr lc2b6
+ef5f   20 b6 c2             jsr getnext
 ef62   c9 2c                cmp #$2c
 ef64   d0 3e                bne lefa4
 ef66   4c 98 ee             jmp lee98
@@ -7448,7 +7457,7 @@ f0ec   85 16                sta $16
 f0ee   a9 ec                lda #$ec
 f0f0   85 17                sta $17
 f0f2   4c b6 c3             jmp lc3b6
-f0f5   20 b6 c2   lf0f5     jsr lc2b6
+f0f5   20 b6 c2   lf0f5     jsr getnext
 f0f8   c9 87                cmp #$87
 f0fa   f0 eb                beq lf0e7
 f0fc   a4 0a                ldy $0a
@@ -7465,7 +7474,7 @@ f10f   ee 20 73             inc $7320
 f112   79 6e 74             adc $746e,y
 f115   61 78                adc ($78,x)
 f117   00                   brk
-f118   20 b6 c2             jsr lc2b6
+f118   20 b6 c2             jsr getnext
 f11b   c9 85                cmp #$85
 f11d   f0 d6                beq lf0f5
 f11f   c6 0a                dec $0a
@@ -7563,7 +7572,7 @@ f1d4   20 ac f7             jsr lf7ac
 f1d7   a5 1b                lda $1b
 f1d9   85 0a                sta $0a
 f1db   84 4d                sty $4d
-f1dd   20 b6 c2   lf1dd     jsr lc2b6
+f1dd   20 b6 c2   lf1dd     jsr getnext
 f1e0   c9 2c                cmp #$2c
 f1e2   d0 e9                bne lf1cd
 f1e4   a5 4d                lda $4d
@@ -7613,7 +7622,7 @@ f23f   4c dd f1             jmp lf1dd
 f242   68         lf242     pla
 f243   68                   pla
 f244   4c b3 c3             jmp lc3b3
-f247   20 b6 c2             jsr lc2b6
+f247   20 b6 c2             jsr getnext
 f24a   c9 23                cmp #$23
 f24c   f0 84                beq lf1d2
 f24e   c9 86                cmp #$86
@@ -7697,7 +7706,7 @@ f2e9   a0 00                ldy #$00
 f2eb   84 3d                sty $3d
 f2ed   a4 18                ldy $18
 f2ef   84 3e                sty $3e
-f2f1   20 b6 c2             jsr lc2b6
+f2f1   20 b6 c2             jsr getnext
 f2f4   c6 0a                dec $0a
 f2f6   c9 3a                cmp #$3a
 f2f8   f0 10                beq lf30a
@@ -7714,7 +7723,7 @@ f30f   85 1c                sta $1c
 f311   a5 3e                lda $3e
 f313   85 1d                sta $1d
 f315   4c b6 c3             jmp lc3b6
-f318   20 b6 c2   lf318     jsr lc2b6
+f318   20 b6 c2   lf318     jsr getnext
 f31b   c9 2c                cmp #$2c
 f31d   f0 03                beq lf322
 f31f   4c b1 c3             jmp lc3b1
@@ -8280,7 +8289,8 @@ f769   a8                   tay
 f76a   a5 2a                lda $2a
 f76c   20 d4 ff             jsr $ffd4
 f76f   4c b6 c3             jmp lc3b6
-f772   20 b8 f7             jsr lf7b8
+
+f772   20 b8 f7   kbget     jsr lf7b8
 f775   20 d7 ff             jsr $ffd7
 f778   4c cf e6             jmp le6cf
 f77b   a9 40                lda #$40
