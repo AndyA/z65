@@ -82,6 +82,7 @@ pub fn CPU(
                 pub fn instr(cpu: anytype) void {
                     cpu.os.trap(cpu, opcode) catch |err| {
                         std.debug.print("Error in trap handler {s}\n", .{@errorName(err)});
+                        // @panic("Error in trap handler");
                     };
                 }
             };

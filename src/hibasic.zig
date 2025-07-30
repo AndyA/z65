@@ -62,6 +62,7 @@ pub const HiBasicExec = struct {
         return self.reader.takeDelimiterExclusive('\n') catch |err|
             switch (err) {
                 error.EndOfStream => null,
+                error.StreamTooLong => null,
                 else => err,
             };
     }
