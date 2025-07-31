@@ -50,9 +50,9 @@ b85b   a9 52                lda #$52
 b85d   85 0e                sta $0e
 b85f   a9 57                lda #$57
 b861   85 0f                sta $0f
-b863   a9 06      lb863     lda #$06
+b863   a9 06      lb863     lda #lo(handlebrk)
 b865   8d 02 02             sta $0202
-b868   a9 ec                lda #$ec
+b868   a9 ec                lda #hi(handlebrk)
 b86a   8d 03 02             sta $0203
 b86d   58                   cli
 b86e   4c f8 c2             jmp lc2f8
@@ -6838,7 +6838,7 @@ ebff   a5 0c                lda $0c
 ec01   e5 38                sbc $38
 ec03   b0 d8                bcs lebdd
 ec05   60         lec05     rts
-ec06   20 c9 eb             jsr lebc9
+ec06   20 c9 eb   handlebrk jsr lebc9
 ec09   84 20                sty $20
 ec0b   b1 fd                lda ($fd),y
 ec0d   d0 08                bne lec17
