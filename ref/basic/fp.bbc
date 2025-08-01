@@ -48,13 +48,11 @@ P% = code
               RTS
 
 .find_var     LDA var_name
-              SEC
-              SBC #ASC"@"
               ASL A
-              ADC #var_base MOD 256
+              ADC #(var_base - ASC "@" * 2) MOD 256
               STA vp + 0
               LDA #0
-              ADC #var_base DIV 256
+              ADC #(var_base - ASC "@" * 2) DIV 256
               STA vp + 1
 
 .fv1          LDA vp + 1
