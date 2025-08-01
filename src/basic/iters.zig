@@ -2,7 +2,7 @@ const std = @import("std");
 const kw = @import("keywords.zig");
 const util = @import("../tools/util.zig");
 
-pub const BasicIterError = error{BadProgram};
+pub const BasicIterError = error{ BadProgram, BadLine };
 
 pub const BasicLine = struct {
     line_number: u16,
@@ -25,6 +25,8 @@ pub const BasicIter = struct {
             if (self.pos + 2 != self.prog.len) return bp;
             return null;
         }
+        // Max line number is 32767
+        if (self.prog[self.pos + 1] >= 0x80) return BasicIterError.BadLine;
         if (self.pos + 3 >= self.prog.len) return bp;
         const line_number = util.peek16be(self.prog, self.pos + 1);
         const len = self.prog[self.pos + 3];
