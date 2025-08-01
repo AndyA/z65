@@ -6,8 +6,8 @@ const int = @import("int.zig");
 pub const VarType = enum(u8) { Str = 0x00, Int = 0x40, FP = 0xff };
 pub const Var = union(VarType) {
     Str: string.BasicString,
-    FP: fp.BasicFP64,
     Int: int.BasicInt,
+    FP: fp.BasicFP64,
 };
 
 pub const VarSlot = struct {
