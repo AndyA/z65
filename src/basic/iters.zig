@@ -102,23 +102,3 @@ pub const TokenIter = struct {
         }
     }
 };
-
-// test TokenIter {
-//     const allocator = std.testing.allocator;
-//     const prog =
-//         \\   10 PRINT """Hello, World""" : REM Quotes!
-//         \\   20 GOTO 10
-//         \\
-//     ;
-
-//     const bin = try sourceToBinary(allocator, prog);
-//     defer bin.deinit();
-
-//     // hexDump(bin.bytes);
-
-//     var ti = TokenIter.init(bin.bytes);
-//     try std.testing.expectEqualDeep(@intFromEnum(kw.KeywordsEnum.PRINT), try ti.next());
-//     try std.testing.expectEqualDeep(@intFromEnum(kw.KeywordsEnum.GOTO), try ti.next());
-//     try std.testing.expectEqualDeep(@intFromEnum(kw.KeywordsEnum.@":line:"), try ti.next());
-//     try std.testing.expectEqualDeep(null, try ti.next());
-// }
