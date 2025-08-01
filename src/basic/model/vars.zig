@@ -3,7 +3,7 @@ const string = @import("string.zig");
 const fp = @import("fp.zig");
 const int = @import("int.zig");
 
-pub const VarType = enum { Str, FP, Int };
+pub const VarType = enum(u8) { Str = 0x00, Int = 0x40, FP = 0xff };
 pub const Var = union(VarType) {
     Str: string.BasicString,
     FP: fp.BasicFP64,
