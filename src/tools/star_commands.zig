@@ -289,7 +289,7 @@ fn structField(comptime name: []const u8, comptime T: type) std.builtin.Type.Str
         .type = T,
         .default_value_ptr = null,
         .is_comptime = false,
-        .alignment = 0,
+        .alignment = @alignOf(T),
     };
 }
 
