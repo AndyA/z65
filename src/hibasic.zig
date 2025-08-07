@@ -327,6 +327,10 @@ pub const HiBasic = struct {
     }
 
     pub fn getProgram(self: Self, cpu: anytype) []const u8 {
+        // TODO this fails if PAGE > TOP which seems to happen
+        // if you e.g.
+        //   >*LOAD basicprog 2000
+        //   >PAGE=&2000
         const page = self.getPage(cpu);
         const top: u16 = cpu.peek16(constants.ZP.TOP);
         return self.ram[page..top];
