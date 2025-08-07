@@ -335,11 +335,3 @@ DEF FNzp(size%)
   ZP% = ZP% + size%
   IF ZP% >= &90 THEN STOP
 =S%
-
-DEF FNprstr(msg$)
-  [OPT pass
-    JSR prstr
-    EQUS msg$
-    EQUB 0
-  ]
-=""
