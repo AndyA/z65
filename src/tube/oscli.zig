@@ -36,6 +36,7 @@ const StarCommands = struct {
     ) !void {
         const cb = osfile.OSFILE_CB{
             .start_addr = args.start,
+            .load_addr = args.start,
             .end_addr = args.end.resolve(args.start),
             .exec_addr = args.exec orelse args.start,
         };
