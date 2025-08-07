@@ -223,7 +223,7 @@ pub const HiBasic = struct {
         const page = self.getPage(cpu);
         return self.commandContext(cpu, isFileCommand) and
             (std.ascii.endsWithIgnoreCase(name, ".bbc") or name.len == 0) and
-            (osf.load_addr == page or osf.start_addr == page);
+            (osf.cb.load_addr == page or osf.cb.start_addr == page);
     }
 
     fn defaultName(self: Self, name: []const u8) ![]const u8 {
