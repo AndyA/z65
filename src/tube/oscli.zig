@@ -29,15 +29,15 @@ const StarCommands = struct {
         cpu.PC = @intFromEnum(constants.MOSEntry.OSBYTE);
     }
 
-    pub fn @"*SAVE <name:[]u8> <start:u16x> <end:u16xr> [<exec:u16x>]"(
+    pub fn @"*SAVE <name:[]u8> <start:u16x> <end:u16xr> [<exec:u16x> [<load:u16x>]]"(
         alloc: std.mem.Allocator,
         cpu: anytype,
         args: anytype,
     ) !void {
         const cb = osfile.OSFILE_CB{
             .start_addr = args.start,
-            .load_addr = args.start,
             .end_addr = args.end.resolve(args.start),
+            .load_addr = args.load orelse args.start,
             .exec_addr = args.exec orelse args.start,
         };
         try cb.save(alloc, args.name, cpu);
