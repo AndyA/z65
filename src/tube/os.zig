@@ -262,8 +262,10 @@ pub fn TubeOS(comptime LangType: type) type {
         }
 
         fn doOSFILE(self: *Self, cpu: anytype) !void {
-            const cb: OSFILE = RW_OSFILE.read(cpu, ct.getXY(cpu));
+            const addr = ct.getXY(cpu);
+            const cb: OSFILE = RW_OSFILE.read(cpu, addr);
             try cb.despatch(self.alloc, cpu);
+            RW_OSFILE.write(cpu, addr, cb);
         }
 
         fn doOSWRCH(self: *Self, cpu: anytype) !void {
@@ -274,6 +276,7 @@ pub fn TubeOS(comptime LangType: type) type {
         fn doOSRDCH(self: *Self, cpu: anytype) !void {
             _ = self;
             std.debug.print("OSRDCH {f}\n", .{cpu});
+            cpu.poke8(0xff, 0xff);
         }
 
         fn doOSARGS(self: *Self, cpu: anytype) !void {
