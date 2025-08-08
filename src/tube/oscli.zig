@@ -29,7 +29,7 @@ const StarCommands = struct {
         cpu.PC = @intFromEnum(constants.MOSEntry.OSBYTE);
     }
 
-    pub fn @"*SAVE <name:[]u8> <start:u16x> <end:u16xr> [<exec:u16x> [<load:u16x>]]"(
+    pub fn @"*SAVE <name:[]u8> <start:u32x> <end:u32xr> [<exec:u32x> [<load:u32x>]]"(
         alloc: std.mem.Allocator,
         cpu: anytype,
         args: anytype,
@@ -43,7 +43,7 @@ const StarCommands = struct {
         try cb.save(alloc, args.name, cpu);
     }
 
-    pub fn @"*LOAD <name:[]u8> <start:u16x>"(
+    pub fn @"*LOAD <name:[]u8> <start:u32x>"(
         alloc: std.mem.Allocator,
         cpu: anytype,
         args: anytype,
@@ -104,13 +104,15 @@ const StarCommands = struct {
         cpu.stop();
     }
 
-    pub fn @"*DUMP <start:u16x> <end:u16xr> "(
+    pub fn @"*DUMP <start:u32x> <end:u32xr> "(
         alloc: std.mem.Allocator,
         cpu: anytype,
         args: anytype,
     ) !void {
         _ = alloc;
-        try cpu.os.hexDump(cpu, args.start, args.end.resolve(args.start));
+        const start: u16 = @intCast(args.start);
+        const end: u16 = @intCast(args.end.resolve(args.start));
+        try cpu.os.hexDump(cpu, start, end);
     }
 
     pub fn @"*!<shell:[]u8*>"(

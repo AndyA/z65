@@ -125,10 +125,10 @@ const Scanner = struct {
 
 // Would have been a tagged union - but they can't be zero filled ATM.
 const AbsRel = struct {
-    addr: u16,
+    addr: u32,
     rel: bool,
 
-    pub fn resolve(self: @This(), base: u16) u16 {
+    pub fn resolve(self: @This(), base: u32) u32 {
         return switch (self.rel) {
             false => self.addr,
             true => @intCast(base + self.addr),
@@ -164,23 +164,23 @@ const ParamDecoder = struct {
         return std.fmt.parseInt(u8, num, 10);
     }
 
-    pub fn @"u16"(src: *Scanner) !u16 {
+    pub fn @"u32"(src: *Scanner) !u32 {
         const num = try src.span(std.ascii.isDigit);
-        return std.fmt.parseInt(u16, num, 10);
+        return std.fmt.parseInt(u32, num, 10);
     }
 
-    pub fn u16x(src: *Scanner) !u16 {
+    pub fn u32x(src: *Scanner) !u32 {
         const num = try src.span(std.ascii.isHex);
-        return std.fmt.parseInt(u16, num, 16);
+        return std.fmt.parseInt(u32, num, 16);
     }
 
-    pub fn u16xr(src: *Scanner) !AbsRel {
+    pub fn u32xr(src: *Scanner) !AbsRel {
         if (!src.eot() and src.peek() == '+') {
             src.advance();
             src.skipSpace();
-            return .{ .addr = try Self.u16x(src), .rel = true };
+            return .{ .addr = try Self.u32x(src), .rel = true };
         }
-        return .{ .addr = try Self.u16x(src), .rel = false };
+        return .{ .addr = try Self.u32x(src), .rel = false };
     }
 };
 
@@ -465,7 +465,7 @@ test makeCommand {
     }
     comptime {
         const source = Source.init(
-            \\SAVE <filename:[]u8> <start:u16x> <end:u16x> [<load:u16x> [<exec:u16x>]]
+            \\SAVE <filename:[]u8> <start:u32x> <end:u32x> [<load:u32x> [<exec:u32x>]]
         );
         const command = try makeCommand(source);
         const res1 = try command.match("save foo 800 900");
@@ -545,7 +545,7 @@ test makeHandler {
             }
         }
 
-        pub fn @"*SAVE <name:[]u8> <start:u16x> <end:u16xr> [<exec:u16x>]"(
+        pub fn @"*SAVE <name:[]u8> <start:u32x> <end:u32xr> [<exec:u32x>]"(
             alloc: std.mem.Allocator,
             cpu: anytype,
             params: anytype,

@@ -8,6 +8,37 @@ pub fn writeFile(name: []const u8, bytes: []const u8) !void {
     try file.writeAll(bytes);
 }
 
+pub const FileInfo = struct {
+    const Self = @This();
+    name: [12]u8,
+    load_addr: u32,
+    exec_addr: u32,
+    file_size: u32,
+
+    pub fn init(file_name: []const u8, load_addr: u32, exec_addr: u32, file_size: u32) Self {
+        var name: [12]u8 = @splat(' ');
+        const name_len = @min(name.len, file_name.len);
+        @memcpy(name[0..name_len], file_name[0..name_len]);
+        return Self{
+            .name = name,
+            .load_addr = load_addr,
+            .exec_addr = exec_addr,
+            .file_size = file_size,
+        };
+    }
+
+    pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+        try writer.print(
+            \\{s} {X:0>8} {X:0>8} {X:0>8}
+        , .{ self.name, self.load_addr, self.exec_addr, self.file_size });
+    }
+};
+
+test FileInfo {
+    const fi = FileInfo.init("$.clocksp", 0x800, 0x8023, 0x13d);
+    std.debug.print("info: {f}\n", .{fi});
+}
+
 pub const OSFILE_CB = struct {
     const Self = @This();
     load_addr: u32 = 0,
@@ -37,10 +68,16 @@ pub const OSFILE = struct {
     filename: u16,
     cb: OSFILE_CB,
 
-    pub fn format(self: Self, writer: std.io.Writer) std.io.Writer.Error!void {
+    pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
         try writer.print(
             \\filename: {x:0>4} load: {x:0>8} exec: {x:0>8} start: {x:0>8} end: {x:0>8}
-        , .{ self.filename, self.cb.load_addr, self.cb.exec_addr, self.cb.start_addr, self.cb.end_addr });
+        , .{
+            self.filename,
+            self.cb.load_addr,
+            self.cb.exec_addr,
+            self.cb.start_addr,
+            self.cb.end_addr,
+        });
     }
 
     fn save(self: Self, alloc: std.mem.Allocator, cpu: anytype) !u8 {
