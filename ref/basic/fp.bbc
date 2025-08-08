@@ -148,7 +148,7 @@ P% = code
               INY
               LDA (vp), Y
               JMP hexbyte
-      
+
 
 .vars         LDX #ASC"A"
 .va1          JSR vchain

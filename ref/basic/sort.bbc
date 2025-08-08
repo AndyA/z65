@@ -23,14 +23,14 @@ P% = code
 [OPT pass
 
 \ Selection sort
-.selection_t  JSR trace 
+.selection_t  JSR trace
 .selection    JSR clear
               LDX #0
 .sel1         JSR show
               TXA
               TAY
               INY
-.sel2         LDA chars, Y : CMP chars, X : BCS sel3          
+.sel2         LDA chars, Y : CMP chars, X : BCS sel3
               PHA : LDA chars, X : STA chars, Y : PLA : STA chars, X
 .sel3         INY
               CPY #count_c
@@ -123,7 +123,7 @@ P% = code
               BCC rev1
               RTS
 
-\ Print a 32 bit decimal number 
+\ Print a 32 bit decimal number
 \   acc0  the value to print
 \   Y     the width to pad to
 .prdec        PHA : TXA : PHA : TYA: PHA
@@ -150,7 +150,7 @@ P% = code
               LDA #ASC" "
 .prd4         PHA
               DEY
-              BPL prd4        
+              BPL prd4
 .prd5         PLA
               BEQ prd6
               JSR oswrch

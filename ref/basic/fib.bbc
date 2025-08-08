@@ -19,7 +19,7 @@ DEF PROCtest(fn$)
     v% = EVAL fn$
     PRINT FNfmt(&090A) n% v% FNfmt(&02020A) (TIME - start%) / 100
   NEXT
-ENDPROC  
+ENDPROC
 
 DEF FNfmt(F%):@%=F%:=""
 
