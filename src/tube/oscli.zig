@@ -118,9 +118,10 @@ const StarCommands = struct {
         cpu: anytype,
         args: anytype,
     ) !void {
-        _ = alloc;
         _ = cpu;
-        std.debug.print("shell {s}\n", .{args.shell});
+        const cmd = [_][]const u8{ "/bin/bash", "-c", args.shell };
+        var child = std.process.Child.init(&cmd, alloc);
+        _ = try child.spawnAndWait();
     }
 };
 
