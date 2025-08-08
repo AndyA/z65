@@ -275,8 +275,9 @@ pub fn TubeOS(comptime LangType: type) type {
 
         fn doOSRDCH(self: *Self, cpu: anytype) !void {
             _ = self;
-            std.debug.print("OSRDCH {f}\n", .{cpu});
             cpu.poke8(0xff, 0xff);
+            cpu.A = 27;
+            cpu.P.C = true;
         }
 
         fn doOSARGS(self: *Self, cpu: anytype) !void {
