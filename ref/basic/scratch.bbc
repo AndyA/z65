@@ -15,12 +15,36 @@ FOR pass = 0 TO 2 STEP 2
 P% = code
 [OPT pass
 
+.blip_t       JSR trace
 .blip         LDX zig_trace
               LDA #1
               STA zig_trace
               SEC
               CLC
               STX zig_trace
+              RTS
+
+.trace        STA scratch + 0
+              PHP : PLA : STA scratch + 1
+              PLA : STA scratch + 2
+              PLA : STA scratch + 3
+              LDA zig_trace : PHA
+              LDA #(trace_x - 1) DIV 256 : PHA
+              LDA #(trace_x - 1) MOD 256 : PHA
+              LDA scratch + 3 : PHA
+              LDA scratch + 2 : PHA
+              LDA #1 : STA zig_trace
+              LDA scratch + 1 : PHA
+              LDA scratch + 0
+              PLP
+              RTS
+
+.trace_x      STA scratch + 0
+              PHP : PLA : STA scratch + 1
+              PLA : STA zig_trace
+              LDA scratch + 1 : PHA
+              LDA scratch + 0
+              PLP
               RTS
 
 ]
