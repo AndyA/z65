@@ -69,7 +69,7 @@ fn help(comptime params: anytype, full: bool) !void {
     var w_buf: [1024]u8 = undefined;
     var w = std.fs.File.stdout().writer(&w_buf);
 
-    try w.interface.print(
+    try w.interface.writeAll(
         \\hibasic: Acorn BBC HiBASIC
         \\
         \\Usage:
@@ -77,13 +77,11 @@ fn help(comptime params: anytype, full: bool) !void {
         \\
         \\Options:
         \\
-    ,
-        .{},
     );
 
     try clap.help(&w.interface, clap.Help, &params, .{ .max_width = 75 });
     if (full) {
-        try w.interface.print(
+        try w.interface.writeAll(
             \\
             \\ Notes:
             \\    Both native BBC Basic format source files and textual source files are 
@@ -102,12 +100,10 @@ fn help(comptime params: anytype, full: bool) !void {
             \\
             \\    Andy Armstrong <andy@hexten.net>
             \\
-            \\
-        ,
-            .{},
         );
     }
 
+    try w.interface.writeAll("\n");
     try w.interface.flush();
 }
 
