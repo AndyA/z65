@@ -175,7 +175,7 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.poke8(err_buf + 0, 0x00);
             cpu.poke8(err_buf + 1, code);
             ct.pokeString(cpu, err_buf + 2, msg, 0x0d);
-            cpu.PC = err_buf + 0;
+            cpu.PC = err_buf;
             _ = self;
         }
 
