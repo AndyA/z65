@@ -23,22 +23,6 @@ FOR pass = 0 TO 2 STEP 2
 P% = code
 [OPT pass
 
-.popcount_t   JSR trace
-.popcount     LDX #3
-              LDA #0
-.popc1        JSR pc8
-              DEX
-              BPL popc1
-              RTS
-
-.pc8          JSR pc4
-.pc4          JSR pc2
-.pc2          JSR pc1
-.pc1          LSR acc0, X
-              ADC #0
-              RTS
-
-
 .showaddr     PHA
               LDA vp + 1
               JSR hexbyte
@@ -279,7 +263,7 @@ DEF FNnum(num)
 =LEFT$(rep$, e%-1) + "e+" + MID$(rep$, e%+1)
 
 DEF PROCkeywords
-  LOCAL pos, end, kw$, tok
+  LOCAL pos, end, kw$, tok, des_lo, des_hi
   pos = &B871
   end = &BB74
   des_lo = &BAE6
@@ -298,18 +282,6 @@ DEF PROCkeywords
     PRINT
     pos = pos + 2
   UNTIL pos >= end
-ENDPROC
-
-DEF PROCdespatch
-  LOCAL des_lo, des_hi, tok, addr
-  des_lo = &BAE6
-  des_hi = &BB58
-
-  FOR tok = &80 TO &FF
-    addr = des_lo?tok + des_hi?tok * 256
-    PRINT ~tok; " -> "; ~addr
-  NEXT
-
 ENDPROC
 
 DEF FNhx(I%)
