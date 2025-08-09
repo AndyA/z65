@@ -1,0 +1,40 @@
+oswrch        = &FFEE
+osnewl        = &FFE7
+
+zig_trace     = &FE90
+
+ZP%           = &70
+
+scratch       = FNzp(4)
+
+
+code_size% = 400
+DIM code code_size% + 200
+
+FOR pass = 0 TO 2 STEP 2
+P% = code
+[OPT pass
+
+.blip         LDX zig_trace
+              LDA #1
+              STA zig_trace
+              SEC
+              CLC
+              STX zig_trace
+              RTS
+
+]
+NEXT
+PRINT "[36mCode size: "; P% - code; ", allocated: "; code_size%; "[0m"
+IF P% - code > code_size% THEN PRINT "[31mCode overflow![0m" : STOP
+
+CALL blip
+
+END
+
+DEF FNzp(size%)
+  LOCAL S%
+  S% = ZP%
+  ZP% = ZP% + size%
+  IF ZP% >= &90 THEN STOP
+=S%
