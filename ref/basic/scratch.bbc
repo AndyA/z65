@@ -21,6 +21,7 @@ P% = code
               STA zig_trace
               SEC
               CLC
+              DEY
               STX zig_trace
               RTS
 
@@ -29,17 +30,17 @@ P% = code
               PLA : STA scratch + 2
               PLA : STA scratch + 3
               LDA zig_trace : PHA
-              LDA #(trace_x - 1) DIV 256 : PHA
-              LDA #(trace_x - 1) MOD 256 : PHA
+              LDA #(trace_exit - 1) DIV 256 : PHA
+              LDA #(trace_exit - 1) MOD 256 : PHA
               LDA scratch + 3 : PHA
               LDA scratch + 2 : PHA
-              LDA #1 : STA zig_trace
               LDA scratch + 1 : PHA
+              LDA #1 : STA zig_trace
               LDA scratch + 0
               PLP
               RTS
 
-.trace_x      STA scratch + 0
+.trace_exit   STA scratch + 0
               PHP : PLA : STA scratch + 1
               PLA : STA zig_trace
               LDA scratch + 1 : PHA
