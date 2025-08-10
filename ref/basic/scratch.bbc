@@ -35,8 +35,9 @@ P% = code
               LDA scratch + 3 : PHA
               LDA scratch + 2 : PHA
               LDA scratch + 1 : PHA
+              LDA scratch + 0 : PHA
               LDA #1 : STA zig_trace
-              LDA scratch + 0
+              PLA
               PLP
               RTS
 
