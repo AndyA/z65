@@ -17,10 +17,11 @@ P% = code
 
 .blip_t       JSR trace
 .blip         LDX zig_trace
-              LDA #1
-              STA zig_trace
+              LDY #1
+              STY zig_trace
               SEC
               CLC
+              DEY
               DEY
               STX zig_trace
               RTS
