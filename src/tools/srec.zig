@@ -64,7 +64,7 @@ pub const SRec = struct {
             return SRecError.InvalidFormat;
 
         var data = try std.ArrayList(u8).initCapacity(alloc, byte_count);
-        errdefer data.deinit();
+        errdefer data.deinit(alloc);
 
         data.items.len = byte_count;
         for (0..byte_count) |i| {
@@ -96,8 +96,8 @@ pub const SRec = struct {
             return SRecError.InvalidChecksum;
     }
 
-    pub fn deinit(self: *Self) void {
-        self.data.deinit();
+    pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
+        self.data.deinit(alloc);
     }
 
     fn payloadBytes(self: Self) []const u8 {
@@ -128,7 +128,7 @@ test "SRec" {
     const expect = std.testing.expect;
     const line = "S119000A0000000000000000008001C38241007F001F71800FFF38";
     var rec = try SRec.init(alloc, line);
-    defer rec.deinit();
+    defer rec.deinit(alloc);
     try expect(rec.kind == SRecKind.S1);
     try expect(rec.byte_count == 0x19);
     try expect(rec.addr() == 0x000A);
@@ -141,24 +141,24 @@ pub const SRecFile = struct {
     pub fn init(alloc: std.mem.Allocator, file: []const u8) !Self {
         const records = try std.ArrayList(SRec).initCapacity(alloc, 1000);
         var self = Self{ .records = records };
-        errdefer self.deinit();
+        errdefer self.deinit(alloc);
 
         var iter = std.mem.splitScalar(u8, file, '\n');
         while (iter.next()) |line| {
             if (line.len == 0)
                 continue;
             var rec = try SRec.init(alloc, line);
-            errdefer rec.deinit();
-            try self.records.append(rec);
+            errdefer rec.deinit(alloc);
+            try self.records.append(alloc, rec);
         }
 
         return self;
     }
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: *Self, alloc: std.mem.Allocator) void {
         for (self.records.items) |*rec|
-            rec.deinit();
-        self.records.deinit();
+            rec.deinit(alloc);
+        self.records.deinit(alloc);
     }
 
     pub fn startAddr(self: Self) ?u32 {
@@ -186,10 +186,11 @@ pub const SRecFile = struct {
 };
 
 test "SRecFile" {
+    const alloc = std.testing.allocator;
     const expect = std.testing.expect;
     const file = @embedFile("../cpu/test/data/srec.s19");
-    var sr = try SRecFile.init(std.testing.allocator, file);
-    defer sr.deinit();
+    var sr = try SRecFile.init(alloc, file);
+    defer sr.deinit(alloc);
     // for (sr.records.items) |rec| {
     //     std.debug.print("Record: S{c}: {x}\n", .{ @intFromEnum(rec.kind), rec.addr() });
     // }

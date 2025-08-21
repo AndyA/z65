@@ -82,7 +82,7 @@ pub const OSFILE = struct {
 
     fn save(self: Self, alloc: std.mem.Allocator, cpu: anytype) !u8 {
         var file_name = try ct.peekString(alloc, cpu, self.filename, 0x0D);
-        defer file_name.deinit();
+        defer file_name.deinit(alloc);
 
         const lang = cpu.os.lang;
         if (@hasDecl(@TypeOf(lang.*), "hook:save")) {
@@ -96,7 +96,7 @@ pub const OSFILE = struct {
 
     fn load(self: Self, alloc: std.mem.Allocator, cpu: anytype) !u8 {
         var file_name = try ct.peekString(alloc, cpu, self.filename, 0x0D);
-        defer file_name.deinit();
+        defer file_name.deinit(alloc);
 
         const lang = cpu.os.lang;
         if (@hasDecl(@TypeOf(lang.*), "hook:load")) {

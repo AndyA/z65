@@ -218,8 +218,10 @@ pub const InstructionSet6502 = enum(u8) {
 
 test "6502 functional test" {
     const test_code = @embedFile("test/data/6502_functional_test.s19");
+    const std = @import("std");
     const ft = @import("functional_test.zig");
     try ft.runFunctionalTest(
+        std.testing.allocator,
         InstructionSet6502,
         @import("alu.zig").ALU6502,
         .{},

@@ -199,7 +199,7 @@ pub fn TubeOS(comptime LangType: type) type {
 
         fn doOSCLI(self: *Self, cpu: anytype) !void {
             var cmd_line = try ct.peekString(self.alloc, cpu, ct.getXY(cpu), 0x0D);
-            defer cmd_line.deinit();
+            defer cmd_line.deinit(self.alloc);
             var res = try OSCLI.handle(self.alloc, cmd_line.items, cpu);
 
             if (@hasDecl(LangType, "hook:oscli")) {

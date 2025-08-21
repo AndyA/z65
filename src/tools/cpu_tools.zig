@@ -32,13 +32,13 @@ pub fn peekBytesAlloc(alloc: std.mem.Allocator, mem: anytype, addr: u16, size: u
 
 pub fn peekString(alloc: std.mem.Allocator, mem: anytype, addr: u16, sentinel: u8) !std.ArrayList(u8) {
     var buf = try std.ArrayList(u8).initCapacity(alloc, 256);
-    errdefer buf.deinit();
+    errdefer buf.deinit(alloc);
 
     var offset: u16 = 0;
     while (true) {
         const byte = mem.peek8(@intCast(addr + offset));
         if (byte == sentinel) break;
-        try buf.append(byte);
+        try buf.append(alloc, byte);
         offset += 1;
     }
 

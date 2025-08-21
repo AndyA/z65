@@ -1,3 +1,5 @@
+const std = @import("std");
+
 const Extra65C02 = enum(u8) {
     @"ADC (zpg)" = 0x72,
     @"AND (zpg)" = 0x32,
@@ -88,6 +90,7 @@ test "6502 functional test" {
     const ft = @import("functional_test.zig");
     // Test with a 6502 ALU else decimal mode will fail
     try ft.runFunctionalTest(
+        std.testing.allocator,
         InstructionSet65C02,
         @import("alu.zig").ALU6502,
         .{ .clear_decimal_on_int = true },
@@ -99,6 +102,7 @@ test "65C02 functional test" {
     const test_code = @embedFile("test/data/65C02_extended_opcodes_test.s19");
     const ft = @import("functional_test.zig");
     try ft.runFunctionalTest(
+        std.testing.allocator,
         InstructionSet65C02,
         @import("alu.zig").ALU65C02,
         .{ .clear_decimal_on_int = true },
