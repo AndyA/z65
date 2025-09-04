@@ -6,7 +6,10 @@ zig_trace     = &FE90
 ZP%           = &70
 
 scratch       = FNzp(4)
-
+rast_in       = FNzp(2)
+rast_in_y     = FNzp(1)
+rast_out      = FNzp(2)
+rast_out_y    = FNzp(1)
 
 code_size% = 400
 DIM code code_size% + 200
@@ -14,6 +17,76 @@ DIM code code_size% + 200
 FOR pass = 0 TO 2 STEP 2
 P% = code
 [OPT pass
+
+.scale_rast   LDY #0
+              STY rast_in_y
+              STY rast_out_y
+.scr1         LDX #256-4
+.scr2         LDA (rast_in), Y
+              PHA
+              AND #&07
+              STA scratch - 4, X
+              PLA
+              AND #&70
+              LSR A
+              ORA scratch - 4, X
+              STA scratch - 4, X
+              INX
+              BNE scr2
+              STY rast_in_y
+
+              LDY rast_out_y
+
+\ Byte 0
+              LDA scratch + 0
+              ASL A
+              ASL A
+              LSR scratch + 1
+              ROR A
+              LSR scratch + 1
+              ROR A
+              STA (rast_out), Y
+              INY
+
+\ Byte 1
+              LDA scratch + 2
+              ASL A
+              ASL A
+              STA scratch + 2
+              ASL A
+              ASL A
+              ORA scratch + 1
+              STA (rast_out), Y
+              INY
+
+\ Byte 2
+              LDA scratch + 3
+              ASL scratch + 2
+              ROL A
+              ASL scratch + 2
+              ROL A
+              STA (rast_out), Y
+              INY
+
+              STY rast_out_y
+              LDY rast_in_y
+              CPY #256 DIV 8 * 3
+              BCC scr1
+
+\ Update pointers
+              CLC
+              LDA rast_in + 0
+              ADC #256 DIV 8 * 4
+              STA rast_in + 0
+              BCC scr3
+              INC rast_in + 1
+.scr3         CLC
+              LDA rast_out + 0
+              ADC rast_out_y
+              STA rast_out + 0
+              BCC scr4
+              INC rast_out + 1
+.scr4         RTS
 
 .blip_t       JSR trace
 .blip         LDX zig_trace
