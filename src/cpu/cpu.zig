@@ -50,7 +50,7 @@ pub const CPUState = struct {
     P: PSR = PSR{},
     PC: u16 = 0,
 
-    pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+    pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
         const args = .{ self.PC, self.P, self.A, self.X, self.Y, self.S };
         try writer.print(
             \\{{"pc":{d},"p":"{f}","a":{d},"x":{d},"y":{d},"s":{d}}}
@@ -355,7 +355,7 @@ pub fn CPU(
                 self.sleeping = false;
             }
 
-            pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+            pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
                 try self.getState().format(writer);
             }
 

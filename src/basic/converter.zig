@@ -123,7 +123,7 @@ pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) ![]const u8 {
         return try code.sourceToBinary(alloc, source);
 
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+    var w = std.Io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
     const src = withoutLastLine(source);
@@ -150,7 +150,7 @@ pub fn stringifyBinary(alloc: std.mem.Allocator, bin: []const u8) ![]const u8 {
 
     const info = try getSourceInfo(source);
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+    var w = std.Io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
     var iter = std.mem.splitScalar(u8, withoutLastLine(source), '\n');

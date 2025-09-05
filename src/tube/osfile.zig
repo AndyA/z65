@@ -27,7 +27,7 @@ pub const FileInfo = struct {
         };
     }
 
-    pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+    pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
         try writer.print(
             \\{s} {X:0>8} {X:0>8} {X:0>8}
         , .{ self.name, self.load_addr, self.exec_addr, self.file_size });
@@ -68,7 +68,7 @@ pub const OSFILE = struct {
     filename: u16,
     cb: OSFILE_CB,
 
-    pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+    pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
         try writer.print(
             \\filename: {x:0>4} load: {x:0>8} exec: {x:0>8} start: {x:0>8} end: {x:0>8}
         , .{

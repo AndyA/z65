@@ -43,14 +43,14 @@ pub const HiBasicExec = struct {
     const Self = @This();
     alloc: std.mem.Allocator,
     source: []const u8,
-    reader: std.io.Reader,
+    reader: std.Io.Reader,
 
     pub fn init(alloc: std.mem.Allocator, source: []const u8) !Self {
         const dup_src = try alloc.dupe(u8, source);
         return Self{
             .alloc = alloc,
             .source = dup_src,
-            .reader = std.io.Reader.fixed(dup_src),
+            .reader = std.Io.Reader.fixed(dup_src),
         };
     }
 
@@ -74,8 +74,8 @@ pub const HiBasic = struct {
 
     alloc: std.mem.Allocator,
     config: HiBasicConfig,
-    reader: *std.io.Reader,
-    writer: *std.io.Writer,
+    reader: *std.Io.Reader,
+    writer: *std.Io.Writer,
     ram: *[0x10000]u8,
 
     started: bool = false,
@@ -89,12 +89,12 @@ pub const HiBasic = struct {
     pub fn init(
         alloc: std.mem.Allocator,
         config: HiBasicConfig,
-        reader: *std.io.Reader,
-        writer: *std.io.Writer,
+        reader: *std.Io.Reader,
+        writer: *std.Io.Writer,
         ram: *[0x10000]u8,
     ) !Self {
         var buf: std.ArrayListUnmanaged(u8) = .empty;
-        var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+        var w = std.Io.Writer.Allocating.fromArrayList(alloc, &buf);
         defer w.deinit();
 
         if (config.prog_name) |prog| {

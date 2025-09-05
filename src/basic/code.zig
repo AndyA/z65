@@ -66,9 +66,9 @@ pub fn clearVariables(ram: *[0x10000]u8) void {
 }
 
 pub fn sourceToBinary(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
-    var r = std.io.Reader.fixed(prog);
+    var r = std.Io.Reader.fixed(prog);
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+    var w = std.Io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
@@ -94,12 +94,12 @@ test sourceToBinary {
 
 pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
     if (prog.len == 2) return alloc.dupe(u8, "");
-    var r = std.io.Reader.fixed(
+    var r = std.Io.Reader.fixed(
         \\OLD
         \\LIST
     );
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+    var w = std.Io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);

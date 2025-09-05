@@ -7,7 +7,7 @@ fn MakePoint(T: type) type {
         x: T = 0,
         y: T = 0,
 
-        pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+        pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
             try writer.print("({d}, {d})", .{ self.x, self.y });
         }
     };
@@ -22,7 +22,7 @@ const RGB = struct {
     g: u8 = 0,
     b: u8 = 0,
 
-    pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+    pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
         try writer.print("({d}, {d}, {d})", .{ self.r, self.g, self.b });
     }
 };
@@ -185,7 +185,7 @@ pub const VDUMaxBytes = max_bytes(VDUDespatch);
 
 pub const VDU = struct {
     const Self = @This();
-    writer: *std.io.Writer,
+    writer: *std.Io.Writer,
     cmd: u8 = 0xff,
     queue: [VDUMaxBytes]u8 = undefined,
     q_pos: u8 = 0,
@@ -196,7 +196,7 @@ pub const VDU = struct {
     prev_pt: Point = Point{ .x = 0, .y = 0 },
     last_pt: Point = Point{ .x = 0, .y = 0 },
 
-    pub fn init(writer: *std.io.Writer) Self {
+    pub fn init(writer: *std.Io.Writer) Self {
         return Self{ .writer = writer };
     }
     pub fn peek8(self: Self, addr: u16) u8 {
@@ -253,7 +253,7 @@ pub const VDU = struct {
 test VDU {
     const alloc = std.testing.allocator;
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(alloc, &buf);
+    var w = std.Io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
     var vdu = VDU.init(&w.writer);

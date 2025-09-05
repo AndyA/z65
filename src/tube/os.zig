@@ -23,15 +23,15 @@ pub fn TubeOS(comptime LangType: type) type {
         const Self = @This();
         base_time_ms: i64,
         alloc: std.mem.Allocator,
-        reader: *std.io.Reader,
-        writer: *std.io.Writer,
+        reader: *std.Io.Reader,
+        writer: *std.Io.Writer,
         lang: *LangType,
         vdu: vdu.VDU,
 
         pub fn init(
             alloc: std.mem.Allocator,
-            reader: *std.io.Reader,
-            writer: *std.io.Writer,
+            reader: *std.Io.Reader,
+            writer: *std.Io.Writer,
             lang: *LangType,
         ) !Self {
             return Self{

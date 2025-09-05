@@ -21,7 +21,7 @@ pub const PSR = packed struct {
         self.Q = true; // Q bit is always set to 1
     }
 
-    pub fn format(self: Self, writer: *std.io.Writer) std.io.Writer.Error!void {
+    pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
         var buf: [8]u8 = undefined;
         const flags = self.value();
 

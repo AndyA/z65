@@ -38,8 +38,8 @@ const Tube65C02 = machine.CPU(
 pub fn runHiBasic(
     alloc: std.mem.Allocator,
     ram: *[0x10000]u8,
-    reader: *std.io.Reader,
-    writer: *std.io.Writer,
+    reader: *std.Io.Reader,
+    writer: *std.Io.Writer,
 ) !void {
     var lang = MiniBasic{ .ram = ram };
 
@@ -95,9 +95,9 @@ pub fn cleanBasicOutput(output: *std.ArrayListUnmanaged(u8)) void {
 
 test runHiBasic {
     const allocator = std.testing.allocator;
-    var r = std.io.Reader.fixed("PRINT PI\n");
+    var r = std.Io.Reader.fixed("PRINT PI\n");
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(allocator, &buf);
+    var w = std.Io.Writer.Allocating.fromArrayList(allocator, &buf);
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
@@ -114,7 +114,7 @@ test runHiBasic {
 
 test "runHiBasic error" {
     const allocator = std.testing.allocator;
-    var r = std.io.Reader.fixed(
+    var r = std.Io.Reader.fixed(
         \\PRINT PI
         \\make a mistake
         \\PRINT E
@@ -122,7 +122,7 @@ test "runHiBasic error" {
         \\
     );
     var buf: std.ArrayListUnmanaged(u8) = .empty;
-    var w = std.io.Writer.Allocating.fromArrayList(allocator, &buf);
+    var w = std.Io.Writer.Allocating.fromArrayList(allocator, &buf);
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
