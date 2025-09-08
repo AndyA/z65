@@ -23,7 +23,10 @@ const RGB = struct {
     b: u8 = 0,
 
     pub fn format(self: Self, writer: *std.Io.Writer) std.Io.Writer.Error!void {
-        try writer.print("({d}, {d}, {d})", .{ self.r, self.g, self.b });
+        try writer.print(
+            "({d}, {d}, {d})",
+            .{ self.r, self.g, self.b },
+        );
     }
 };
 
@@ -52,7 +55,10 @@ const GraphicsColour = serde(struct {
     mode: u8,
     colour: u8,
     fn run(self: *@This(), vdu: *VDU) !void {
-        try vdu.writer.print("GraphicsColour {d}, {d}\n", .{ self.mode, self.colour });
+        try vdu.writer.print(
+            "GraphicsColour {d}, {d}\n",
+            .{ self.mode, self.colour },
+        );
     }
 });
 
@@ -61,7 +67,10 @@ const LogicalColour = serde(struct {
     logical: u8,
     rgb: RGB,
     fn run(self: *@This(), vdu: *VDU) !void {
-        try vdu.writer.print("LogicalColour {d}, {d}, {f}\n", .{ self.colour, self.logical, self.rgb });
+        try vdu.writer.print(
+            "LogicalColour {d}, {d}, {f}\n",
+            .{ self.colour, self.logical, self.rgb },
+        );
     }
 });
 
@@ -85,7 +94,10 @@ const GraphicsWindow = serde(struct {
     bl: Point,
     tr: Point,
     fn run(self: *@This(), vdu: *VDU) !void {
-        try vdu.writer.print("GraphicsWindow {f}, {f}\n", .{ self.bl, self.tr });
+        try vdu.writer.print(
+            "GraphicsWindow {f}, {f}\n",
+            .{ self.bl, self.tr },
+        );
     }
 });
 
@@ -93,7 +105,10 @@ const Plot = serde(struct {
     cmd: u8,
     pt: Point,
     fn run(self: *@This(), vdu: *VDU) !void {
-        try vdu.writer.print("Plot {d}, {f}\n", .{ self.cmd, self.pt });
+        try vdu.writer.print(
+            "Plot {d}, {f}\n",
+            .{ self.cmd, self.pt },
+        );
         vdu.prev_pt = vdu.last_pt;
         vdu.last_pt = self.pt;
     }
@@ -103,7 +118,10 @@ const TextWindow = serde(struct {
     bl: TextPoint,
     tr: TextPoint,
     fn run(self: *@This(), vdu: *VDU) !void {
-        try vdu.writer.print("TextWindow {f}, {f}\n", .{ self.bl, self.tr });
+        try vdu.writer.print(
+            "TextWindow {f}, {f}\n",
+            .{ self.bl, self.tr },
+        );
     }
 });
 
