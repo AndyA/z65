@@ -1,7 +1,7 @@
 const std = @import("std");
 const serde = @import("../tools/serde.zig").serde;
 
-fn MakePoint(T: type) type {
+fn TypedPoint(T: type) type {
     return struct {
         const Self = @This();
         x: T = 0,
@@ -13,8 +13,8 @@ fn MakePoint(T: type) type {
     };
 }
 
-const TextPoint = MakePoint(u8);
-const Point = MakePoint(i16);
+const TextPoint = TypedPoint(u8);
+const Point = TypedPoint(i16);
 
 const RGB = struct {
     const Self = @This();
