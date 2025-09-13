@@ -336,6 +336,9 @@ pub fn CPU(
                 return self.int_state;
             }
 
+            // Tried using a continue to a label here but it hangs.
+            // https://github.com/ziglang/zig/pull/21257
+            // Maybe compiler bug?
             pub fn step(self: *Self) void {
                 self.pollInterrupts();
                 switch (self.ifetch8()) {
