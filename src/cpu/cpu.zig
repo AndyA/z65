@@ -58,6 +58,64 @@ pub const CPUState = struct {
     }
 };
 
+const Core = struct {
+    despatch: [0x100]fn (cpu: anytype) void = undefined,
+    legal: [0x100]bool = @splat(false),
+};
+
+fn makeCore(
+    comptime InstructionSet: type,
+    comptime AddressModes: type,
+    comptime Instructions: type,
+) Core {
+    var despatch: [0x100]fn (cpu: anytype) void = undefined;
+    var legal: [0x100]bool = @splat(false);
+    // Fill the depatch table with illegal instruction handlers
+    for (despatch, 0..) |_, opcode| {
+        const shim = struct {
+            pub fn instr(cpu: anytype) void {
+                cpu.os.trap(cpu, opcode) catch |err| {
+                    std.debug.print("Error in trap handler {s}\n", .{@errorName(err)});
+                    // @panic("Error in trap handler");
+                };
+            }
+        };
+        despatch[opcode] = shim.instr;
+    }
+
+    switch (@typeInfo(InstructionSet)) {
+        .@"enum" => |en| {
+            for (en.fields) |field| {
+                const spec = field.name;
+                const opcode = field.value;
+                if (legal[opcode])
+                    @compileError("Duplicate opcode: " ++ spec);
+                legal[opcode] = true;
+                if (std.mem.indexOfScalar(u8, spec, ' ')) |space| {
+                    const mnemonic = spec[0..space];
+                    const addr_mode = spec[space + 1 ..];
+                    const inst_fn = @field(Instructions, mnemonic);
+                    const addr_fn = @field(AddressModes, addr_mode);
+                    const shim = struct {
+                        pub fn instr(cpu: anytype) void {
+                            inst_fn(cpu, addr_fn(cpu));
+                        }
+                    };
+                    despatch[opcode] = shim.instr;
+                } else {
+                    despatch[opcode] = @field(Instructions, spec);
+                }
+            }
+        },
+        else => @compileError("InstructionSet must be an enum type"),
+    }
+
+    return Core{
+        .despatch = despatch,
+        .legal = legal,
+    };
+}
+
 // Baseline (glyph/M2 Air)
 //  Relative to real 65C02: 484.9250196
 //  Effective mHz: 1454.775059
@@ -74,47 +132,7 @@ pub fn CPU(
 ) type {
     comptime {
         @setEvalBranchQuota(4000);
-        var despatch: [0x100]fn (cpu: anytype) void = undefined;
-        var legal: [0x100]bool = @splat(false);
-        // Fill the depatch table with illegal instruction handlers
-        for (despatch, 0..) |_, opcode| {
-            const shim = struct {
-                pub fn instr(cpu: anytype) void {
-                    cpu.os.trap(cpu, opcode) catch |err| {
-                        std.debug.print("Error in trap handler {s}\n", .{@errorName(err)});
-                        // @panic("Error in trap handler");
-                    };
-                }
-            };
-            despatch[opcode] = shim.instr;
-        }
-
-        switch (@typeInfo(InstructionSet)) {
-            .@"enum" => |en| {
-                for (en.fields) |field| {
-                    const spec = field.name;
-                    const opcode = field.value;
-                    if (legal[opcode])
-                        @compileError("Duplicate opcode: " ++ spec);
-                    legal[opcode] = true;
-                    if (std.mem.indexOfScalar(u8, spec, ' ')) |space| {
-                        const mnemonic = spec[0..space];
-                        const addr_mode = spec[space + 1 ..];
-                        const inst_fn = @field(Instructions, mnemonic);
-                        const addr_fn = @field(AddressModes, addr_mode);
-                        const shim = struct {
-                            pub fn instr(cpu: anytype) void {
-                                inst_fn(cpu, addr_fn(cpu));
-                            }
-                        };
-                        despatch[opcode] = shim.instr;
-                    } else {
-                        despatch[opcode] = @field(Instructions, spec);
-                    }
-                }
-            },
-            else => @compileError("InstructionSet must be an enum type"),
-        }
+        const core = makeCore(InstructionSet, AddressModes, Instructions);
 
         return struct {
             const Self = @This();
@@ -270,7 +288,7 @@ pub fn CPU(
             }
 
             pub fn isLegal(opcode: u8) bool {
-                return legal[opcode];
+                return core.legal[opcode];
             }
 
             fn interruptCommon(self: *Self, vector: u16, comptime is_brk: bool) void {
@@ -339,7 +357,7 @@ pub fn CPU(
             pub fn step(self: *Self) void {
                 self.pollInterrupts();
                 switch (self.ifetch8()) {
-                    inline 0...despatch.len - 1 => |op| despatch[op](self),
+                    inline 0...core.despatch.len - 1 => |op| core.despatch[op](self),
                 }
             }
 
