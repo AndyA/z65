@@ -110,10 +110,7 @@ fn makeCore(
         else => @compileError("InstructionSet must be an enum type"),
     }
 
-    return Core{
-        .despatch = despatch,
-        .legal = legal,
-    };
+    return Core{ .despatch = despatch, .legal = legal };
 }
 
 // Baseline (glyph/M2 Air)
