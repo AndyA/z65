@@ -237,16 +237,12 @@ pub fn TubeOS(comptime LangType: type) type {
                         }
                     }
 
-                    const ln = self.reader.takeDelimiterExclusive('\n') catch |err| {
-                        switch (err) {
-                            error.EndOfStream => {
-                                cpu.stop();
-                                return;
-                            },
-                            else => return err,
-                        }
-                    };
-                    try self.sendLine(cpu, addr, ln);
+                    const res = try self.reader.takeDelimiter('\n');
+                    if (res) |ln| {
+                        try self.sendLine(cpu, addr, ln);
+                    } else {
+                        cpu.stop();
+                    }
                 },
                 0x01 => {
                     const delta_ms = std.time.milliTimestamp() - self.base_time_ms;

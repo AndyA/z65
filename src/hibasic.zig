@@ -59,12 +59,7 @@ pub const HiBasicExec = struct {
     }
 
     pub fn readLine(self: *Self) !?[]const u8 {
-        return self.reader.takeDelimiterExclusive('\n') catch |err|
-            switch (err) {
-                error.EndOfStream => null,
-                error.StreamTooLong => null,
-                else => err,
-            };
+        return self.reader.takeDelimiter('\n');
     }
 };
 
