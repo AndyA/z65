@@ -5,7 +5,7 @@ tube = 8.900
 
 @% = 0
 
-PRINT "Calibrating loop..."
+PRINT "Calibrating the loop."
 mult = 1
 REPEAT
   mult = mult * 2
