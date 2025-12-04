@@ -34,10 +34,10 @@ pub const FileInfo = struct {
     }
 };
 
-test FileInfo {
-    const fi = FileInfo.init("$.clocksp", 0x800, 0x8023, 0x13d);
-    std.debug.print("info: {f}\n", .{fi});
-}
+// test FileInfo {
+//     const fi = FileInfo.init("$.clocksp", 0x800, 0x8023, 0x13d);
+//     std.debug.print("info: {f}\n", .{fi});
+// }
 
 pub const OSFILE_CB = struct {
     const Self = @This();

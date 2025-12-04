@@ -15,14 +15,14 @@ pub const HiBasicError = error{
     NoFileName,
 };
 
-pub fn lastModified(file: []const u8) !i128 {
+pub fn lastModified(file: []const u8) !i96 {
     const fh = std.fs.cwd().openFile(file, .{}) catch |err| {
         if (err == error.FileNotFound) return 0; // No snapshot file
         return err;
     };
     defer fh.close();
     const s = try fh.stat();
-    return s.mtime;
+    return s.mtime.toNanoseconds();
 }
 
 fn isFileCommand(tok: u8) bool {
@@ -77,7 +77,7 @@ pub const HiBasic = struct {
     current_file: ?[]const u8 = null,
     exec: ?HiBasicExec = null,
 
-    last_modified: i128 = 0,
+    last_modified: i96 = 0,
     prog_hash: u256 = 0,
     source_hash: u256 = 0,
 

@@ -2,11 +2,11 @@
     .name = .z65,
     .version = "0.0.0",
     .fingerprint = 0x798861c22d8c616f, // Changing this has security and trust implications.
-    .minimum_zig_version = "0.15.1",
+    .minimum_zig_version = "0.16.0-dev.1484+d0ba6642b",
     .dependencies = .{
         .clap = .{
-            .url = "git+https://github.com/Hejsil/zig-clap#9cfa61596cd44ef7be35f8d2e108d2025e09868e",
-            .hash = "clap-0.10.0-oBajB_TnAQB0l5UdW9WYhhJDEswbedvwFOzzZwGknYeR",
+            .url = "git+https://github.com/Hejsil/zig-clap#c56c0ba49ab64b45190f8bd7e946bde9678139a5",
+            .hash = "clap-0.11.0-oBajB0HnAQAeOTbQDWvwJomMLIgqL9JPDDh9vrOiTxn7",
         },
     },
     .paths = .{

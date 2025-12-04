@@ -26,25 +26,20 @@ fn makeInstructionSet(comptime defs: *const ISEnumDefs) type {
             if (def != null) used += 1;
         }
 
-        var fields: [used]std.builtin.Type.EnumField = undefined;
+        var names: [used][]const u8 = undefined;
+        var values: [used]u8 = undefined;
+
         var index: usize = 0;
         for (defs, 0..) |def, opcode| {
             if (def) |d| {
-                fields[index] = .{ .name = d[0..d.len :0], .value = opcode };
+                names[index] = d;
+                values[index] = opcode;
                 index += 1;
             }
         }
 
         std.debug.assert(index == used);
-
-        return @Type(.{
-            .@"enum" = .{
-                .tag_type = u8,
-                .fields = &fields,
-                .decls = &[_]std.builtin.Type.Declaration{},
-                .is_exhaustive = false,
-            },
-        });
+        return @Enum(u8, .nonexhaustive, &names, &values);
     }
 }
 

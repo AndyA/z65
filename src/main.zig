@@ -21,9 +21,9 @@ const Tube65C02 = machine.CPU(
     .{ .clear_decimal_on_int = true },
 );
 
-fn hiBasic(alloc: std.mem.Allocator, config: hb.HiBasicConfig) !void {
+fn hiBasic(alloc: std.mem.Allocator, io: std.Io, config: hb.HiBasicConfig) !void {
     var r_buf: [256]u8 = undefined;
-    var r = std.fs.File.stdin().reader(&r_buf);
+    var r = std.fs.File.stdin().reader(io, &r_buf);
     var w = std.fs.File.stdout().writer(&.{});
 
     var ram: [0x10000]u8 = @splat(0);
@@ -116,6 +116,8 @@ pub fn main() !void {
         .prog = clap.parsers.string,
         .line = clap.parsers.string,
     };
+    var threaded: std.Io.Threaded = .init(alloc);
+    defer threaded.deinit();
 
     const params = comptime clap.parseParamsComptime(
         \\    -h, --help            Display this help and exit.
@@ -157,7 +159,7 @@ pub fn main() !void {
         config.prog_name = prog;
     }
 
-    try hiBasic(alloc, config);
+    try hiBasic(alloc, threaded.io(), config);
 }
 
 test {

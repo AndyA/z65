@@ -163,28 +163,20 @@ fn makeKeywordsEnum(table: *const KeywordTable) type {
             if (def != null) used += 1;
         }
 
-        var fields: [used]EnumField = undefined;
+        var names: [used][]const u8 = undefined;
+        var values: [used]u8 = undefined;
+
         var index: usize = 0;
         for (keyword_table, 0..) |kw, rel_token| {
             if (kw) |k| {
-                fields[index] = .{
-                    .name = k.name[0..k.name.len :0],
-                    .value = rel_token + 0x80,
-                };
+                names[index] = k.name[0..k.name.len :0];
+                values[index] = rel_token + 0x80;
                 index += 1;
             }
         }
 
         std.debug.assert(index == used);
-
-        return @Type(.{
-            .@"enum" = .{
-                .tag_type = u8,
-                .fields = &fields,
-                .decls = &[_]std.builtin.Type.Declaration{},
-                .is_exhaustive = false,
-            },
-        });
+        return @Enum(u8, .nonexhaustive, &names, &values);
     }
 }
 

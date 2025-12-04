@@ -21,7 +21,8 @@ const RW_OSFILE = serde(OSFILE);
 pub fn TubeOS(comptime LangType: type) type {
     return struct {
         const Self = @This();
-        base_time_ms: i64,
+        base_time: std.time.Timer,
+        time_delta: i64 = 0,
         alloc: std.mem.Allocator,
         reader: *std.Io.Reader,
         writer: *std.Io.Writer,
@@ -35,13 +36,23 @@ pub fn TubeOS(comptime LangType: type) type {
             lang: *LangType,
         ) !Self {
             return Self{
-                .base_time_ms = std.time.milliTimestamp(),
+                .base_time = try std.time.Timer.start(),
                 .alloc = alloc,
                 .reader = reader,
                 .writer = writer,
                 .lang = lang,
                 .vdu = vdu.VDU.init(writer),
             };
+        }
+
+        fn getTime(self: *Self) i64 {
+            const now: i64 = @intCast(self.base_time.read());
+            return now + self.time_delta;
+        }
+
+        fn setTime(self: *Self, ns: i64) void {
+            const now: i64 = @intCast(self.base_time.read());
+            self.time_delta = ns - now;
         }
 
         pub fn deinit(self: *Self) void {
@@ -245,13 +256,13 @@ pub fn TubeOS(comptime LangType: type) type {
                     }
                 },
                 0x01 => {
-                    const delta_ms = std.time.milliTimestamp() - self.base_time_ms;
-                    const delta_cs: u40 = @intCast(@divTrunc(delta_ms, 10));
+                    const delta_ns = self.getTime();
+                    const delta_cs: u40 = @intCast(@divTrunc(delta_ns, 10_000_000));
                     RW_u40.write(cpu, addr, delta_cs);
                 },
                 0x02 => {
                     const new_time_cs = RW_u40.read(cpu, addr);
-                    self.base_time_ms = std.time.milliTimestamp() - new_time_cs * 10;
+                    self.setTime(new_time_cs * 10_000_000);
                 },
                 else => std.debug.print("OSWORD {x} not implemented\n", .{cpu.A}),
             }

@@ -281,18 +281,6 @@ fn maybeOptional(comptime T: type, comptime optional: bool) type {
     return T;
 }
 
-fn structField(comptime name: []const u8, comptime T: type) std.builtin.Type.StructField {
-    var z_name: [name.len:0]u8 = @splat(' ');
-    @memcpy(&z_name, name);
-    return .{
-        .name = &z_name,
-        .type = T,
-        .default_value_ptr = null,
-        .is_comptime = false,
-        .alignment = @alignOf(T),
-    };
-}
-
 const Source = struct {
     const Self = @This();
     cmd: []const u8,
@@ -355,9 +343,12 @@ test Source {
     });
 }
 
-fn paramType(source: Source, comptime Decoder: type) !type {
+fn paramType(comptime source: Source, comptime Decoder: type) !type {
     const n_fields = try source.paramCount();
-    var fields: [n_fields]std.builtin.Type.StructField = undefined;
+    var names: [n_fields][]const u8 = undefined;
+    var types: [n_fields]type = undefined;
+    const attrs: [n_fields]std.builtin.Type.StructField.Attributes = @splat(.{});
+
     var i = source.paramIter();
     var pos: usize = 0;
     while (try i.next()) |token| {
@@ -366,7 +357,8 @@ fn paramType(source: Source, comptime Decoder: type) !type {
             .Word => {},
             .Parameter => |param| {
                 const pt = maybeOptional(fieldType(Decoder, param.type_name), token.optional);
-                fields[pos] = structField(param.name, pt);
+                names[pos] = param.name;
+                types[pos] = pt;
                 pos += 1;
             },
         }
@@ -374,14 +366,7 @@ fn paramType(source: Source, comptime Decoder: type) !type {
 
     std.debug.assert(pos == n_fields);
 
-    return @Type(.{
-        .@"struct" = .{
-            .layout = .auto,
-            .fields = &fields,
-            .decls = &[_]std.builtin.Type.Declaration{},
-            .is_tuple = false,
-        },
-    });
+    return @Struct(.auto, null, &names, &types, &attrs);
 }
 
 fn makeCommand(comptime source: Source) !type {
