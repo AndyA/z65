@@ -21,23 +21,23 @@ pub const Instructions = struct {
     fn rol(cpu: anytype, byte: u8) u8 {
         const c_in = carry(0x01, cpu);
         cpu.P.C = (byte & 0x80) != 0;
-        return Self.set_nz(cpu, byte << 1 | c_in);
+        return set_nz(cpu, byte << 1 | c_in);
     }
 
     fn ror(cpu: anytype, byte: u8) u8 {
         const c_in = carry(0x80, cpu);
         cpu.P.C = (byte & 0x01) != 0;
-        return Self.set_nz(cpu, byte >> 1 | c_in);
+        return set_nz(cpu, byte >> 1 | c_in);
     }
 
     fn shl(cpu: anytype, byte: u8) u8 {
         cpu.P.C = (byte & 0x80) != 0;
-        return Self.set_nz(cpu, byte << 1);
+        return set_nz(cpu, byte << 1);
     }
 
     fn shr(cpu: anytype, byte: u8) u8 {
         cpu.P.C = (byte & 0x01) != 0;
-        return Self.set_nz(cpu, byte >> 1);
+        return set_nz(cpu, byte >> 1);
     }
 
     pub fn ADC(cpu: anytype, ea: u16) void {
@@ -45,15 +45,15 @@ pub const Instructions = struct {
     }
 
     pub fn AND(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A & cpu.read8(ea));
+        cpu.A = set_nz(cpu, cpu.A & cpu.read8(ea));
     }
 
     pub fn ASL(cpu: anytype, ea: u16) void {
-        cpu.write8(ea, Self.shl(cpu, cpu.read8(ea)));
+        cpu.write8(ea, shl(cpu, cpu.read8(ea)));
     }
 
     pub fn ASLA(cpu: anytype) void {
-        cpu.A = Self.shl(cpu, cpu.A);
+        cpu.A = shl(cpu, cpu.A);
     }
 
     pub fn BCC(cpu: anytype, ea: u16) void {
@@ -133,31 +133,31 @@ pub const Instructions = struct {
     }
 
     pub fn DEC(cpu: anytype, ea: u16) void {
-        cpu.write8(ea, Self.set_nz(cpu, cpu.read8(ea) -% 1));
+        cpu.write8(ea, set_nz(cpu, cpu.read8(ea) -% 1));
     }
 
     pub fn DEX(cpu: anytype) void {
-        cpu.X = Self.set_nz(cpu, cpu.X -% 1);
+        cpu.X = set_nz(cpu, cpu.X -% 1);
     }
 
     pub fn DEY(cpu: anytype) void {
-        cpu.Y = Self.set_nz(cpu, cpu.Y -% 1);
+        cpu.Y = set_nz(cpu, cpu.Y -% 1);
     }
 
     pub fn EOR(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A ^ cpu.read8(ea));
+        cpu.A = set_nz(cpu, cpu.A ^ cpu.read8(ea));
     }
 
     pub fn INC(cpu: anytype, ea: u16) void {
-        cpu.write8(ea, Self.set_nz(cpu, cpu.read8(ea) +% 1));
+        cpu.write8(ea, set_nz(cpu, cpu.read8(ea) +% 1));
     }
 
     pub fn INX(cpu: anytype) void {
-        cpu.X = Self.set_nz(cpu, cpu.X +% 1);
+        cpu.X = set_nz(cpu, cpu.X +% 1);
     }
 
     pub fn INY(cpu: anytype) void {
-        cpu.Y = Self.set_nz(cpu, cpu.Y +% 1);
+        cpu.Y = set_nz(cpu, cpu.Y +% 1);
     }
 
     pub fn JMP(cpu: anytype, ea: u16) void {
@@ -170,23 +170,23 @@ pub const Instructions = struct {
     }
 
     pub fn LDA(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.read8(ea));
+        cpu.A = set_nz(cpu, cpu.read8(ea));
     }
 
     pub fn LDX(cpu: anytype, ea: u16) void {
-        cpu.X = Self.set_nz(cpu, cpu.read8(ea));
+        cpu.X = set_nz(cpu, cpu.read8(ea));
     }
 
     pub fn LDY(cpu: anytype, ea: u16) void {
-        cpu.Y = Self.set_nz(cpu, cpu.read8(ea));
+        cpu.Y = set_nz(cpu, cpu.read8(ea));
     }
 
     pub fn LSR(cpu: anytype, ea: u16) void {
-        cpu.write8(ea, Self.shr(cpu, cpu.read8(ea)));
+        cpu.write8(ea, shr(cpu, cpu.read8(ea)));
     }
 
     pub fn LSRA(cpu: anytype) void {
-        cpu.A = Self.shr(cpu, cpu.A);
+        cpu.A = shr(cpu, cpu.A);
     }
 
     pub fn NOP(cpu: anytype) void {
@@ -194,7 +194,7 @@ pub const Instructions = struct {
     }
 
     pub fn ORA(cpu: anytype, ea: u16) void {
-        cpu.A = Self.set_nz(cpu, cpu.A | cpu.read8(ea));
+        cpu.A = set_nz(cpu, cpu.A | cpu.read8(ea));
     }
 
     pub fn PHA(cpu: anytype) void {
@@ -209,7 +209,7 @@ pub const Instructions = struct {
     }
 
     pub fn PLA(cpu: anytype) void {
-        cpu.A = Self.set_nz(cpu, cpu.pop8());
+        cpu.A = set_nz(cpu, cpu.pop8());
     }
 
     pub fn PLP(cpu: anytype) void {
@@ -217,23 +217,23 @@ pub const Instructions = struct {
     }
 
     pub fn ROL(cpu: anytype, ea: u16) void {
-        cpu.write8(ea, Self.rol(cpu, cpu.read8(ea)));
+        cpu.write8(ea, rol(cpu, cpu.read8(ea)));
     }
 
     pub fn ROLA(cpu: anytype) void {
-        cpu.A = Self.rol(cpu, cpu.A);
+        cpu.A = rol(cpu, cpu.A);
     }
 
     pub fn ROR(cpu: anytype, ea: u16) void {
-        cpu.write8(ea, Self.ror(cpu, cpu.read8(ea)));
+        cpu.write8(ea, ror(cpu, cpu.read8(ea)));
     }
 
     pub fn RORA(cpu: anytype) void {
-        cpu.A = Self.ror(cpu, cpu.A);
+        cpu.A = ror(cpu, cpu.A);
     }
 
     pub fn RTI(cpu: anytype) void {
-        Self.PLP(cpu);
+        PLP(cpu);
         cpu.PC = cpu.pop16();
     }
 
@@ -270,19 +270,19 @@ pub const Instructions = struct {
     }
 
     pub fn TAX(cpu: anytype) void {
-        cpu.X = Self.set_nz(cpu, cpu.A);
+        cpu.X = set_nz(cpu, cpu.A);
     }
 
     pub fn TAY(cpu: anytype) void {
-        cpu.Y = Self.set_nz(cpu, cpu.A);
+        cpu.Y = set_nz(cpu, cpu.A);
     }
 
     pub fn TSX(cpu: anytype) void {
-        cpu.X = Self.set_nz(cpu, cpu.S);
+        cpu.X = set_nz(cpu, cpu.S);
     }
 
     pub fn TXA(cpu: anytype) void {
-        cpu.A = Self.set_nz(cpu, cpu.X);
+        cpu.A = set_nz(cpu, cpu.X);
     }
 
     pub fn TXS(cpu: anytype) void {
@@ -290,16 +290,16 @@ pub const Instructions = struct {
     }
 
     pub fn TYA(cpu: anytype) void {
-        cpu.A = Self.set_nz(cpu, cpu.Y);
+        cpu.A = set_nz(cpu, cpu.Y);
     }
 
     // 65c02 additions
     pub fn DECA(cpu: anytype) void {
-        cpu.A = Self.set_nz(cpu, cpu.A -% 1);
+        cpu.A = set_nz(cpu, cpu.A -% 1);
     }
 
     pub fn INCA(cpu: anytype) void {
-        cpu.A = Self.set_nz(cpu, cpu.A +% 1);
+        cpu.A = set_nz(cpu, cpu.A +% 1);
     }
 
     pub fn PHX(cpu: anytype) void {
@@ -307,7 +307,7 @@ pub const Instructions = struct {
     }
 
     pub fn PLX(cpu: anytype) void {
-        cpu.X = Self.set_nz(cpu, cpu.pop8());
+        cpu.X = set_nz(cpu, cpu.pop8());
     }
 
     pub fn PHY(cpu: anytype) void {
@@ -315,7 +315,7 @@ pub const Instructions = struct {
     }
 
     pub fn PLY(cpu: anytype) void {
-        cpu.Y = Self.set_nz(cpu, cpu.pop8());
+        cpu.Y = set_nz(cpu, cpu.pop8());
     }
 
     pub fn STZ(cpu: anytype, ea: u16) void {
@@ -351,53 +351,53 @@ pub const Instructions = struct {
     }
 
     pub fn BBR0(cpu: anytype, ea: ZpgRel) void {
-        Self.bbr(0, cpu, ea);
+        bbr(0, cpu, ea);
     }
     pub fn BBR1(cpu: anytype, ea: ZpgRel) void {
-        Self.bbr(1, cpu, ea);
+        bbr(1, cpu, ea);
     }
     pub fn BBR2(cpu: anytype, ea: ZpgRel) void {
-        Self.bbr(2, cpu, ea);
+        bbr(2, cpu, ea);
     }
     pub fn BBR3(cpu: anytype, ea: ZpgRel) void {
-        Self.bbr(3, cpu, ea);
+        bbr(3, cpu, ea);
     }
     pub fn BBR4(cpu: anytype, ea: ZpgRel) void {
-        Self.bbr(4, cpu, ea);
+        bbr(4, cpu, ea);
     }
     pub fn BBR5(cpu: anytype, ea: ZpgRel) void {
-        Self.bbr(5, cpu, ea);
+        bbr(5, cpu, ea);
     }
     pub fn BBR6(cpu: anytype, ea: ZpgRel) void {
-        Self.bbr(6, cpu, ea);
+        bbr(6, cpu, ea);
     }
     pub fn BBR7(cpu: anytype, ea: ZpgRel) void {
-        Self.bbr(7, cpu, ea);
+        bbr(7, cpu, ea);
     }
 
     pub fn BBS0(cpu: anytype, ea: ZpgRel) void {
-        Self.bbs(0, cpu, ea);
+        bbs(0, cpu, ea);
     }
     pub fn BBS1(cpu: anytype, ea: ZpgRel) void {
-        Self.bbs(1, cpu, ea);
+        bbs(1, cpu, ea);
     }
     pub fn BBS2(cpu: anytype, ea: ZpgRel) void {
-        Self.bbs(2, cpu, ea);
+        bbs(2, cpu, ea);
     }
     pub fn BBS3(cpu: anytype, ea: ZpgRel) void {
-        Self.bbs(3, cpu, ea);
+        bbs(3, cpu, ea);
     }
     pub fn BBS4(cpu: anytype, ea: ZpgRel) void {
-        Self.bbs(4, cpu, ea);
+        bbs(4, cpu, ea);
     }
     pub fn BBS5(cpu: anytype, ea: ZpgRel) void {
-        Self.bbs(5, cpu, ea);
+        bbs(5, cpu, ea);
     }
     pub fn BBS6(cpu: anytype, ea: ZpgRel) void {
-        Self.bbs(6, cpu, ea);
+        bbs(6, cpu, ea);
     }
     pub fn BBS7(cpu: anytype, ea: ZpgRel) void {
-        Self.bbs(7, cpu, ea);
+        bbs(7, cpu, ea);
     }
 
     fn rmb(comptime bit: u3, cpu: anytype, ea: u16) void {
@@ -412,53 +412,53 @@ pub const Instructions = struct {
     }
 
     pub fn RMB0(cpu: anytype, ea: u16) void {
-        Self.rmb(0, cpu, ea);
+        rmb(0, cpu, ea);
     }
     pub fn RMB1(cpu: anytype, ea: u16) void {
-        Self.rmb(1, cpu, ea);
+        rmb(1, cpu, ea);
     }
     pub fn RMB2(cpu: anytype, ea: u16) void {
-        Self.rmb(2, cpu, ea);
+        rmb(2, cpu, ea);
     }
     pub fn RMB3(cpu: anytype, ea: u16) void {
-        Self.rmb(3, cpu, ea);
+        rmb(3, cpu, ea);
     }
     pub fn RMB4(cpu: anytype, ea: u16) void {
-        Self.rmb(4, cpu, ea);
+        rmb(4, cpu, ea);
     }
     pub fn RMB5(cpu: anytype, ea: u16) void {
-        Self.rmb(5, cpu, ea);
+        rmb(5, cpu, ea);
     }
     pub fn RMB6(cpu: anytype, ea: u16) void {
-        Self.rmb(6, cpu, ea);
+        rmb(6, cpu, ea);
     }
     pub fn RMB7(cpu: anytype, ea: u16) void {
-        Self.rmb(7, cpu, ea);
+        rmb(7, cpu, ea);
     }
 
     pub fn SMB0(cpu: anytype, ea: u16) void {
-        Self.smb(0, cpu, ea);
+        smb(0, cpu, ea);
     }
     pub fn SMB1(cpu: anytype, ea: u16) void {
-        Self.smb(1, cpu, ea);
+        smb(1, cpu, ea);
     }
     pub fn SMB2(cpu: anytype, ea: u16) void {
-        Self.smb(2, cpu, ea);
+        smb(2, cpu, ea);
     }
     pub fn SMB3(cpu: anytype, ea: u16) void {
-        Self.smb(3, cpu, ea);
+        smb(3, cpu, ea);
     }
     pub fn SMB4(cpu: anytype, ea: u16) void {
-        Self.smb(4, cpu, ea);
+        smb(4, cpu, ea);
     }
     pub fn SMB5(cpu: anytype, ea: u16) void {
-        Self.smb(5, cpu, ea);
+        smb(5, cpu, ea);
     }
     pub fn SMB6(cpu: anytype, ea: u16) void {
-        Self.smb(6, cpu, ea);
+        smb(6, cpu, ea);
     }
     pub fn SMB7(cpu: anytype, ea: u16) void {
-        Self.smb(7, cpu, ea);
+        smb(7, cpu, ea);
     }
 
     pub fn STP(cpu: anytype) void {

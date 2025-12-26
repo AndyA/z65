@@ -78,7 +78,7 @@ pub const ALU6502 = struct {
         _ = self;
         if (cpu.P.D) {
             @branchHint(.unlikely);
-            return Self.adc_decimal(cpu, lhs, rhs);
+            return adc_decimal(cpu, lhs, rhs);
         } else {
             return adc_binary(cpu, lhs, rhs);
         }
@@ -88,7 +88,7 @@ pub const ALU6502 = struct {
         _ = self;
         if (cpu.P.D) {
             @branchHint(.unlikely);
-            return Self.sbc_decimal(cpu, lhs, rhs);
+            return sbc_decimal(cpu, lhs, rhs);
         } else {
             return adc_binary(cpu, lhs, rhs ^ 0xff);
         }
@@ -152,7 +152,7 @@ pub const ALU65C02 = struct {
         _ = self;
         if (cpu.P.D) {
             @branchHint(.unlikely);
-            return Self.adc_decimal(cpu, lhs, rhs);
+            return adc_decimal(cpu, lhs, rhs);
         } else {
             return adc_binary(cpu, lhs, rhs);
         }
@@ -162,7 +162,7 @@ pub const ALU65C02 = struct {
         _ = self;
         if (cpu.P.D) {
             @branchHint(.unlikely);
-            return Self.sbc_decimal(cpu, lhs, rhs);
+            return sbc_decimal(cpu, lhs, rhs);
         } else {
             return adc_binary(cpu, lhs, rhs ^ 0xff);
         }

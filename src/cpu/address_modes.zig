@@ -16,18 +16,18 @@ pub const AddressModes = struct {
 
     pub fn @"(zpg, X)"(cpu: anytype) u16 {
         const zp = cpu.fetch8();
-        return Self.zp16(cpu, zp +% cpu.X);
+        return zp16(cpu, zp +% cpu.X);
     }
 
     pub fn @"(zpg), Y"(cpu: anytype) u16 {
         const zp = cpu.fetch8();
-        return Self.zp16(cpu, zp) +% cpu.Y;
+        return zp16(cpu, zp) +% cpu.Y;
     }
 
     // 65c02
     pub fn @"(zpg)"(cpu: anytype) u16 {
         const zp = cpu.fetch8();
-        return Self.zp16(cpu, zp);
+        return zp16(cpu, zp);
     }
 
     pub fn abs(cpu: anytype) u16 {
@@ -76,7 +76,7 @@ pub const AddressModes = struct {
     // 65c02
     pub fn @"zpg, rel"(cpu: anytype) ZpgRel {
         const zp = cpu.fetch8();
-        const ea = Self.rel(cpu);
+        const ea = rel(cpu);
         return .{ zp, ea };
     }
 
