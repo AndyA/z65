@@ -211,8 +211,8 @@ pub const VDU = struct {
     enabled: bool = true,
 
     mode: u8 = 0,
-    prev_pt: Point = Point{ .x = 0, .y = 0 },
-    last_pt: Point = Point{ .x = 0, .y = 0 },
+    prev_pt: Point = .{ .x = 0, .y = 0 },
+    last_pt: Point = .{ .x = 0, .y = 0 },
 
     pub fn init(writer: *std.Io.Writer) Self {
         return Self{ .writer = writer };
