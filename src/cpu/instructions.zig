@@ -11,11 +11,7 @@ pub const Instructions = struct {
     }
 
     fn carry(comptime value: u8, cpu: anytype) u8 {
-        if (cpu.P.C) {
-            return value;
-        } else {
-            return 0x00;
-        }
+        return if (cpu.P.C) value else 0x00;
     }
 
     fn rol(cpu: anytype, byte: u8) u8 {
