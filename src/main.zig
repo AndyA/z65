@@ -23,8 +23,8 @@ const Tube65C02 = machine.CPU(
 
 fn hiBasic(alloc: std.mem.Allocator, io: std.Io, config: hb.HiBasicConfig) !void {
     var r_buf: [256]u8 = undefined;
-    var r = std.fs.File.stdin().reader(io, &r_buf);
-    var w = std.fs.File.stdout().writer(&.{});
+    var r = std.Io.File.stdin().reader(io, &r_buf);
+    var w = std.Io.File.stdout().writer(io, &.{});
 
     var ram: [0x10000]u8 = @splat(0);
     var lang = try hb.HiBasic.init(
@@ -38,6 +38,7 @@ fn hiBasic(alloc: std.mem.Allocator, io: std.Io, config: hb.HiBasicConfig) !void
 
     var os = try TubeOS.init(
         alloc,
+        io,
         &r.interface,
         &w.interface,
         &lang,
@@ -65,9 +66,9 @@ fn hiBasic(alloc: std.mem.Allocator, io: std.Io, config: hb.HiBasicConfig) !void
     }
 }
 
-fn help(comptime params: anytype, full: bool) !void {
+fn help(io: std.Io, comptime params: anytype, full: bool) !void {
     var w_buf: [1024]u8 = undefined;
-    var w = std.fs.File.stdout().writer(&w_buf);
+    var w = std.Io.File.stdout().writer(io, &w_buf);
 
     try w.interface.writeAll(
         \\hibasic: Acorn BBC HiBASIC
@@ -116,7 +117,7 @@ pub fn main() !void {
         .prog = clap.parsers.string,
         .line = clap.parsers.string,
     };
-    var threaded: std.Io.Threaded = .init(alloc);
+    var threaded: std.Io.Threaded = .init(alloc, .{});
     defer threaded.deinit();
 
     const params = comptime clap.parseParamsComptime(
@@ -139,13 +140,13 @@ pub fn main() !void {
         .diagnostic = &diag,
         .allocator = alloc,
     }) catch |err| {
-        try diag.reportToFile(.stderr(), err);
+        try diag.reportToFile(threaded.io(), .stderr(), err);
         return err;
     };
     defer res.deinit();
 
     if (res.args.help != 0 or res.args.@"full-help" != 0) {
-        try help(params, res.args.@"full-help" != 0);
+        try help(threaded.io(), params, res.args.@"full-help" != 0);
         return;
     }
 

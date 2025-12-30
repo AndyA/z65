@@ -1,11 +1,11 @@
 const std = @import("std");
 const ct = @import("../tools/cpu_tools.zig");
 
-pub fn writeFile(name: []const u8, bytes: []const u8) !void {
+pub fn writeFile(io: std.Io, name: []const u8, bytes: []const u8) !void {
     // TODO atomic
-    const file = try std.fs.cwd().createFile(name, .{ .truncate = true });
-    defer file.close();
-    try file.writeAll(bytes);
+    const file = try std.Io.Dir.cwd().createFile(io, name, .{ .truncate = true });
+    defer file.close(io);
+    try file.writeStreamingAll(io, bytes);
 }
 
 pub const FileInfo = struct {
@@ -46,18 +46,18 @@ pub const OSFILE_CB = struct {
     start_addr: u32 = 0,
     end_addr: u32 = 0,
 
-    pub fn save(self: Self, alloc: std.mem.Allocator, file_name: []const u8, cpu: anytype) !void {
+    pub fn save(self: Self, alloc: std.mem.Allocator, io: std.Io, file_name: []const u8, cpu: anytype) !void {
         const size: u16 = @intCast(self.end_addr - self.start_addr);
         const bytes = try ct.peekBytesAlloc(alloc, cpu, @intCast(self.start_addr), size);
         defer alloc.free(bytes);
 
-        try writeFile(file_name, bytes);
+        try writeFile(io, file_name, bytes);
     }
 
-    pub fn load(self: Self, alloc: std.mem.Allocator, file_name: []const u8, cpu: anytype) !void {
+    pub fn load(self: Self, alloc: std.mem.Allocator, io: std.Io, file_name: []const u8, cpu: anytype) !void {
         _ = alloc;
         var buf: [0x10000]u8 = undefined;
-        const prog = try std.fs.cwd().readFile(file_name, &buf);
+        const prog = try std.Io.Dir.cwd().readFile(io, file_name, &buf);
         ct.pokeBytes(cpu, @intCast(self.load_addr), prog);
     }
 };
@@ -89,7 +89,7 @@ pub const OSFILE = struct {
             if (try lang.@"hook:save"(self, cpu, file_name.items)) return 0x01;
         }
 
-        try self.cb.save(alloc, file_name.items, cpu);
+        try self.cb.save(alloc, cpu.os.io, file_name.items, cpu);
 
         return 0x01;
     }
@@ -103,7 +103,7 @@ pub const OSFILE = struct {
             if (try lang.@"hook:load"(self, cpu, file_name.items)) return 0x01;
         }
 
-        try self.cb.load(alloc, file_name.items, cpu);
+        try self.cb.load(alloc, cpu.os.io, file_name.items, cpu);
 
         return 0x01;
     }

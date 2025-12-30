@@ -65,20 +65,21 @@ pub fn clearVariables(ram: *[0x10000]u8) void {
     @memset(ram[vars .. vars + 0x80], 0x00);
 }
 
-pub fn sourceToBinary(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
+pub fn sourceToBinary(alloc: std.mem.Allocator, io: std.Io, prog: []const u8) ![]const u8 {
     var r = std.Io.Reader.fixed(prog);
     var buf: std.ArrayListUnmanaged(u8) = .empty;
     var w = std.Io.Writer.Allocating.fromArrayList(alloc, &buf);
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
-    try runner.runHiBasic(alloc, &ram, &r, &w.writer);
+    try runner.runHiBasic(alloc, io, &ram, &r, &w.writer);
 
     return try alloc.dupe(u8, try getProgram(&ram));
 }
 
 test sourceToBinary {
     const alloc = std.testing.allocator;
+    const io = std.testing.io;
 
     const prog =
         \\   10 PRINT "Hello, World"
@@ -86,13 +87,13 @@ test sourceToBinary {
         \\
     ;
 
-    const bin = try sourceToBinary(alloc, prog);
+    const bin = try sourceToBinary(alloc, io, prog);
     defer alloc.free(bin);
 
     _ = try validBinary(bin);
 }
 
-pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
+pub fn binaryToSource(alloc: std.mem.Allocator, io: std.Io, prog: []const u8) ![]const u8 {
     if (prog.len == 2) return alloc.dupe(u8, "");
     var r = std.Io.Reader.fixed(
         \\OLD
@@ -105,7 +106,7 @@ pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
     var ram: [0x10000]u8 = @splat(0);
     try setProgram(&ram, prog);
     // Why doesn't this fail on Bad Program?
-    try runner.runHiBasic(alloc, &ram, &r, &w.writer);
+    try runner.runHiBasic(alloc, io, &ram, &r, &w.writer);
 
     var output = w.toArrayList();
     defer output.deinit(alloc);
@@ -116,6 +117,7 @@ pub fn binaryToSource(alloc: std.mem.Allocator, prog: []const u8) ![]const u8 {
 
 test binaryToSource {
     const alloc = std.testing.allocator;
+    const io = std.testing.io;
 
     const prog =
         \\   10 PRINT "Hello, World"
@@ -123,10 +125,10 @@ test binaryToSource {
         \\
     ;
 
-    const bin = try sourceToBinary(alloc, prog);
+    const bin = try sourceToBinary(alloc, io, prog);
     defer alloc.free(bin);
 
-    const out_source = try binaryToSource(alloc, bin);
+    const out_source = try binaryToSource(alloc, io, bin);
     defer alloc.free(out_source);
 
     try std.testing.expectEqualDeep(prog, out_source);

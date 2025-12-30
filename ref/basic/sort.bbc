@@ -231,6 +231,8 @@ PROCrun_sort("selection", selection)
 PROCrun_sort("bubble", bubble)
 PROCrun_sort("shell", shell)
 PROCrun_sort("ciura", ciura)
+PRINT "Soaking shell"
+PROCsoak("shell", shell)
 END
 
 DEF FNp2(limit)
@@ -258,7 +260,7 @@ ENDPROC
 DEF PROCsoak(name$, sub)
   LOCAL I%, seed%, min%, max%, min_seed%, max_seed%, ?enable_show
   ?enable_show = 0
-  FOR I% = 1 TO 1000
+  FOR I% = 1 TO 10000
     seed% = TIME + I%
     PROCrun_sort(name$, sub)
     IF I% = 1 THEN min% = !acc0 : max% = !acc0 : NEXT

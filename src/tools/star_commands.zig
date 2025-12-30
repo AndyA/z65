@@ -485,11 +485,11 @@ pub fn makeHandler(comptime Commands: type) type {
                 }
 
                 return struct {
-                    pub fn handle(alloc: std.mem.Allocator, cmd: []const u8, cpu: anytype) !bool {
+                    pub fn handle(alloc: std.mem.Allocator, io: std.Io, cmd: []const u8, cpu: anytype) !bool {
                         inline for (commands, 0..) |command, i| {
                             if (try command.match(cmd)) |params| {
                                 const method = @field(Commands, s.decls[i].name);
-                                try method(alloc, cpu, params);
+                                try method(alloc, io, cpu, params);
                                 return true;
                             }
                         }
@@ -506,9 +506,10 @@ pub fn makeHandler(comptime Commands: type) type {
 
 test makeHandler {
     const allocator = std.testing.allocator;
+    const io = std.testing.io;
     const echo = false;
     const Commands = struct {
-        pub fn @"*CAT"(alloc: std.mem.Allocator, cpu: anytype, params: anytype) !void {
+        pub fn @"*CAT"(alloc: std.mem.Allocator, _: std.Io, cpu: anytype, params: anytype) !void {
             _ = alloc;
             _ = cpu;
             _ = params;
@@ -517,6 +518,7 @@ test makeHandler {
 
         pub fn @"*FX <A:u8> [,<X:u8> [,<Y:u8>]]"(
             alloc: std.mem.Allocator,
+            _: std.Io,
             cpu: anytype,
             params: anytype,
         ) !void {
@@ -532,6 +534,7 @@ test makeHandler {
 
         pub fn @"*SAVE <name:[]u8> <start:u32x> <end:u32xr> [<exec:u32x>]"(
             alloc: std.mem.Allocator,
+            _: std.Io,
             cpu: anytype,
             params: anytype,
         ) !void {
@@ -544,7 +547,7 @@ test makeHandler {
             });
         }
 
-        pub fn @"*!<shell:[]u8*>"(alloc: std.mem.Allocator, cpu: anytype, params: anytype) !void {
+        pub fn @"*!<shell:[]u8*>"(alloc: std.mem.Allocator, _: std.Io, cpu: anytype, params: anytype) !void {
             _ = alloc;
             _ = cpu;
             if (echo) std.debug.print("shell {s}\n", .{params.shell});
@@ -552,10 +555,10 @@ test makeHandler {
     };
     const Handler = makeHandler(Commands);
 
-    try std.testing.expect(try Handler.handle(allocator, "*.", null));
-    try std.testing.expect(try Handler.handle(allocator, "*FX 1, 2, 3", null));
-    try std.testing.expect(try Handler.handle(allocator, "*f.1,2", null));
-    try std.testing.expect(try Handler.handle(allocator, "save foo 800 +300", null));
-    try std.testing.expect(try Handler.handle(allocator, "sa. \"foo bar\" e00 1234", null));
-    try std.testing.expect(try Handler.handle(allocator, "*!ls ..", null));
+    try std.testing.expect(try Handler.handle(allocator, io, "*.", null));
+    try std.testing.expect(try Handler.handle(allocator, io, "*FX 1, 2, 3", null));
+    try std.testing.expect(try Handler.handle(allocator, io, "*f.1,2", null));
+    try std.testing.expect(try Handler.handle(allocator, io, "save foo 800 +300", null));
+    try std.testing.expect(try Handler.handle(allocator, io, "sa. \"foo bar\" e00 1234", null));
+    try std.testing.expect(try Handler.handle(allocator, io, "*!ls ..", null));
 }

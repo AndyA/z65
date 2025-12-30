@@ -16,9 +16,10 @@ pub fn needsLineNumbers(prog: []const u8) !bool {
 
 test needsLineNumbers {
     const alloc = std.testing.allocator;
+    const io = std.testing.io;
 
     {
-        const bin = try code.sourceToBinary(alloc,
+        const bin = try code.sourceToBinary(alloc, io,
             \\   10 PRINT """Hello, World""" : REM Quotes!
             \\   20 DATA Hello, World
             \\   30 RESTORE 20
@@ -29,7 +30,7 @@ test needsLineNumbers {
     }
 
     {
-        const bin = try code.sourceToBinary(alloc,
+        const bin = try code.sourceToBinary(alloc, io,
             \\   10 PRINT """Hello, World""" : REM Quotes!
             \\   20 DATA Hello, World
             \\
@@ -116,11 +117,11 @@ pub fn isBinary(source: []const u8) bool {
     return true;
 }
 
-pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) ![]const u8 {
+pub fn parseSource(alloc: std.mem.Allocator, io: std.Io, source: []const u8) ![]const u8 {
     if (isBinary(source)) return try alloc.dupe(u8, source);
     const info = try getSourceInfo(source);
     if (info.line_numbers)
-        return try code.sourceToBinary(alloc, source);
+        return try code.sourceToBinary(alloc, io, source);
 
     var buf: std.ArrayListUnmanaged(u8) = .empty;
     var w = std.Io.Writer.Allocating.fromArrayList(alloc, &buf);
@@ -138,12 +139,12 @@ pub fn parseSource(alloc: std.mem.Allocator, source: []const u8) ![]const u8 {
     var output = w.toArrayList();
     defer output.deinit(alloc);
 
-    return try code.sourceToBinary(alloc, output.items);
+    return try code.sourceToBinary(alloc, io, output.items);
 }
 
-pub fn stringifyBinary(alloc: std.mem.Allocator, bin: []const u8) ![]const u8 {
+pub fn stringifyBinary(alloc: std.mem.Allocator, io: std.Io, bin: []const u8) ![]const u8 {
     const needs_numbers = try needsLineNumbers(bin);
-    const source = try code.binaryToSource(alloc, bin);
+    const source = try code.binaryToSource(alloc, io, bin);
     if (needs_numbers)
         return source;
     defer alloc.free(source);
@@ -169,17 +170,18 @@ pub fn stringifyBinary(alloc: std.mem.Allocator, bin: []const u8) ![]const u8 {
     return try alloc.dupe(u8, output.items);
 }
 
-pub fn roundTrip(alloc: std.mem.Allocator, source: []const u8) ![]const u8 {
-    const bin = try parseSource(alloc, source);
+pub fn roundTrip(alloc: std.mem.Allocator, io: std.Io, source: []const u8) ![]const u8 {
+    const bin = try parseSource(alloc, io, source);
     defer alloc.free(bin);
-    return try stringifyBinary(alloc, bin);
+    return try stringifyBinary(alloc, io, bin);
 }
 
 test roundTrip {
     const alloc = std.testing.allocator;
+    const io = std.testing.io;
 
     {
-        const out = try roundTrip(alloc,
+        const out = try roundTrip(alloc, io,
             \\ 10 PRINT "Hello"
             \\
         );
@@ -192,7 +194,7 @@ test roundTrip {
     }
 
     {
-        const out = try roundTrip(alloc,
+        const out = try roundTrip(alloc, io,
             \\     REPEAT
             \\        PRINT "Hello"
             \\     UNTIL FALSE
@@ -209,7 +211,7 @@ test roundTrip {
     }
 
     {
-        const out = try roundTrip(alloc,
+        const out = try roundTrip(alloc, io,
             \\ 10 PRINT "Hello"
             \\ 20 GOTO 10
             \\
@@ -224,7 +226,7 @@ test roundTrip {
     }
 
     {
-        const out = try roundTrip(alloc,
+        const out = try roundTrip(alloc, io,
             \\PRINT "Hello"
             \\GOTO 10
             \\

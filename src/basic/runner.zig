@@ -37,13 +37,14 @@ const Tube65C02 = machine.CPU(
 
 pub fn runHiBasic(
     alloc: std.mem.Allocator,
+    io: std.Io,
     ram: *[0x10000]u8,
     reader: *std.Io.Reader,
     writer: *std.Io.Writer,
 ) !void {
     var lang = MiniBasic{ .ram = ram };
 
-    var os = try TubeOS.init(alloc, reader, writer, &lang);
+    var os = try TubeOS.init(alloc, io, reader, writer, &lang);
     defer os.deinit();
 
     var cpu = Tube65C02.init(
@@ -95,13 +96,14 @@ pub fn cleanBasicOutput(output: *std.ArrayListUnmanaged(u8)) void {
 
 test runHiBasic {
     const allocator = std.testing.allocator;
+    const io = std.testing.io;
     var r = std.Io.Reader.fixed("PRINT PI\n");
     var buf: std.ArrayListUnmanaged(u8) = .empty;
     var w = std.Io.Writer.Allocating.fromArrayList(allocator, &buf);
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
-    try runHiBasic(allocator, &ram, &r, &w.writer);
+    try runHiBasic(allocator, io, &ram, &r, &w.writer);
 
     var output = w.toArrayList();
     defer output.deinit(allocator);
@@ -114,6 +116,7 @@ test runHiBasic {
 
 test "runHiBasic error" {
     const allocator = std.testing.allocator;
+    const io = std.testing.io;
     var r = std.Io.Reader.fixed(
         \\PRINT PI
         \\make a mistake
@@ -126,7 +129,7 @@ test "runHiBasic error" {
     defer w.deinit();
 
     var ram: [0x10000]u8 = @splat(0);
-    const res = runHiBasic(allocator, &ram, &r, &w.writer);
+    const res = runHiBasic(allocator, io, &ram, &r, &w.writer);
 
     try std.testing.expectError(RunnerError.BRK, res);
 

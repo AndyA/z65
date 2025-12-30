@@ -15,13 +15,13 @@ pub const HiBasicError = error{
     NoFileName,
 };
 
-pub fn lastModified(file: []const u8) !i96 {
-    const fh = std.fs.cwd().openFile(file, .{}) catch |err| {
+pub fn lastModified(io: std.Io, file: []const u8) !i96 {
+    const fh = std.Io.Dir.cwd().openFile(io, file, .{}) catch |err| {
         if (err == error.FileNotFound) return 0; // No snapshot file
         return err;
     };
-    defer fh.close();
-    const s = try fh.stat();
+    defer fh.close(io);
+    const s = try fh.stat(io);
     return s.mtime.toNanoseconds();
 }
 
@@ -180,7 +180,7 @@ pub const HiBasic = struct {
 
         if (self.current_file) |file| {
             if (self.config.sync) {
-                const lm = try lastModified(file);
+                const lm = try lastModified(cpu.os.io, file);
                 if (lm == 0) return line;
                 if (self.last_modified != 0 and self.last_modified != lm) {
                     try self.loadSource(cpu, file);
@@ -260,16 +260,16 @@ pub const HiBasic = struct {
     }
 
     pub fn loadSource(self: *Self, cpu: anytype, file: []const u8) !void {
-        const lm = try lastModified(file);
+        const lm = try lastModified(cpu.os.io, file);
 
         var buf: [0x10000]u8 = undefined;
-        const prog = try std.fs.cwd().readFile(file, &buf);
+        const prog = try std.Io.Dir.cwd().readFile(cpu.os.io, file, &buf);
 
-        const source = try cvt.stringifyBinary(self.alloc, self.getProgram(cpu));
+        const source = try cvt.stringifyBinary(self.alloc, cpu.os.io, self.getProgram(cpu));
         defer self.alloc.free(source);
 
         if (!std.mem.eql(u8, prog, source)) {
-            const bin = try cvt.parseSource(self.alloc, prog);
+            const bin = try cvt.parseSource(self.alloc, cpu.os.io, prog);
             defer self.alloc.free(bin);
 
             try self.setProgram(cpu, bin);
@@ -280,11 +280,11 @@ pub const HiBasic = struct {
 
     pub fn saveSource(self: *Self, cpu: anytype, file: []const u8) !void {
         const prog = self.getProgram(cpu);
-        const source = try cvt.stringifyBinary(self.alloc, prog);
+        const source = try cvt.stringifyBinary(self.alloc, cpu.os.io, prog);
         defer self.alloc.free(source);
         const hash = hashBytes(source);
         if (hash != self.source_hash) {
-            try osfile.writeFile(file, source);
+            try osfile.writeFile(cpu.os.io, file, source);
             self.source_hash = hash;
         }
     }

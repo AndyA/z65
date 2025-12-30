@@ -24,6 +24,7 @@ pub fn TubeOS(comptime LangType: type) type {
         base_time: std.time.Timer,
         time_delta: i64 = 0,
         alloc: std.mem.Allocator,
+        io: std.Io,
         reader: *std.Io.Reader,
         writer: *std.Io.Writer,
         lang: *LangType,
@@ -31,6 +32,7 @@ pub fn TubeOS(comptime LangType: type) type {
 
         pub fn init(
             alloc: std.mem.Allocator,
+            io: std.Io,
             reader: *std.Io.Reader,
             writer: *std.Io.Writer,
             lang: *LangType,
@@ -38,6 +40,7 @@ pub fn TubeOS(comptime LangType: type) type {
             return Self{
                 .base_time = try std.time.Timer.start(),
                 .alloc = alloc,
+                .io = io,
                 .reader = reader,
                 .writer = writer,
                 .lang = lang,
@@ -211,7 +214,7 @@ pub fn TubeOS(comptime LangType: type) type {
         fn doOSCLI(self: *Self, cpu: anytype) !void {
             var cmd_line = try ct.peekString(self.alloc, cpu, ct.getXY(cpu), 0x0D);
             defer cmd_line.deinit(self.alloc);
-            var res = try OSCLI.handle(self.alloc, cmd_line.items, cpu);
+            var res = try OSCLI.handle(self.alloc, self.io, cmd_line.items, cpu);
 
             if (@hasDecl(LangType, "hook:oscli")) {
                 if (!res) res = try self.lang.@"hook:oscli"(cmd_line.items, cpu);
