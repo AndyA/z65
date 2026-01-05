@@ -78,8 +78,12 @@ P% = code
               BCC shl1
               JMP show
 
-.ciura_gaps   EQUB 1 : EQUB 2 : EQUB 4 : EQUB 10
-              EQUB 23 : EQUB 57 : EQUB 132
+\.ciura_gaps   EQUB 1 : EQUB 2 : EQUB 4 : EQUB 10
+\              EQUB 23 : EQUB 57 : EQUB 132
+\.ciura_gaps_end
+
+.ciura_gaps   EQUB 1 : EQUB 2 : EQUB 6 : EQUB 15 : 
+              EQUB 35 : EQUB 77 : EQUB 165
 .ciura_gaps_end
 
 \ Shell sort with Ciura stride
@@ -264,6 +268,8 @@ PROCrun_sort("bubble", bubble)
 PROCrun_sort("shell", shell)
 PROCrun_sort("ciura", ciura)
 PROCrun_sort("fibo", fibo)
+PRINT "Soaking ciura"
+PROCsoak("ciura", ciura)
 PRINT "Soaking fibo"
 PROCsoak("fibo", fibo)
 END
