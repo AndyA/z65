@@ -78,23 +78,23 @@ P% = code
               BCC shl1
               JMP show
 
-.gaps         EQUB 1 : EQUB 2 : EQUB 4 : EQUB 10
+.ciura_gaps   EQUB 1 : EQUB 2 : EQUB 4 : EQUB 10
               EQUB 23 : EQUB 57 : EQUB 132
-.gaps_end
+.ciura_gaps_end
 
 \ Shell sort with Ciura stride
 .ciura_t      JSR trace
 .ciura        JSR clear
-              LDY #gaps_end - gaps
+              LDY #ciura_gaps_end - ciura_gaps
 .ci1          DEY
-              LDA gaps, Y
+              LDA ciura_gaps, Y
               CMP #count_c
               BCS ci1
               STY stride
 
 .ci2          JSR show
               LDX stride
-              LDY gaps, X
+              LDY ciura_gaps, X
               LDX #0
               STX flag
 .ci3          LDA chars, Y : CMP chars, X : BCS ci4
@@ -108,6 +108,38 @@ P% = code
               BNE ci2
               DEC stride
               BPL ci2
+              JMP show
+
+.fibo_gaps     EQUB 1 : EQUB 2 : EQUB 6 : EQUB 15
+              EQUB 40 : EQUB 104
+.fibo_gaps_end
+
+\ Shell sort with Fibonacci stride
+.fibo_t       JSR trace
+.fibo         JSR clear
+              LDY #fibo_gaps_end - fibo_gaps
+.fi1          DEY
+              LDA fibo_gaps, Y
+              CMP #count_c
+              BCS fi1
+              STY stride
+
+.fi2          JSR show
+              LDX stride
+              LDY fibo_gaps, X
+              LDX #0
+              STX flag
+.fi3          LDA chars, Y : CMP chars, X : BCS fi4
+              PHA : LDA chars, X : STA chars, Y : PLA : STA chars, X
+              STY flag
+.fi4          INX
+              INY
+              CPY #count_c
+              BCC fi3
+              LDA flag
+              BNE fi2
+              DEC stride
+              BPL fi2
               JMP show
 
 \ Reverse the chars
@@ -231,8 +263,9 @@ PROCrun_sort("selection", selection)
 PROCrun_sort("bubble", bubble)
 PROCrun_sort("shell", shell)
 PROCrun_sort("ciura", ciura)
-PRINT "Soaking shell"
-PROCsoak("shell", shell)
+PROCrun_sort("fibo", fibo)
+PRINT "Soaking fibo"
+PROCsoak("fibo", fibo)
 END
 
 DEF FNp2(limit)
