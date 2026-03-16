@@ -1,4 +1,5 @@
 const std = @import("std");
+const Io = std.Io;
 const serde = @import("../tools/serde.zig").serde;
 const ct = @import("../tools/cpu_tools.zig");
 const constants = @import("constants.zig");
@@ -21,7 +22,6 @@ const RW_OSFILE = serde(OSFILE);
 pub fn TubeOS(comptime LangType: type) type {
     return struct {
         const Self = @This();
-        base_time: std.time.Timer,
         time_delta: i64 = 0,
         alloc: std.mem.Allocator,
         io: std.Io,
@@ -38,7 +38,6 @@ pub fn TubeOS(comptime LangType: type) type {
             lang: *LangType,
         ) !Self {
             return Self{
-                .base_time = try std.time.Timer.start(),
                 .alloc = alloc,
                 .io = io,
                 .reader = reader,
@@ -49,13 +48,13 @@ pub fn TubeOS(comptime LangType: type) type {
         }
 
         fn getTime(self: *Self) i64 {
-            const now: i64 = @intCast(self.base_time.read());
+            const now = Io.Clock.awake.now(self.io).toMilliseconds();
             return now + self.time_delta;
         }
 
-        fn setTime(self: *Self, ns: i64) void {
-            const now: i64 = @intCast(self.base_time.read());
-            self.time_delta = ns - now;
+        fn setTime(self: *Self, ms: i64) void {
+            const now = Io.Clock.awake.now(self.io).toMilliseconds();
+            self.time_delta = ms - now;
         }
 
         pub fn deinit(self: *Self) void {
@@ -259,13 +258,10 @@ pub fn TubeOS(comptime LangType: type) type {
                     }
                 },
                 0x01 => {
-                    const delta_ns = self.getTime();
-                    const delta_cs: u40 = @intCast(@divTrunc(delta_ns, 10_000_000));
-                    RW_u40.write(cpu, addr, delta_cs);
+                    RW_u40.write(cpu, addr, @intCast(@divTrunc(self.getTime(), 10)));
                 },
                 0x02 => {
-                    const new_time_cs = RW_u40.read(cpu, addr);
-                    self.setTime(new_time_cs * 10_000_000);
+                    self.setTime(RW_u40.read(cpu, addr) * 10);
                 },
                 else => std.debug.print("OSWORD {x} not implemented\n", .{cpu.A}),
             }

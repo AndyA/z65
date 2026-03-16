@@ -108,7 +108,7 @@ fn help(io: std.Io, comptime params: anytype, full: bool) !void {
     try w.interface.flush();
 }
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     // defer _ = gpa.deinit();
     // const alloc = gpa.allocator();
@@ -117,8 +117,6 @@ pub fn main() !void {
         .prog = clap.parsers.string,
         .line = clap.parsers.string,
     };
-    var threaded: std.Io.Threaded = .init(alloc, .{});
-    defer threaded.deinit();
 
     const params = comptime clap.parseParamsComptime(
         \\    -h, --help            Display this help and exit.
@@ -136,17 +134,17 @@ pub fn main() !void {
     );
 
     var diag = clap.Diagnostic{};
-    var res = clap.parse(clap.Help, &params, parsers, .{
+    var res = clap.parse(clap.Help, &params, parsers, init.minimal.args, .{
         .diagnostic = &diag,
         .allocator = alloc,
     }) catch |err| {
-        try diag.reportToFile(threaded.io(), .stderr(), err);
+        try diag.reportToFile(init.io, .stderr(), err);
         return err;
     };
     defer res.deinit();
 
     if (res.args.help != 0 or res.args.@"full-help" != 0) {
-        try help(threaded.io(), params, res.args.@"full-help" != 0);
+        try help(init.io, params, res.args.@"full-help" != 0);
         return;
     }
 
@@ -160,7 +158,7 @@ pub fn main() !void {
         config.prog_name = prog;
     }
 
-    try hiBasic(alloc, threaded.io(), config);
+    try hiBasic(alloc, init.io, config);
 }
 
 test {
