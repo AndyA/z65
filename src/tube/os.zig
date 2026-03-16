@@ -1,5 +1,8 @@
 const std = @import("std");
 const Io = std.Io;
+const Allocator = std.mem.Allocator;
+const anyline = @import("anyline");
+
 const serde = @import("../tools/serde.zig").serde;
 const ct = @import("../tools/cpu_tools.zig");
 const constants = @import("constants.zig");
@@ -18,6 +21,37 @@ const OSCLI = @import("oscli.zig").OSCLI;
 const RW_u40 = serde(u40);
 const RW_OSFILE = serde(OSFILE);
 
+pub const InputSource = union(enum) {
+    const Self = @This();
+    reader: *Io.Reader,
+    anyline_env: *std.process.Environ.Map,
+
+    pub fn readLine(self: *Self, io: Io, alloc: Allocator) !?[]const u8 {
+        switch (self.*) {
+            .reader => |r| {
+                return try r.takeDelimiter('\n');
+            },
+            .anyline_env => |env| {
+                const ln = anyline.readLine(io, alloc, ">", env) catch |err| switch (err) {
+                    error.ProcessExit => std.process.exit(130), // ???
+                    error.EndOfInput, error.EndOfStream => return null,
+                    else => return err,
+                };
+                return ln;
+            },
+        }
+    }
+
+    pub fn freeLine(self: Self, alloc: Allocator, line: []const u8) void {
+        switch (self) {
+            .reader => {},
+            .anyline_env => {
+                alloc.free(line);
+            },
+        }
+    }
+};
+
 // TODO VDUType
 pub fn TubeOS(comptime LangType: type) type {
     return struct {
@@ -25,7 +59,7 @@ pub fn TubeOS(comptime LangType: type) type {
         time_delta: i64 = 0,
         alloc: std.mem.Allocator,
         io: std.Io,
-        reader: *std.Io.Reader,
+        input: InputSource,
         writer: *std.Io.Writer,
         lang: *LangType,
         vdu: vdu.VDU,
@@ -33,14 +67,14 @@ pub fn TubeOS(comptime LangType: type) type {
         pub fn init(
             alloc: std.mem.Allocator,
             io: std.Io,
-            reader: *std.Io.Reader,
+            input: InputSource,
             writer: *std.Io.Writer,
             lang: *LangType,
         ) !Self {
             return Self{
                 .alloc = alloc,
                 .io = io,
-                .reader = reader,
+                .input = input,
                 .writer = writer,
                 .lang = lang,
                 .vdu = vdu.VDU.init(writer),
@@ -250,8 +284,9 @@ pub fn TubeOS(comptime LangType: type) type {
                         }
                     }
 
-                    const res = try self.reader.takeDelimiter('\n');
+                    const res = try self.input.readLine(self.io, self.alloc);
                     if (res) |ln| {
+                        defer self.input.freeLine(self.alloc, ln);
                         try self.sendLine(cpu, addr, ln);
                     } else {
                         cpu.stop();

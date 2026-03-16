@@ -41,10 +41,11 @@ pub fn runHiBasic(
     ram: *[0x10000]u8,
     reader: *std.Io.Reader,
     writer: *std.Io.Writer,
+    // env: *std.process.Environ.Map,
 ) !void {
     var lang = MiniBasic{ .ram = ram };
 
-    var os = try TubeOS.init(alloc, io, reader, writer, &lang);
+    var os = try TubeOS.init(alloc, io, .{ .reader = reader }, writer, &lang);
     defer os.deinit();
 
     var cpu = Tube65C02.init(

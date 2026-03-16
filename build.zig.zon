@@ -8,6 +8,10 @@
             .url = "git+https://github.com/AndyA/zig-clap#d1e74fe83d41d5be08e36eb24632103343a2fe71",
             .hash = "clap-0.11.0-oBajB1HoAQBk41DQkeVihmq0UJ2DGAjreW7rywRE6MhD",
         },
+        .anyline = .{
+            .url = "git+https://codeberg.org/AndyA/anyline#b29cbd837fd6d54f862cf5af3eca8bbbb2728251",
+            .hash = "anyline-0.5.0-PM_c73UrAQD6ck0eqpKd3XafYKD78kMpV-1K0D4GvMXT",
+        },
     },
     .paths = .{
         "build.zig",

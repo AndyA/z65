@@ -3,3 +3,4 @@
 /zig-out/
 /tmp/
 .snapshot.*
+.hibasic_history

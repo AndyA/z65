@@ -1,5 +1,6 @@
 const std = @import("std");
 const clap = @import("clap");
+const anyline = @import("anyline");
 const machine = @import("cpu/cpu.zig");
 const memory = @import("cpu/memory.zig");
 const tube = @import("tube/os.zig");
@@ -21,16 +22,18 @@ const Tube65C02 = machine.CPU(
     .{ .clear_decimal_on_int = true },
 );
 
-fn hiBasic(alloc: std.mem.Allocator, io: std.Io, config: hb.HiBasicConfig) !void {
-    var r_buf: [256]u8 = undefined;
-    var r = std.Io.File.stdin().reader(io, &r_buf);
+fn hiBasic(
+    alloc: std.mem.Allocator,
+    io: std.Io,
+    input: tube.InputSource,
+    config: hb.HiBasicConfig,
+) !void {
     var w = std.Io.File.stdout().writer(io, &.{});
 
     var ram: [0x10000]u8 = @splat(0);
     var lang = try hb.HiBasic.init(
         alloc,
         config,
-        &r.interface,
         &w.interface,
         &ram,
     );
@@ -39,7 +42,7 @@ fn hiBasic(alloc: std.mem.Allocator, io: std.Io, config: hb.HiBasicConfig) !void
     var os = try TubeOS.init(
         alloc,
         io,
-        &r.interface,
+        input,
         &w.interface,
         &lang,
     );
@@ -128,6 +131,7 @@ pub fn main(init: std.process.Init) !void {
         \\    -e, --exec <line>...  Lines of BBC Basic to run. May be
         \\                          used more than once to supply
         \\                          multiple lines.
+        \\    -a, --anyline         Use anyline for input. Currently broken.
         \\    <prog>                Program to load or run (--chain). May
         \\                          be text source or BBC Basic native.
         \\
@@ -158,7 +162,20 @@ pub fn main(init: std.process.Init) !void {
         config.prog_name = prog;
     }
 
-    try hiBasic(alloc, init.io, config);
+    if (res.args.anyline != 0) {
+        anyline.history.usingHistory();
+        try anyline.history.readHistory(init.io, alloc, .{ .path = ".hibasic_history" });
+        defer {
+            anyline.freeHistory(alloc);
+            anyline.freeKillRing(alloc);
+        }
+
+        try hiBasic(alloc, init.io, .{ .anyline_env = init.environ_map }, config);
+    } else {
+        var r_buf: [256]u8 = undefined;
+        var r = std.Io.File.stdin().reader(init.io, &r_buf);
+        try hiBasic(alloc, init.io, .{ .reader = &r.interface }, config);
+    }
 }
 
 test {
