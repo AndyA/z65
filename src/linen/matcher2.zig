@@ -180,9 +180,22 @@ pub fn MatchClause(comptime T: type) type {
 
 pub fn MatchState(comptime T: type) type {
     return union(enum) {
-        step: fn (char: u8) *MatchState(T),
+        const Self = @This();
+
+        advance: fn (char: u8, slot: *MatchState(T)) void,
         outcome: T,
         failed,
+
+        pub fn step(self: Self, char: u8) Self {
+            switch (self) {
+                .advance => |adv| {
+                    const next = Self{ .failed = {} };
+                    adv(char, &next);
+                    return next;
+                },
+                else => unreachable,
+            }
+        }
     };
 }
 
@@ -210,41 +223,45 @@ fn stepper(
         const shim = struct {
             fn match(
                 char: u8,
+                slot: *MS,
                 comptime tok: RegexToken,
                 comptime from: usize,
                 comptime to: usize,
-            ) *MS {
+            ) void {
                 const matched = switch (tok.atom) {
                     .literal => |lit| lit == char,
                     .charset => |cs| (cs & (@as(u256, 1) << char)) != 0,
                     else => unreachable,
                 };
                 if (matched) {
-                    const next = stepper(T, tokens[from..to], depth + 1, outcomes[from..to]);
                     switch (tok.quantifier) {
-                        .@"1" => return &next,
+                        .@"1" => {
+                            slot.* = stepper(T, tokens[from..to], depth + 1, outcomes[from..to]);
+                            return;
+                        },
                     }
                 } else {}
                 unreachable;
             }
 
-            pub fn step(char: u8) *MS {
+            pub fn advance(char: u8, slot: *MS) void {
                 var start: ?struct { t: RegexToken, i: u32 } = null;
                 inline for (tokens, 0..) |t, i| {
                     if (start) |st| {
                         if (st.t.eql(t))
                             continue;
-                        const next_state = match(char, st.t, st.i, i);
-                        if (next_state != .failed)
-                            return next_state;
+                        match(char, slot, st.t, st.i, i);
+                        if (slot.* != .failed)
+                            return;
                     }
                     start = .{ .t = t, .i = i };
                 }
-                return match(char, start.?.t, start.?.i, tokens.len);
+
+                match(char, slot, start.?.t, start.?.i, tokens.len);
             }
         };
 
-        return .{ .step = shim.step };
+        return .{ .advance = shim.advance };
     }
 }
 
