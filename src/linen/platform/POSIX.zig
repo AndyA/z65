@@ -6,11 +6,11 @@ const builtin = @import("builtin");
 const string = @cImport(@cInclude("string.h"));
 const unistd = @cImport(@cInclude("unistd.h"));
 
-previous_termios: std.posix.termios,
-
 const Self = @This();
 pub const Error = std.posix.TermiosGetError || std.posix.TermiosSetError;
 const CSI = "\x1B[";
+
+previous_termios: std.posix.termios,
 
 pub fn init() Error!Self {
     const stdin_handle = Io.File.stdin().handle;

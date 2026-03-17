@@ -181,4 +181,5 @@ pub fn main(init: std.process.Init) !void {
 test {
     @import("std").testing.refAllDecls(@This());
     _ = @import("basic/model/vars.zig");
+    _ = @import("linen/matcher.zig");
 }
