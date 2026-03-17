@@ -42,6 +42,11 @@ pub fn deinit(self: Self) void {
     };
 }
 
+// * send the query
+// * advance the state machine until
+//   - either the cursor position has been reported
+//   - or we timeout (~20ms)
+
 pub fn getCursorPosition(self: Self, input: anytype) !void {
     _ = self;
     try input.writeAll(CSI ++ "6n");
