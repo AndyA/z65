@@ -27,12 +27,7 @@ const RegexAtom = union(enum) {
 const RegexToken = struct {
     const Self = @This();
 
-    quantifier: enum {
-        @"?",
-        @"*",
-        @"1",
-        @"+",
-    },
+    quantifier: enum { @"?", @"*", @"1", @"+" },
 
     atom: RegexAtom,
 
