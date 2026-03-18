@@ -177,7 +177,7 @@ pub fn MatchState(comptime T: type) type {
     return union(enum) {
         const Self = @This();
 
-        advance: fn (char: u8, slot: *MatchState(T)) void,
+        advance: fn (char: u8, slot: *Self) void,
         outcome: T,
         failed,
 
