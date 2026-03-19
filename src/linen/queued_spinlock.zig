@@ -6,10 +6,6 @@ const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 const expectEqualDeep = std.testing.expectEqualDeep;
 
-fn PadInt(comptime T: type, comptime size: usize) type {
-    return @Int(.unsigned, (size - @sizeOf(T)) * 8);
-}
-
 pub const QueuedSpinlock = struct {
     const Self = @This();
 
@@ -19,7 +15,6 @@ pub const QueuedSpinlock = struct {
         _: void align(cache_line) = {},
         next: QRef = null,
         locked: bool = true,
-        pad: PadInt(struct { QRef, bool }, cache_line) = undefined,
     };
 
     comptime {
@@ -34,7 +29,6 @@ pub const QueuedSpinlock = struct {
 
     _: void align(cache_line) = {},
     tail: QRef = null,
-    // pad: PadInt(struct { QRef }, cache_line) = undefined,
 
     pub fn acquire(self: *Self, node: *QueueNode) void {
         assert(node.next == null);
