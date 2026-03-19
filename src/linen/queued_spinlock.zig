@@ -9,17 +9,49 @@ const expectEqualDeep = std.testing.expectEqualDeep;
 pub const QueuedSpinlock = struct {
     const Self = @This();
 
-    const QRef = ?*QueueNode;
+    const QRef = ?*QueueSlot;
 
-    pub const QueueNode = struct {
+    pub const QueueSlot = struct {
         _: void align(cache_line) = {},
         next: QRef = null,
         locked: bool = true,
+        lock: *QueuedSpinlock,
+
+        pub fn acquire(self: *QueueSlot) void {
+            const previous_tail = @atomicRmw(QRef, &self.lock.tail, .Xchg, self, .monotonic);
+            if (previous_tail) |tail| {
+                @atomicStore(QRef, &tail.next, self, .monotonic);
+                // Spin until node is unlocked
+                spin: while (true) {
+                    const locked = @atomicRmw(bool, &self.locked, .Xchg, true, .monotonic);
+                    if (!locked) break :spin;
+                    std.atomic.spinLoopHint();
+                }
+            }
+        }
+
+        pub fn release(self: *QueueSlot) void {
+            const current_tail = @cmpxchgStrong(QRef, &self.lock.tail, self, null, .monotonic, .monotonic);
+            if (current_tail != null) {
+                // This node is no longer the tail which means that we should wake up the next
+                // node in the queue - but we might need to wait for this node's `next` to be
+                // populated because in `acquire()` the store to `next` happens after the store
+                // to `tail`. We shouldn't have long to wait.
+                spin: while (true) {
+                    const next = @atomicRmw(QRef, &self.next, .Xchg, null, .monotonic);
+                    if (next) |nn| {
+                        @atomicStore(bool, &nn.locked, false, .monotonic);
+                        break :spin;
+                    }
+                    std.atomic.spinLoopHint();
+                }
+            }
+        }
     };
 
     comptime {
-        assert(@alignOf(QueueNode) == cache_line);
-        assert(@sizeOf(QueueNode) == cache_line);
+        assert(@alignOf(QueueSlot) == cache_line);
+        assert(@sizeOf(QueueSlot) == cache_line);
     }
 
     comptime {
@@ -30,35 +62,8 @@ pub const QueuedSpinlock = struct {
     _: void align(cache_line) = {},
     tail: QRef = null,
 
-    pub fn acquire(self: *Self, node: *QueueNode) void {
-        const previous_tail = @atomicRmw(QRef, &self.tail, .Xchg, node, .monotonic);
-        if (previous_tail) |tail| {
-            @atomicStore(QRef, &tail.next, node, .monotonic);
-            // Spin until node is unlocked
-            spin: while (true) {
-                const locked = @atomicRmw(bool, &node.locked, .Xchg, true, .monotonic);
-                if (!locked) break :spin;
-                std.atomic.spinLoopHint();
-            }
-        }
-    }
-
-    pub fn release(self: *Self, node: *QueueNode) void {
-        const current_tail = @cmpxchgStrong(QRef, &self.tail, node, null, .monotonic, .monotonic);
-        if (current_tail != null) {
-            // This node is no longer the tail which means that we should wake up the next
-            // node in the queue - but we might need to wait for this node's `next` to be
-            // populated because in `acquire()` the store to `next` happens after the store
-            // to `tail`. We shouldn't have long to wait.
-            spin: while (true) {
-                const next = @atomicRmw(QRef, &node.next, .Xchg, null, .monotonic);
-                if (next) |nn| {
-                    @atomicStore(bool, &nn.locked, false, .monotonic);
-                    break :spin;
-                }
-                std.atomic.spinLoopHint();
-            }
-        }
+    pub fn getSlot(self: *Self) QueueSlot {
+        return .{ .lock = self };
     }
 };
 
@@ -85,9 +90,9 @@ const TestArray = struct {
     lock: QueuedSpinlock = .{},
 
     pub fn push(self: *TestArray, msg: TestMsg) void {
-        var node: QueuedSpinlock.QueueNode = .{};
-        self.lock.acquire(&node);
-        defer self.lock.release(&node);
+        var slot = self.lock.getSlot();
+        slot.acquire();
+        defer slot.release();
 
         defer self.pos += 1;
         self.msgs[self.pos] = msg;
