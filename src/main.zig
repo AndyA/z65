@@ -182,5 +182,5 @@ test {
     @import("std").testing.refAllDecls(@This());
     _ = @import("basic/model/vars.zig");
     _ = @import("linen/matcher2.zig");
-    _ = @import("linen/QueuedSpinlock.zig");
+    _ = @import("linen/queued_spinlock.zig");
 }

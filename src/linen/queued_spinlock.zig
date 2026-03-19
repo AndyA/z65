@@ -6,54 +6,75 @@ const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 const expectEqualDeep = std.testing.expectEqualDeep;
 
-const Self = @This();
-const QueuedSpinlock = Self;
-
-const QRef = ?*QueueNode;
-
-pub const QueueNode = struct {
-    next: QRef align(cache_line) = null,
-    locked: bool = true,
-};
-
-tail: QRef align(cache_line) = null,
-
-pub fn acquire(self: *Self, node: *QueueNode) void {
-    assert(node.next == null);
-    assert(node.locked);
-
-    const previous_tail = @atomicRmw(QRef, &self.tail, .Xchg, node, .monotonic);
-
-    if (previous_tail) |tail| {
-        @atomicStore(QRef, &tail.next, node, .monotonic);
-        // Spin until node is unlocked
-        spin: while (true) {
-            const locked = @atomicRmw(bool, &node.locked, .Xchg, true, .monotonic);
-            if (!locked) break :spin;
-        }
-    }
+fn PadInt(comptime T: type, comptime size: usize) type {
+    return @Int(.unsigned, (size - @sizeOf(T)) * 8);
 }
 
-pub fn release(self: *Self, node: *QueueNode) void {
-    assert(node.locked);
-    const current_tail = @cmpxchgStrong(QRef, &self.tail, node, null, .monotonic, .monotonic);
-    if (current_tail != null) {
-        // This node is no longer the tail which means that we should wake up the next
-        // node in the queue - but we have to wait for the node's `next` to be populated.
-        // We might need to wait because the store to `next` happens after the store
-        // to `tail` in `acquire`. We shouldn't have long to wait.
-        spin: while (true) {
-            const next = @atomicRmw(QRef, &node.next, .Xchg, null, .monotonic);
-            if (next) |nn| {
-                @atomicStore(bool, &nn.locked, false, .monotonic);
-                break :spin;
+pub const QueuedSpinlock = struct {
+    const Self = @This();
+
+    const QRef = ?*QueueNode;
+
+    pub const QueueNode = struct {
+        _: void align(cache_line) = {},
+        next: QRef = null,
+        locked: bool = true,
+        pad: PadInt(struct { QRef, bool }, cache_line) = undefined,
+    };
+
+    comptime {
+        assert(@alignOf(QueueNode) == cache_line);
+        assert(@sizeOf(QueueNode) == cache_line);
+    }
+
+    comptime {
+        assert(@alignOf(Self) == cache_line);
+        assert(@sizeOf(Self) == cache_line);
+    }
+
+    _: void align(cache_line) = {},
+    tail: QRef = null,
+    // pad: PadInt(struct { QRef }, cache_line) = undefined,
+
+    pub fn acquire(self: *Self, node: *QueueNode) void {
+        assert(node.next == null);
+        assert(node.locked);
+
+        const previous_tail = @atomicRmw(QRef, &self.tail, .Xchg, node, .monotonic);
+
+        if (previous_tail) |tail| {
+            @atomicStore(QRef, &tail.next, node, .monotonic);
+            // Spin until node is unlocked
+            spin: while (true) {
+                std.atomic.spinLoopHint();
+                const locked = @atomicRmw(bool, &node.locked, .Xchg, true, .monotonic);
+                if (!locked) break :spin;
             }
         }
     }
 
-    assert(node.next == null);
-    assert(node.locked);
-}
+    pub fn release(self: *Self, node: *QueueNode) void {
+        assert(node.locked);
+        const current_tail = @cmpxchgStrong(QRef, &self.tail, node, null, .monotonic, .monotonic);
+        if (current_tail != null) {
+            // This node is no longer the tail which means that we should wake up the next
+            // node in the queue - but we have to wait for the node's `next` to be populated.
+            // We might need to wait because the store to `next` happens after the store
+            // to `tail` in `acquire`. We shouldn't have long to wait.
+            spin: while (true) {
+                std.atomic.spinLoopHint();
+                const next = @atomicRmw(QRef, &node.next, .Xchg, null, .monotonic);
+                if (next) |nn| {
+                    @atomicStore(bool, &nn.locked, false, .monotonic);
+                    break :spin;
+                }
+            }
+        }
+
+        assert(node.next == null);
+        assert(node.locked);
+    }
+};
 
 const TestSize = 256;
 const TestThreads = 8;
@@ -78,7 +99,7 @@ const TestArray = struct {
     lock: QueuedSpinlock = .{},
 
     pub fn push(self: *TestArray, msg: TestMsg) void {
-        var node: QueueNode = .{};
+        var node: QueuedSpinlock.QueueNode = .{};
         self.lock.acquire(&node);
         defer self.lock.release(&node);
 
