@@ -52,7 +52,7 @@ pub const QueuedSpinlock = struct {
         const current_tail = @cmpxchgStrong(QRef, &self.tail, node, null, .monotonic, .monotonic);
         if (current_tail != null) {
             // This node is no longer the tail which means that we should wake up the next
-            // node in the queue - but we might need to wait for the node's `next` to be
+            // node in the queue - but we might need to wait for this node's `next` to be
             // populated because the store to `next` happens after the store to `tail` in
             // `acquire`. We shouldn't have long to wait.
             spin: while (true) {
