@@ -20,7 +20,7 @@ pub const QueuedSpinlock = struct {
             const previous_tail = @atomicRmw(QRef, &self.lock.tail, .Xchg, self, .monotonic);
             if (previous_tail) |tail| {
                 @atomicStore(QRef, &tail.next, self, .monotonic);
-                // Spin until node is unlocked
+                // Spin until slot is unlocked
                 spin: while (true) {
                     const locked = @atomicRmw(bool, &self.locked, .Xchg, true, .monotonic);
                     if (!locked) break :spin;
@@ -39,8 +39,8 @@ pub const QueuedSpinlock = struct {
                 .monotonic,
             );
             if (current_tail != null) {
-                // This node is no longer the tail which means that we should wake up the next
-                // node in the queue - but we might need to wait for this node's `next` to be
+                // This slot is no longer the tail which means that we should wake up the next
+                // slot in the queue - but we might need to wait for this slot's `next` to be
                 // populated because in `acquire()` the store to `next` happens after the store
                 // to `tail`. We shouldn't have long to wait.
                 spin: while (true) {
