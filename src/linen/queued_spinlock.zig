@@ -10,7 +10,7 @@ pub const QueuedSpinlock = struct {
     const QSL = @This();
     const QRef = ?*QueueSlot;
 
-    pub const QueueSlot = struct {
+    const QueueSlot = struct {
         _: void align(cache_line) = {},
         next: QRef = null,
         locked: bool = true,
@@ -70,6 +70,16 @@ pub const QueuedSpinlock = struct {
 
     pub fn getSlot(self: *QSL) QueueSlot {
         return .{ .lock = self };
+    }
+};
+
+pub const NopQueuedSpinlock = struct {
+    const QueueSlot = struct {
+        pub fn acquire(_: *QueueSlot) void {}
+        pub fn release(_: *QueueSlot) void {}
+    };
+    pub fn getSlot(_: @This()) QueueSlot {
+        return .{};
     }
 };
 
