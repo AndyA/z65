@@ -2,7 +2,9 @@ const std = @import("std");
 const assert = std.debug.assert;
 const print = std.debug.print;
 const cache_line = std.atomic.cache_line;
+const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
+const expectEqualDeep = std.testing.expectEqualDeep;
 
 const Self = @This();
 const QueuedSpinlock = Self;
@@ -52,7 +54,7 @@ pub fn release(self: *Self, node: *QueueNode) void {
 const TestSize = 256;
 const TestThreads = 8;
 
-const TestMsg = struct {
+const TestMsg = packed struct {
     sequence: u32,
     thread: u32,
 };
@@ -63,7 +65,7 @@ fn waste_time() void {
         if (i % 51 == 0) total += 3;
         if (i % 17 == 0) total += 11;
     }
-    assert(total != 666);
+    if (total == 666) waste_time();
 }
 
 const TestArray = struct {
@@ -79,6 +81,10 @@ const TestArray = struct {
         defer self.pos += 1;
         self.msgs[self.pos] = msg;
         waste_time();
+    }
+
+    pub fn getMessages(self: *const TestArray) []const TestMsg {
+        return self.msgs[0..self.pos];
     }
 };
 
@@ -104,18 +110,32 @@ test QueuedSpinlock {
         t.join();
     }
 
-    try expectEqual(TestSize, ta.pos);
+    var ref: TestArray = .{};
+    for (0..TestThreads) |id| {
+        for (0..TestSize / TestThreads) |seq| {
+            ref.push(.{
+                .sequence = @intCast(seq),
+                .thread = @intCast(id),
+            });
+        }
+    }
 
-    // for (ta.msgs) |msg| {
-    //     print("{any}\n", .{msg});
-    // }
+    try expectEqual(ref.pos, ta.pos);
 
-    // var node: QueueNode = .{};
+    var got = ta;
+    const Context = struct {
+        pub fn lt(_: @This(), lhs: TestMsg, rhs: TestMsg) bool {
+            if (lhs.thread < rhs.thread)
+                return true;
+            return lhs.thread == rhs.thread and lhs.sequence < rhs.sequence;
+        }
+    };
+    std.mem.sort(TestMsg, &got.msgs, Context{}, Context.lt);
+    try expectEqualDeep(ref, got);
 
-    // try expectEqual(cache_line, @alignOf(QueueNode));
-    // try expectEqual(cache_line, @alignOf(QueuedSpinlock));
+    const reordered = for (ta.msgs[0 .. ta.pos - 1], ta.msgs[1..ta.pos]) |lhs, rhs| {
+        if (!Context.lt(.{}, lhs, rhs)) break true;
+    } else false;
 
-    // lock.acquire(&node);
-    // lock.release(&node);
-    // try expectEqual(null, lock.tail);
+    try expect(reordered);
 }
