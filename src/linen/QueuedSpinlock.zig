@@ -1,6 +1,8 @@
 const std = @import("std");
 const assert = std.debug.assert;
+const print = std.debug.print;
 const cache_line = std.atomic.cache_line;
+const expectEqual = std.testing.expectEqual;
 
 const Self = @This();
 const QueuedSpinlock = Self;
@@ -21,7 +23,7 @@ pub fn acquire(self: *Self, node: *QueueNode) void {
 
     if (previous_tail) |tail| {
         @atomicStore(QRef, &tail.next, node, .monotonic);
-        // Spin on node's locked
+        // Spin until node is unlocked
         spin: while (true) {
             const locked = @atomicRmw(bool, &node.locked, .Xchg, true, .monotonic);
             if (!locked) break :spin;
@@ -47,14 +49,73 @@ pub fn release(self: *Self, node: *QueueNode) void {
     }
 }
 
+const TestSize = 256;
+const TestThreads = 8;
+
+const TestMsg = struct {
+    sequence: u32,
+    thread: u32,
+};
+
+fn waste_time() void {
+    var total: usize = 0;
+    for (0..1000) |i| {
+        if (i % 51 == 0) total += 3;
+        if (i % 17 == 0) total += 11;
+    }
+    assert(total != 666);
+}
+
+const TestArray = struct {
+    msgs: [TestSize]TestMsg = undefined,
+    pos: usize = 0,
+    lock: QueuedSpinlock = .{},
+
+    pub fn push(self: *TestArray, msg: TestMsg) void {
+        var node: QueueNode = .{};
+        self.lock.acquire(&node);
+        defer self.lock.release(&node);
+
+        defer self.pos += 1;
+        self.msgs[self.pos] = msg;
+        waste_time();
+    }
+};
+
+fn worker(ta: *TestArray, id: u32, count: u32) void {
+    for (0..count) |i| {
+        ta.push(.{ .sequence = @intCast(i), .thread = id });
+    }
+}
+
 test QueuedSpinlock {
-    var lock: QueuedSpinlock = .{};
-    var node: QueueNode = .{};
+    var ta: TestArray = .{};
 
-    try std.testing.expectEqual(cache_line, @alignOf(QueueNode));
-    try std.testing.expectEqual(cache_line, @alignOf(QueuedSpinlock));
+    var threads: [TestThreads]std.Thread = undefined;
+    for (0..TestThreads) |id| {
+        threads[id] = try std.Thread.spawn(
+            .{},
+            worker,
+            .{ &ta, @as(u32, @intCast(id)), TestSize / TestThreads },
+        );
+    }
 
-    lock.acquire(&node);
-    lock.release(&node);
-    try std.testing.expectEqual(null, lock.tail);
+    for (threads) |t| {
+        t.join();
+    }
+
+    try expectEqual(TestSize, ta.pos);
+
+    // for (ta.msgs) |msg| {
+    //     print("{any}\n", .{msg});
+    // }
+
+    // var node: QueueNode = .{};
+
+    // try expectEqual(cache_line, @alignOf(QueueNode));
+    // try expectEqual(cache_line, @alignOf(QueuedSpinlock));
+
+    // lock.acquire(&node);
+    // lock.release(&node);
+    // try expectEqual(null, lock.tail);
 }
