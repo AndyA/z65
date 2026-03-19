@@ -31,11 +31,10 @@ pub const QueuedSpinlock = struct {
     tail: QRef = null,
 
     pub fn acquire(self: *Self, node: *QueueNode) void {
-        assert(node.next == null);
-        assert(node.locked);
+        assert(@atomicLoad(QRef, &node.next, .monotonic) == null);
+        assert(@atomicLoad(bool, &node.locked, .monotonic));
 
         const previous_tail = @atomicRmw(QRef, &self.tail, .Xchg, node, .monotonic);
-
         if (previous_tail) |tail| {
             @atomicStore(QRef, &tail.next, node, .monotonic);
             // Spin until node is unlocked
@@ -48,7 +47,8 @@ pub const QueuedSpinlock = struct {
     }
 
     pub fn release(self: *Self, node: *QueueNode) void {
-        assert(node.locked);
+        assert(@atomicLoad(bool, &node.locked, .monotonic));
+
         const current_tail = @cmpxchgStrong(QRef, &self.tail, node, null, .monotonic, .monotonic);
         if (current_tail != null) {
             // This node is no longer the tail which means that we should wake up the next
@@ -65,8 +65,8 @@ pub const QueuedSpinlock = struct {
             }
         }
 
-        assert(node.next == null);
-        assert(node.locked);
+        assert(@atomicLoad(QRef, &node.next, .monotonic) == null);
+        assert(@atomicLoad(bool, &node.locked, .monotonic));
     }
 };
 
