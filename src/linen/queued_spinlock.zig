@@ -40,9 +40,9 @@ pub const QueuedSpinlock = struct {
             @atomicStore(QRef, &tail.next, node, .monotonic);
             // Spin until node is unlocked
             spin: while (true) {
-                std.atomic.spinLoopHint();
                 const locked = @atomicRmw(bool, &node.locked, .Xchg, true, .monotonic);
                 if (!locked) break :spin;
+                std.atomic.spinLoopHint();
             }
         }
     }
@@ -56,12 +56,12 @@ pub const QueuedSpinlock = struct {
             // We might need to wait because the store to `next` happens after the store
             // to `tail` in `acquire`. We shouldn't have long to wait.
             spin: while (true) {
-                std.atomic.spinLoopHint();
                 const next = @atomicRmw(QRef, &node.next, .Xchg, null, .monotonic);
                 if (next) |nn| {
                     @atomicStore(bool, &nn.locked, false, .monotonic);
                     break :spin;
                 }
+                std.atomic.spinLoopHint();
             }
         }
 
