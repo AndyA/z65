@@ -11,7 +11,7 @@ const QueuedSpinlock = Self;
 
 const QRef = ?*QueueNode;
 
-pub const QueueNode = extern struct {
+pub const QueueNode = struct {
     next: QRef align(cache_line) = null,
     locked: bool = true,
 };
@@ -21,6 +21,7 @@ tail: QRef align(cache_line) = null,
 pub fn acquire(self: *Self, node: *QueueNode) void {
     assert(node.next == null);
     assert(node.locked);
+
     const previous_tail = @atomicRmw(QRef, &self.tail, .Xchg, node, .monotonic);
 
     if (previous_tail) |tail| {
@@ -49,6 +50,9 @@ pub fn release(self: *Self, node: *QueueNode) void {
             }
         }
     }
+
+    assert(node.next == null);
+    assert(node.locked);
 }
 
 const TestSize = 256;
