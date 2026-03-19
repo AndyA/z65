@@ -31,7 +31,14 @@ pub const QueuedSpinlock = struct {
         }
 
         pub fn release(self: *QueueSlot) void {
-            const current_tail = @cmpxchgStrong(QRef, &self.lock.tail, self, null, .monotonic, .monotonic);
+            const current_tail = @cmpxchgStrong(
+                QRef,
+                &self.lock.tail,
+                self,
+                null,
+                .monotonic,
+                .monotonic,
+            );
             if (current_tail != null) {
                 // This node is no longer the tail which means that we should wake up the next
                 // node in the queue - but we might need to wait for this node's `next` to be
