@@ -18,12 +18,12 @@ pub const QueuedSpinlock = struct {
         lock: *QueuedSpinlock,
 
         pub fn acquire(self: *QueueSlot) void {
-            const previous_tail = @atomicRmw(?*QueueSlot, &self.lock.tail, .Xchg, self, .monotonic);
+            const previous_tail = @atomicRmw(?*QueueSlot, &self.lock.tail, .Xchg, self, .acq_rel);
             if (previous_tail) |tail| {
-                @atomicStore(?*QueueSlot, &tail.next, self, .monotonic);
+                @atomicStore(?*QueueSlot, &tail.next, self, .release);
                 // Spin until slot is unlocked
                 spin: while (true) {
-                    const locked = @atomicRmw(bool, &self.locked, .Xchg, true, .monotonic);
+                    const locked = @atomicRmw(bool, &self.locked, .Xchg, true, .acq_rel);
                     if (!locked) break :spin;
                     std.atomic.spinLoopHint();
                 }
@@ -36,7 +36,7 @@ pub const QueuedSpinlock = struct {
                 &self.lock.tail,
                 self,
                 null,
-                .monotonic,
+                .acq_rel,
                 .monotonic,
             );
             if (current_tail != null) {
@@ -45,9 +45,9 @@ pub const QueuedSpinlock = struct {
                 // populated because in `acquire()` the store to `next` happens after the store
                 // to `tail`. We shouldn't have long to wait.
                 spin: while (true) {
-                    const next = @atomicRmw(?*QueueSlot, &self.next, .Xchg, null, .monotonic);
+                    const next = @atomicRmw(?*QueueSlot, &self.next, .Xchg, null, .acq_rel);
                     if (next) |nn| {
-                        @atomicStore(bool, &nn.locked, false, .monotonic);
+                        @atomicStore(bool, &nn.locked, false, .release);
                         break :spin;
                     }
                     std.atomic.spinLoopHint();
