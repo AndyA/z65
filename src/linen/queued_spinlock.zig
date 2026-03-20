@@ -8,18 +8,17 @@ const expectEqualDeep = std.testing.expectEqualDeep;
 
 pub const QueuedSpinlock = struct {
     const QSL = @This();
-    const QRef = ?*QueueSlot;
 
     const QueueSlot = struct {
         _: void align(cache_line) = {},
-        next: QRef = null,
+        next: ?*QueueSlot = null,
         locked: bool = true,
         lock: *QSL,
 
         pub fn acquire(self: *QueueSlot) void {
-            const previous_tail = @atomicRmw(QRef, &self.lock.tail, .Xchg, self, .monotonic);
+            const previous_tail = @atomicRmw(?*QueueSlot, &self.lock.tail, .Xchg, self, .monotonic);
             if (previous_tail) |tail| {
-                @atomicStore(QRef, &tail.next, self, .monotonic);
+                @atomicStore(?*QueueSlot, &tail.next, self, .monotonic);
                 // Spin until slot is unlocked
                 spin: while (true) {
                     const locked = @atomicRmw(bool, &self.locked, .Xchg, true, .monotonic);
@@ -31,7 +30,7 @@ pub const QueuedSpinlock = struct {
 
         pub fn release(self: *QueueSlot) void {
             const current_tail = @cmpxchgStrong(
-                QRef,
+                ?*QueueSlot,
                 &self.lock.tail,
                 self,
                 null,
@@ -44,7 +43,7 @@ pub const QueuedSpinlock = struct {
                 // populated because in `acquire()` the store to `next` happens after the store
                 // to `tail`. We shouldn't have long to wait.
                 spin: while (true) {
-                    const next = @atomicRmw(QRef, &self.next, .Xchg, null, .monotonic);
+                    const next = @atomicRmw(?*QueueSlot, &self.next, .Xchg, null, .monotonic);
                     if (next) |nn| {
                         @atomicStore(bool, &nn.locked, false, .monotonic);
                         break :spin;
@@ -66,7 +65,7 @@ pub const QueuedSpinlock = struct {
     }
 
     _: void align(cache_line) = {},
-    tail: QRef = null,
+    tail: ?*QueueSlot = null,
 
     pub fn getSlot(self: *QSL) QueueSlot {
         return .{ .lock = self };
@@ -83,7 +82,7 @@ pub const NopQueuedSpinlock = struct {
     }
 };
 
-const TestSize = 256;
+const TestSize = 65536;
 const TestThreads = 8;
 
 const TestMsg = packed struct {
