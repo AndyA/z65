@@ -7,13 +7,11 @@ const expectEqual = std.testing.expectEqual;
 const expectEqualDeep = std.testing.expectEqualDeep;
 
 pub const QueuedSpinlock = struct {
-    const QSL = @This();
-
     const QueueSlot = struct {
         _: void align(cache_line) = {},
         next: ?*QueueSlot = null,
         locked: bool = true,
-        lock: *QSL,
+        lock: *QueuedSpinlock,
 
         pub fn acquire(self: *QueueSlot) void {
             const previous_tail = @atomicRmw(?*QueueSlot, &self.lock.tail, .Xchg, self, .monotonic);
@@ -60,14 +58,14 @@ pub const QueuedSpinlock = struct {
     }
 
     comptime {
-        assert(@alignOf(QSL) == cache_line);
-        assert(@sizeOf(QSL) == cache_line);
+        assert(@alignOf(QueuedSpinlock) == cache_line);
+        assert(@sizeOf(QueuedSpinlock) == cache_line);
     }
 
     _: void align(cache_line) = {},
     tail: ?*QueueSlot = null,
 
-    pub fn getSlot(self: *QSL) QueueSlot {
+    pub fn getSlot(self: *QueuedSpinlock) QueueSlot {
         return .{ .lock = self };
     }
 };
