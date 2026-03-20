@@ -6,6 +6,10 @@ const expect = std.testing.expect;
 const expectEqual = std.testing.expectEqual;
 const expectEqualDeep = std.testing.expectEqualDeep;
 
+// Memory order:
+//  https://en.cppreference.com/w/cpp/atomic/memory_order.html
+
+/// A Queued Spinlock.
 pub const QueuedSpinlock = struct {
     const QueueSlot = struct {
         _: void align(cache_line) = {},
@@ -70,6 +74,42 @@ pub const QueuedSpinlock = struct {
     }
 };
 
+test QueuedSpinlock {
+    const Example = struct {
+        lock: QueuedSpinlock = .{},
+        stack: [1024]u32 = undefined,
+        stack_pos: usize = 0,
+
+        pub fn push(self: *@This(), value: u32) void {
+            var slot = self.lock.getSlot();
+            slot.acquire();
+            defer slot.release();
+
+            assert(self.stack_pos <= 1024);
+            self.stack[self.stack_pos] = value;
+            self.stack_pos += 1;
+        }
+
+        pub fn pop(self: *@This()) u32 {
+            var slot = self.lock.getSlot();
+            slot.acquire();
+            defer slot.release();
+
+            assert(self.stack_pos > 0);
+            self.stack_pos -= 1;
+            return self.stack[self.stack_pos];
+        }
+    };
+
+    var example = Example{};
+    example.push(1);
+    example.push(2);
+    example.push(3);
+    try std.testing.expectEqual(3, example.pop());
+    try std.testing.expectEqual(2, example.pop());
+    try std.testing.expectEqual(1, example.pop());
+}
+
 pub const NopQueuedSpinlock = struct {
     const QueueSlot = struct {
         pub fn acquire(_: *QueueSlot) void {}
@@ -120,7 +160,7 @@ fn worker(ta: *TestArray, id: u32, count: u32) void {
     }
 }
 
-test QueuedSpinlock {
+test "threaded" {
     var ta: TestArray = .{};
 
     var threads: [TestThreads]std.Thread = undefined;
