@@ -89,12 +89,9 @@ const TestMsg = packed struct {
 };
 
 fn waste_time() void {
-    var total: usize = 0;
     for (0..1000) |i| {
-        if (i % 51 == 0) total += 3;
-        if (i % 17 == 0) total += 11;
+        _ = std.mem.doNotOptimizeAway(i / 19);
     }
-    if (total == 666) waste_time();
 }
 
 const TestArray = struct {
