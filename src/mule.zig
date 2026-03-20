@@ -1,104 +1,111 @@
 const std = @import("std");
-const Io = std.Io;
-const Allocator = std.mem.Allocator;
 const print = std.debug.print;
-const builtin = @import("builtin");
+const assert = std.debug.assert;
+const Io = std.Io;
 
-const Term = switch (builtin.os.tag) {
-    .windows => @compileError("Sorry - no Windows support yet"),
-    else => @import("linen/platform/POSIX.zig"),
-};
+const qs = @import("linen/queued_spinlock.zig");
+const QueuedSpinlock = qs.QueuedSpinlock;
+const NopQueuedSpinlock = qs.NopQueuedSpinlock;
 
-pub const KeyCode = enum(u8) {
-    CURSOR_UP,
-    CURSOR_DOWN,
-    CURSOR_RIGHT,
-    CURSOR_LEFT,
-};
+pub fn RingBuffer(comptime T: type, comptime size: usize, comptime Spinlock: type) type {
+    return struct {
+        const Self = @This();
 
-pub const InputState = struct {
-    const Self = @This();
+        buf: [size]T = undefined,
+        pos: usize = 0,
+        used: usize = 0,
+        lock: Spinlock = .{},
 
-    chars: []const u8,
-    pos: usize, // byte offset - utf8 ignorant
+        pub fn put(self: *Self, value: T) void {
+            var slot = self.lock.getSlot();
+            slot.acquire();
+            defer slot.release();
 
-    pub fn init(gpa: Allocator, chars: []const u8, pos: usize) !Self {
-        return Self{ .chars = try gpa.dupe(u8, chars), .pos = pos };
-    }
-
-    pub fn deinit(self: Self, gpa: Allocator) void {
-        gpa.free(self.chars);
-    }
-};
-
-pub const Input = struct {
-    const Self = @This();
-    const UndoSize = 100;
-
-    io: Io,
-    gpa: Allocator,
-
-    term: Term,
-
-    undo: std.Deque(InputState),
-    undo_pos: usize = 0,
-
-    in: Io.File,
-    in_buf: [32]u8 = undefined,
-
-    out: Io.File.Writer,
-    out_buf: []u8,
-
-    pub fn init(io: Io, gpa: Allocator) !Self {
-        const out_buf = try gpa.alloc(u8, 16);
-
-        return Self{
-            .io = io,
-            .gpa = gpa,
-            .term = try .init(),
-            .undo = try .initCapacity(gpa, UndoSize),
-            .in = std.Io.File.stdin(),
-            .out = std.Io.File.stdout().writer(io, out_buf),
-            .out_buf = out_buf,
-        };
-    }
-
-    pub fn deinit(self: *Self) void {
-        while (self.undo.popBack()) |state| {
-            state.deinit(self.gpa);
+            assert(self.used < size);
+            self.buf[self.pos] = value;
+            self.pos += 1;
+            if (self.pos == size) self.pos = 0;
+            self.used += 1;
         }
-        self.undo.deinit(self.gpa);
-        self.gpa.free(self.out_buf);
-        self.term.deinit();
-    }
 
-    pub fn readInput(self: *Self) ![]const u8 {
-        const nread = try self.in.readStreaming(self.io, &.{&self.in_buf});
-        return self.in_buf[0..nread];
-    }
+        pub fn get(self: *Self) T {
+            var slot = self.lock.getSlot();
+            slot.acquire();
+            defer slot.release();
 
-    pub fn writeAll(self: *Self, chars: []const u8) !void {
-        try self.out.interface.writeAll(chars);
-        try self.out.interface.flush();
+            assert(self.used > 0);
+            var pos = self.pos - self.used + size;
+            if (pos >= size) pos -= size;
+            self.used -= 1;
+
+            return self.buf[pos];
+        }
+
+        pub fn poll(self: *Self) ?T {
+            var slot = self.lock.getSlot();
+            slot.acquire();
+            defer slot.release();
+
+            if (self.used == 0)
+                return null;
+
+            return self.get();
+        }
+    };
+}
+
+const TestCount = 100_000_000;
+
+fn noQueue() u32 {
+    var rng = std.Random.Xoroshiro128.init(0);
+    const rand = rng.random();
+
+    var sum: u32 = 0;
+    for (1..TestCount) |_| {
+        sum ^= rand.int(u32);
     }
-};
+    return sum;
+}
+
+fn singleWithQueue(comptime Spinlock: type) fn () u32 {
+    const shim = struct {
+        pub fn fun() u32 {
+            var rng = std.Random.Xoroshiro128.init(0);
+            const rand = rng.random();
+            var queue = RingBuffer(u32, 1024, Spinlock){};
+            var sum: u32 = 0;
+            for (1..TestCount) |_| {
+                const x = rand.int(u32);
+                queue.put(x);
+                const y = queue.get();
+                assert(x == y);
+                sum ^= y;
+            }
+            return sum;
+        }
+    };
+
+    return shim.fun;
+}
 
 pub fn main(init: std.process.Init) !void {
-    var input: Input = try .init(init.io, init.gpa);
-    defer input.deinit();
+    const Test = struct {
+        fun: *const fn () u32,
+        name: []const u8,
+    };
+    const tests = [_]Test{
+        .{ .fun = noQueue, .name = "no queue" },
+        .{ .fun = singleWithQueue(NopQueuedSpinlock), .name = "single thread, no lock" },
+        .{ .fun = singleWithQueue(QueuedSpinlock), .name = "single thread, lock" },
+    };
+    for (tests) |t| {
+        const start_ts = Io.Clock.awake.now(init.io);
+        const res = t.fun();
+        const elapsed = start_ts.untilNow(init.io, .awake).toNanoseconds();
+        const rate: f64 = @as(f64, @floatFromInt(TestCount)) /
+            @as(f64, @floatFromInt(elapsed)) *
+            1_000_000_000;
 
-    try input.term.getCursorPosition(&input);
-    while (true) {
-        const chars = try input.readInput();
-        if (chars.len == 0)
-            continue;
-        for (chars) |c| {
-            print("{x:0>2} ", .{c});
-        }
-        for (chars) |c| {
-            print("{c}", .{if (std.ascii.isPrint(c)) c else '.'});
-        }
-        print("\n", .{});
-        if (chars.len > 0 and chars[0] == 0x03) break;
+        print("{s:<40} {x:0>8} {d:>20.2}/s\n", .{ t.name, res, rate });
     }
 }
