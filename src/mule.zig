@@ -21,8 +21,6 @@ pub fn RingBuffer(comptime T: type, comptime size: usize, comptime Spinlock: typ
             slot.acquire();
             defer slot.release();
 
-            // print("put: pos={d}, used={d}\n", .{ self.pos, self.used });
-
             assert(self.used <= size);
             while (self.used == size) {
                 slot.release();
@@ -40,8 +38,6 @@ pub fn RingBuffer(comptime T: type, comptime size: usize, comptime Spinlock: typ
             var slot = self.lock.getSlot();
             slot.acquire();
             defer slot.release();
-
-            // print("get: pos={d}, used={d}\n", .{ self.pos, self.used });
 
             while (self.used == 0) {
                 slot.release();
@@ -69,8 +65,7 @@ pub fn RingBuffer(comptime T: type, comptime size: usize, comptime Spinlock: typ
     };
 }
 
-// const TestCount = 1_000_000;
-const TestCount = 10_000;
+const TestCount = 1_000_000;
 
 fn noQueue() u32 {
     var rng = std.Random.Xoroshiro128.init(0);
@@ -102,24 +97,20 @@ fn singleWithQueue(comptime Spinlock: type) fn () u32 {
 }
 
 fn threadedSingleReader(comptime threads: usize) fn () u32 {
-    const Queue = RingBuffer(u32, TestCount, QueuedSpinlock);
+    const Queue = RingBuffer(u32, 1024, QueuedSpinlock);
 
     const shim = struct {
         fn writer_worker(queue: *Queue, count: usize, rand: std.Random) void {
-            print("writer count: {d}\n", .{count});
             for (0..count) |_| {
                 queue.put(rand.int(u32));
             }
-            print("writer done\n", .{});
         }
 
         fn reader_worker(queue: *Queue, result: *u32) void {
             var sum: u32 = 0;
-            print("reader\n", .{});
             for (0..TestCount) |_| {
                 sum ^= queue.get();
             }
-            print("reader done: {x}\n", .{sum});
             @atomicStore(u32, result, sum, .release);
         }
 
@@ -168,6 +159,7 @@ pub fn main(init: std.process.Init) !void {
         .{ .fun = noQueue, .name = "no queue" },
         .{ .fun = singleWithQueue(NopQueuedSpinlock), .name = "single thread, no lock" },
         .{ .fun = singleWithQueue(QueuedSpinlock), .name = "single thread, lock" },
+        .{ .fun = threadedSingleReader(4), .name = "4 writers, 1 reader" },
         .{ .fun = threadedSingleReader(8), .name = "8 writers, 1 reader" },
     };
     for (tests) |t| {
