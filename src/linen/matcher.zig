@@ -166,15 +166,22 @@ test TokenIter {
     try expectEqual(want.len, pos);
 }
 
+pub const MaxCaptures: usize = 10;
+
+pub fn Terminal(comptime T: type) type {
+    return struct {
+        outcome: T,
+        captures: [MaxCaptures][]const u8,
+    };
+}
+
 pub fn MatchState(comptime T: type) type {
     return union(u8) {
         const Self = @This();
         next: *const fn (self: *Self, char: u8) Self,
-        terminal: T,
+        terminal: Terminal(T),
         failed,
     };
 }
 
-test MatchState {
-    // const
-}
+test MatchState {}
