@@ -269,69 +269,6 @@ pub fn MatchClause(comptime T: type) type {
     };
 }
 
-fn scanner(
-    comptime T: type,
-    comptime Context: type,
-    comptime outcomes: []const T,
-    comptime tokens: []const []const Token,
-) MatchState(T, Context) {
-    comptime {
-        const MS = MatchState(T, Context);
-
-        const shim = struct {
-            fn sideEffect(ctx: *Context, tok: *const Token) void {
-                switch (tok.capture) {
-                    .start => ctx.startCapture(),
-                    .end => ctx.stopCapture(),
-                    .nop => {},
-                }
-            }
-
-            fn stepSlice(comptime start: usize, comptime end: usize) MS {
-                assert(end > start);
-                const size = end - start;
-                const next_tokens: [size][]const Token = nt: {
-                    var nt: [size][]const Token = undefined;
-                    for (start..end, 0..) |in, out| {
-                        nt[out] = tokens[in][1..];
-                    }
-                    break :nt nt;
-                };
-                return scanner(T, Context, outcomes[start..end], next_tokens);
-            }
-
-            fn advance(ms: *const MS, ctx: *Context, char: u8) MS {
-                var start: ?struct { t: Token, i: usize } = null;
-
-                // First pass. Only positive matches advance
-                inline for (tokens, 0..) |ts, i| {
-                    // Expression completely satisfied
-                    if (ts.len == 0) {
-                        assert(tokens.len == 1); // only one terminal allowed
-                        return .{ .terminal = .{
-                            .outcomes = outcomes[i],
-                            .captures = ctx.captures(),
-                        } };
-                    }
-                    const t = ts[0];
-                    if (start) |st| {
-                        if (st.t.eql(t)) continue;
-                        if (st.t.match(char)) {
-                            sideEffect(ctx, st.t);
-                            return switch (st.t.quantifier) {
-                                .@"1", .@"?" => stepSlice(start.i, i),
-                                .@"*" => ms,
-                            };
-                        }
-                    }
-                    start = .{ .t = t, .i = i };
-                }
-            }
-        };
-        _ = shim;
-    }
-}
-
 pub fn matcher(
     comptime T: type,
     comptime Context: type,
@@ -391,22 +328,96 @@ pub fn matcher(
             break :blk outcomes;
         };
 
-        // The tokens for each clause
-        const tokens: [clauses.len][]const Token = blk: {
-            var tokens: [clauses.len][]const Token = undefined;
-            var store_pos: usize = 0;
+        // The exprs for each clause
+        const exprs: [clauses.len][]const Token = blk: {
+            var exprs: [clauses.len][]const Token = undefined;
+            var pos: usize = 0;
             for (0..clauses.len) |i| {
-                const next_pos = store_pos + token_counts[i];
-                defer store_pos = next_pos;
-                tokens[i] = store[store_pos..next_pos];
+                const next_pos = pos + token_counts[i];
+                defer pos = next_pos;
+                exprs[i] = store[pos..next_pos];
             }
-            assert(store_pos == token_count);
-            break :blk tokens;
+            assert(pos == token_count);
+            break :blk exprs;
         };
 
         _ = outcomes;
-        _ = tokens;
+        _ = exprs;
 
         unreachable;
+    }
+}
+
+const TrieNode = union(enum) {
+    next: struct { token: Token, children: []const TrieNode },
+    terminal: u32,
+};
+
+fn matchTree(comptime exprs: []const []const Token, comptime offset: u32) []const TrieNode {
+    comptime {
+        const distinct: usize = blk: {
+            var count: usize = 0;
+            var prev: ?Token = null;
+            for (exprs) |ex| {
+                if (ex.len == 0) {
+                    assert(exprs.len == 1); // must be the only one
+                    return .{.{ .terminal = offset }};
+                }
+                const tok = ex[0];
+                if (prev == null or !prev.?.eql(tok)) {
+                    count += 1;
+                    prev = tok;
+                }
+            }
+            break :blk count;
+        };
+
+        const spans: [distinct]usize = blk: {
+            var spans: [distinct]usize = undefined;
+            var span_pos: usize = 0;
+
+            var prev: ?Token = null;
+            var run_length: usize = 0;
+            for (exprs) |ex| {
+                assert(ex.len != 0);
+                const tok = ex[0];
+                if (prev != null and !prev.?.eql(tok)) {
+                    spans[span_pos] = run_length;
+                    run_length = 1;
+                    span_pos += 1;
+                } else {
+                    run_length += 1;
+                    prev = tok;
+                }
+            }
+            if (run_length != 0) {
+                spans[span_pos] = run_length;
+                span_pos += 1;
+            }
+            assert(span_pos == distinct);
+            break :blk spans;
+        };
+
+        const nodes: [distinct]TrieNode = blk: {
+            var nodes: [distinct]TrieNode = undefined;
+            var node_pos: usize = 0;
+            var expr_pos: usize = 0;
+            for (spans) |span| {
+                var child_exprs: [span][]const Token = undefined;
+                for (0..span, expr_pos..) |i, e| {
+                    child_exprs[i] = exprs[e][1..];
+                }
+                nodes[node_pos] = .{ .next = .{
+                    .token = exprs[expr_pos][0],
+                    .children = matchTree(child_exprs[0..], offset + expr_pos),
+                } };
+                node_pos += 1;
+                expr_pos += span;
+            }
+            assert(node_pos == distinct);
+            break :blk nodes;
+        };
+
+        return nodes[0..];
     }
 }
