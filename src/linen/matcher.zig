@@ -5,39 +5,27 @@ const expectEqual = std.testing.expectEqual;
 const expectEqualDeep = std.testing.expectEqualDeep;
 const Allocator = std.mem.Allocator;
 
-const Atom = union(enum) {
-    const Self = @This();
-
-    literal: u8,
-    charset: u256,
-    capture_start,
-    capture_end,
-
-    pub fn eql(self: Self, other: Self) bool {
-        if (@intFromEnum(self) != @intFromEnum(other))
-            return false;
-        return switch (self) {
-            .literal => |v| v == other.literal,
-            .charset => |v| v == other.charset,
-            else => true,
-        };
-    }
-};
-
 const Token = struct {
     const Self = @This();
+    pub const Quantifier = enum { @"?", @"*", @"1", @"+" };
+    pub const Capture = enum { nop, start, end };
 
-    quantifier: enum { @"?", @"*", @"1", @"+" },
-
-    atom: Atom,
+    charset: u256,
+    quantifier: Quantifier = .@"1",
+    capture: Capture = .nop,
 
     pub fn eql(self: Self, other: Self) bool {
         return self.quantifier == other.quantifier and
-            self.atom.eql(other.atom);
+            self.capture == other.capture and
+            self.charset == other.charset;
     }
 };
 
-fn makeCharset(range: []const u8) u256 {
+fn spotCharset(char: u8) u256 {
+    return @as(u256, 1) << char;
+}
+
+fn rangeCharset(range: []const u8) u256 {
     var set: u256 = 0;
     var flip = false;
     var span = false;
@@ -106,18 +94,27 @@ const TokenIter = struct {
     }
 
     pub fn next(self: *Self) !?Token {
-        if (self.nextChar()) |nc| {
-            const atom = atom: switch (nc) {
+        if (self.nextChar()) |next_char| {
+            var nc = next_char;
+            const capture: Token.Capture =
+                cap: switch (nc) {
+                    '(', ')' => {
+                        const cap: Token.Capture = if (nc == '(') .start else .end;
+                        nc = try self.needChar();
+                        break :cap cap;
+                    },
+                    else => .nop,
+                };
+
+            const charset = charset: switch (nc) {
                 '\\' => {
-                    break :atom switch (try self.needChar()) {
-                        'd' => Atom{ .charset = makeCharset("0-9") },
-                        else => |lit| Atom{ .literal = lit },
+                    break :charset switch (try self.needChar()) {
+                        'd' => rangeCharset("0-9"),
+                        else => |lit| spotCharset(lit),
                     };
                 },
-                '(' => Atom{ .capture_start = {} },
-                ')' => Atom{ .capture_end = {} },
-                '.' => Atom{ .charset = std.math.maxInt(u256) },
-                else => Atom{ .literal = nc },
+                '.' => std.math.maxInt(u256),
+                else => spotCharset(nc),
             };
 
             // Check for modifiers
@@ -125,18 +122,27 @@ const TokenIter = struct {
                 switch (mc) {
                     '?', '+', '*' => {
                         _ = self.nextChar();
-                        return switch (mc) {
-                            '?' => Token{ .atom = atom, .quantifier = .@"?" },
-                            '*' => Token{ .atom = atom, .quantifier = .@"*" },
-                            '+' => Token{ .atom = atom, .quantifier = .@"+" },
+                        const quantifier: Token.Quantifier = switch (mc) {
+                            '?' => .@"?",
+                            '*' => .@"*",
+                            '+' => .@"+",
                             else => unreachable,
+                        };
+                        return Token{
+                            .capture = capture,
+                            .charset = charset,
+                            .quantifier = quantifier,
                         };
                     },
                     else => {},
                 }
             }
 
-            return Token{ .atom = atom, .quantifier = .@"1" };
+            return Token{
+                .capture = capture,
+                .charset = charset,
+                .quantifier = .@"1",
+            };
         }
 
         return null;
@@ -144,20 +150,16 @@ const TokenIter = struct {
 };
 
 test TokenIter {
-    var iter: TokenIter = .init("\x1b[(-?\\d+);(-?\\d+)R");
+    var iter: TokenIter = .init("\x1b\\[(-?\\d+);(-?\\d+)R");
     const want = &[_]Token{
-        .{ .quantifier = .@"1", .atom = .{ .literal = '\x1b' } },
-        .{ .quantifier = .@"1", .atom = .{ .literal = '[' } },
-        .{ .quantifier = .@"1", .atom = .{ .capture_start = {} } },
-        .{ .quantifier = .@"?", .atom = .{ .literal = '-' } },
-        .{ .quantifier = .@"+", .atom = .{ .charset = 0x3ff000000000000 } },
-        .{ .quantifier = .@"1", .atom = .{ .capture_end = {} } },
-        .{ .quantifier = .@"1", .atom = .{ .literal = ';' } },
-        .{ .quantifier = .@"1", .atom = .{ .capture_start = {} } },
-        .{ .quantifier = .@"?", .atom = .{ .literal = '-' } },
-        .{ .quantifier = .@"+", .atom = .{ .charset = 0x3ff000000000000 } },
-        .{ .quantifier = .@"1", .atom = .{ .capture_end = {} } },
-        .{ .quantifier = .@"1", .atom = .{ .literal = 'R' } },
+        .{ .charset = spotCharset('\x1b') },
+        .{ .charset = spotCharset('[') },
+        .{ .charset = spotCharset('-'), .quantifier = .@"?", .capture = .start },
+        .{ .charset = 0x3ff000000000000, .quantifier = .@"+" },
+        .{ .charset = spotCharset(';'), .capture = .end },
+        .{ .charset = spotCharset('-'), .quantifier = .@"?", .capture = .start },
+        .{ .charset = 0x3ff000000000000, .quantifier = .@"+" },
+        .{ .charset = spotCharset('R'), .capture = .end },
     };
     var pos: usize = 0;
     while (try iter.next()) |tok| : (pos += 1) {
@@ -166,54 +168,53 @@ test TokenIter {
     try expectEqual(want.len, pos);
 }
 
-const MaxCaptures: usize = 10;
-const CaptureCapacity: usize = 1024;
+pub fn MatchContext(comptime max_captures: usize, comptime capture_capacity: usize) type {
+    return struct {
+        const Self = @This();
 
-const Context = struct {
-    const Self = @This();
+        capturing: bool = false,
 
-    capturing: bool = false,
+        buf: [capture_capacity]u8 = undefined,
+        buf_pos: usize = 0,
+        capture_start: usize = 0,
 
-    buf: [CaptureCapacity]u8 = undefined,
-    buf_pos: usize = 0,
-    capture_start: usize = 0,
+        capture: [max_captures][]const u8 = undefined,
+        capture_pos: usize = 0,
 
-    capture: [MaxCaptures][]const u8 = undefined,
-    capture_pos: usize = 0,
-
-    pub fn startCapture(self: *Self) !void {
-        assert(!self.capturing);
-        if (self.capture_pos == MaxCaptures)
-            return error.CaptureOverflow;
-        self.capturing = true;
-        self.capture_start = self.buf_pos;
-    }
-
-    pub fn stopCapture(self: *Self) void {
-        assert(self.capturing);
-        assert(self.capture_pos < CaptureCapacity);
-        self.capture[self.capture_pos] = self.buf[self.capture_start..self.buf_pos];
-        self.capture_pos += 1;
-        self.capturing = false;
-    }
-
-    pub fn observe(self: *Self, char: u8) !void {
-        if (self.capturing) {
-            if (self.buf_pos == CaptureCapacity)
+        pub fn startCapture(self: *Self) !void {
+            assert(!self.capturing);
+            if (self.capture_pos == max_captures)
                 return error.CaptureOverflow;
-            self.buf[self.buf_pos] = char;
-            self.buf_pos += 1;
+            self.capturing = true;
+            self.capture_start = self.buf_pos;
         }
-    }
 
-    pub fn captures(self: *const Self) []const []const u8 {
-        assert(!self.capturing);
-        return self.capture[0..self.capture_pos];
-    }
-};
+        pub fn stopCapture(self: *Self) void {
+            assert(self.capturing);
+            assert(self.capture_pos < capture_capacity);
+            self.capture[self.capture_pos] = self.buf[self.capture_start..self.buf_pos];
+            self.capture_pos += 1;
+            self.capturing = false;
+        }
 
-test Context {
-    var c = Context{};
+        pub fn observe(self: *Self, char: u8) !void {
+            if (self.capturing) {
+                if (self.buf_pos == capture_capacity)
+                    return error.CaptureOverflow;
+                self.buf[self.buf_pos] = char;
+                self.buf_pos += 1;
+            }
+        }
+
+        pub fn captures(self: *const Self) []const []const u8 {
+            assert(!self.capturing);
+            return self.capture[0..self.capture_pos];
+        }
+    };
+}
+
+test MatchContext {
+    var c = MatchContext(10, 1024){};
     for ("Hello ") |char|
         try c.observe(char);
 
@@ -246,7 +247,7 @@ fn Terminal(comptime T: type) type {
     };
 }
 
-fn MatchState(comptime T: type) type {
+fn MatchState(comptime T: type, comptime Context: type) type {
     return union(u8) {
         const Self = @This();
         next: *const fn (self: *Self, ctx: *Context, char: u8) Self,
@@ -256,3 +257,89 @@ fn MatchState(comptime T: type) type {
 }
 
 test MatchState {}
+
+pub fn MatchClause(comptime T: type) type {
+    return struct {
+        re: []const u8,
+        outcome: T,
+    };
+}
+
+pub fn matcher(
+    comptime T: type,
+    comptime Context: type,
+    comptime clauses: []const MatchClause(T),
+) MatchState(T, Context) {
+    comptime {
+        const MC = MatchClause(T);
+
+        // Sort the clauses lexically
+        const ordered: [clauses.len]MC = blk: {
+            var ordered: [clauses.len]MC = undefined;
+            for (clauses, 0..) |c, i| ordered[i] = c;
+            const Ctx = struct {
+                pub fn lt(_: @This(), lhs: MC, rhs: MC) bool {
+                    return std.mem.order(u8, lhs.re, rhs.re) == .lt;
+                }
+            };
+            std.mem.sort(MC, &ordered, Ctx{}, Ctx.lt);
+            break :blk ordered;
+        };
+
+        // Count the total number of tokens and the number per clause.
+        const token_count: usize, const token_counts: [clauses.len]usize = blk: {
+            var token_count: usize = 0;
+            var token_counts: [clauses.len]usize = undefined;
+            for (ordered, 0..) |c, i| {
+                var iter: TokenIter = .init(c.re);
+                token_counts[i] = 0;
+                while (iter.next() catch @compileError("Bad regex")) |_| {
+                    token_count += 1;
+                    token_counts[i] += 1;
+                }
+            }
+            break :blk .{ token_count, token_counts };
+        };
+
+        // Fetch the tokens into a const array
+        const store: [token_count]Token = blk: {
+            var store: [token_count]Token = undefined;
+            var store_pos: usize = 0;
+            for (ordered) |c| {
+                var iter: TokenIter = .init(c.re);
+                while (iter.next() catch @compileError("Bad regex")) |tok| {
+                    store[store_pos] = tok;
+                    store_pos += 1;
+                }
+            }
+            break :blk store;
+        };
+
+        // The outcome for each clause
+        const outcomes: [clauses.len]T = blk: {
+            var outcomes: [clauses.len]T = undefined;
+            for (clauses, 0..) |c, i|
+                outcomes[i] = c.outcome;
+
+            break :blk outcomes;
+        };
+
+        // The tokens for each clause
+        const tokens: [clauses.len][]const Token = blk: {
+            var tokens: [clauses.len][]const Token = undefined;
+            var store_pos: usize = 0;
+            for (0..clauses.len) |i| {
+                const next_pos = store_pos + token_counts[i];
+                defer store_pos = next_pos;
+                tokens[i] = store[store_pos..next_pos];
+            }
+            assert(store_pos == token_count);
+            break :blk tokens;
+        };
+
+        _ = outcomes;
+        _ = tokens;
+
+        unreachable;
+    }
+}
