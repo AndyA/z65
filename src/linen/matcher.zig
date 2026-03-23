@@ -167,25 +167,77 @@ test TokenIter {
 }
 
 const MaxCaptures: usize = 10;
+const CaptureCapacity: usize = 1024;
 
 const Context = struct {
     const Self = @This();
 
     capturing: bool = false,
 
-    pub fn startCapture(self: *Self) void {
-        _ = self;
+    buf: [CaptureCapacity]u8 = undefined,
+    buf_pos: usize = 0,
+    capture_start: usize = 0,
+
+    capture: [MaxCaptures][]const u8 = undefined,
+    capture_pos: usize = 0,
+
+    pub fn startCapture(self: *Self) !void {
+        assert(!self.capturing);
+        if (self.capture_pos == MaxCaptures)
+            return error.CaptureOverflow;
+        self.capturing = true;
+        self.capture_start = self.buf_pos;
     }
 
     pub fn stopCapture(self: *Self) void {
-        _ = self;
+        assert(self.capturing);
+        assert(self.capture_pos < CaptureCapacity);
+        self.capture[self.capture_pos] = self.buf[self.capture_start..self.buf_pos];
+        self.capture_pos += 1;
+        self.capturing = false;
     }
 
-    pub fn observe(self: *Self, char: u8) void {
-        _ = self;
-        _ = char;
+    pub fn observe(self: *Self, char: u8) !void {
+        if (self.capturing) {
+            if (self.buf_pos == CaptureCapacity)
+                return error.CaptureOverflow;
+            self.buf[self.buf_pos] = char;
+            self.buf_pos += 1;
+        }
+    }
+
+    pub fn captures(self: *const Self) []const []const u8 {
+        assert(!self.capturing);
+        return self.capture[0..self.capture_pos];
     }
 };
+
+test Context {
+    var c = Context{};
+    for ("Hello ") |char|
+        try c.observe(char);
+
+    try c.startCapture();
+    for ("World") |char|
+        try c.observe(char);
+    c.stopCapture();
+
+    for (" Again") |char|
+        try c.observe(char);
+
+    try c.startCapture();
+    for (".") |char|
+        try c.observe(char);
+    c.stopCapture();
+
+    for ("!") |char|
+        try c.observe(char);
+
+    const caps = c.captures();
+    try expectEqual(2, caps.len);
+    try expectEqualDeep("World", caps[0]);
+    try expectEqualDeep(".", caps[1]);
+}
 
 fn Terminal(comptime T: type) type {
     return struct {
@@ -197,7 +249,7 @@ fn Terminal(comptime T: type) type {
 fn MatchState(comptime T: type) type {
     return union(u8) {
         const Self = @This();
-        next: *const fn (self: *Self, char: u8) Self,
+        next: *const fn (self: *Self, ctx: *Context, char: u8) Self,
         terminal: Terminal(T),
         failed,
     };
