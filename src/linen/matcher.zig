@@ -19,6 +19,10 @@ const Token = struct {
             self.capture == other.capture and
             self.charset == other.charset;
     }
+
+    pub fn match(self: Self, char: u8) bool {
+        return (self.charset & @as(u256, 1) << char) != 0;
+    }
 };
 
 fn spotCharset(char: u8) u256 {
@@ -155,10 +159,10 @@ test TokenIter {
         .{ .charset = spotCharset('\x1b') },
         .{ .charset = spotCharset('[') },
         .{ .charset = spotCharset('-'), .quantifier = .@"?", .capture = .start },
-        .{ .charset = 0x3ff000000000000, .quantifier = .@"+" },
+        .{ .charset = rangeCharset("0-9"), .quantifier = .@"+" },
         .{ .charset = spotCharset(';'), .capture = .end },
         .{ .charset = spotCharset('-'), .quantifier = .@"?", .capture = .start },
-        .{ .charset = 0x3ff000000000000, .quantifier = .@"+" },
+        .{ .charset = rangeCharset("0-9"), .quantifier = .@"+" },
         .{ .charset = spotCharset('R'), .capture = .end },
     };
     var pos: usize = 0;
@@ -250,7 +254,7 @@ fn Terminal(comptime T: type) type {
 fn MatchState(comptime T: type, comptime Context: type) type {
     return union(u8) {
         const Self = @This();
-        next: *const fn (self: *Self, ctx: *Context, char: u8) Self,
+        next: *const fn (ctx: *Context, char: u8) Self,
         terminal: Terminal(T),
         failed,
     };
@@ -263,6 +267,69 @@ pub fn MatchClause(comptime T: type) type {
         re: []const u8,
         outcome: T,
     };
+}
+
+fn scanner(
+    comptime T: type,
+    comptime Context: type,
+    comptime outcomes: []const T,
+    comptime tokens: []const []const Token,
+) MatchState(T, Context) {
+    comptime {
+        const MS = MatchState(T, Context);
+
+        const shim = struct {
+            fn sideEffect(ctx: *Context, tok: *const Token) void {
+                switch (tok.capture) {
+                    .start => ctx.startCapture(),
+                    .end => ctx.stopCapture(),
+                    .nop => {},
+                }
+            }
+
+            fn stepSlice(comptime start: usize, comptime end: usize) MS {
+                assert(end > start);
+                const size = end - start;
+                const next_tokens: [size][]const Token = nt: {
+                    var nt: [size][]const Token = undefined;
+                    for (start..end, 0..) |in, out| {
+                        nt[out] = tokens[in][1..];
+                    }
+                    break :nt nt;
+                };
+                return scanner(T, Context, outcomes[start..end], next_tokens);
+            }
+
+            fn advance(ms: *const MS, ctx: *Context, char: u8) MS {
+                var start: ?struct { t: Token, i: usize } = null;
+
+                // First pass. Only positive matches advance
+                inline for (tokens, 0..) |ts, i| {
+                    // Expression completely satisfied
+                    if (ts.len == 0) {
+                        assert(tokens.len == 1); // only one terminal allowed
+                        return .{ .terminal = .{
+                            .outcomes = outcomes[i],
+                            .captures = ctx.captures(),
+                        } };
+                    }
+                    const t = ts[0];
+                    if (start) |st| {
+                        if (st.t.eql(t)) continue;
+                        if (st.t.match(char)) {
+                            sideEffect(ctx, st.t);
+                            return switch (st.t.quantifier) {
+                                .@"1", .@"?" => stepSlice(start.i, i),
+                                .@"*" => ms,
+                            };
+                        }
+                    }
+                    start = .{ .t = t, .i = i };
+                }
+            }
+        };
+        _ = shim;
+    }
 }
 
 pub fn matcher(
