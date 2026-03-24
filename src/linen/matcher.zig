@@ -8,7 +8,7 @@ const Allocator = std.mem.Allocator;
 const Token = struct {
     const Self = @This();
     pub const Quantifier = enum { @"?", @"*", @"1", @"+" };
-    pub const Capture = enum { nop, start, end };
+    pub const Capture = enum { nop, start, stop };
 
     charset: u256,
     quantifier: Quantifier = .@"1",
@@ -103,7 +103,7 @@ const TokenIter = struct {
             const capture: Token.Capture =
                 cap: switch (nc) {
                     '(', ')' => {
-                        const cap: Token.Capture = if (nc == '(') .start else .end;
+                        const cap: Token.Capture = if (nc == '(') .start else .stop;
                         nc = try self.needChar();
                         break :cap cap;
                     },
@@ -160,10 +160,10 @@ test TokenIter {
         .{ .charset = spotCharset('[') },
         .{ .charset = spotCharset('-'), .quantifier = .@"?", .capture = .start },
         .{ .charset = rangeCharset("0-9"), .quantifier = .@"+" },
-        .{ .charset = spotCharset(';'), .capture = .end },
+        .{ .charset = spotCharset(';'), .capture = .stop },
         .{ .charset = spotCharset('-'), .quantifier = .@"?", .capture = .start },
         .{ .charset = rangeCharset("0-9"), .quantifier = .@"+" },
-        .{ .charset = spotCharset('R'), .capture = .end },
+        .{ .charset = spotCharset('R'), .capture = .stop },
     };
     var pos: usize = 0;
     while (try iter.next()) |tok| : (pos += 1) {
@@ -244,24 +244,6 @@ test MatchContext {
     try expectEqualDeep(".", caps[1]);
 }
 
-fn Terminal(comptime T: type) type {
-    return struct {
-        outcome: T,
-        captures: []const []const u8,
-    };
-}
-
-fn MatchState(comptime T: type, comptime Context: type) type {
-    return union(u8) {
-        const Self = @This();
-        next: *const fn (ctx: *Context, char: u8) Self,
-        terminal: Terminal(T),
-        failed,
-    };
-}
-
-test MatchState {}
-
 pub fn MatchClause(comptime T: type) type {
     return struct {
         re: []const u8,
@@ -283,14 +265,18 @@ fn buildTree(
     comptime outcomes: []const T,
 ) []const TrieNode(T) {
     comptime {
+        // Count distinct prefixes
         const distinct: usize = blk: {
             var count: usize = 0;
             var prev: ?Token = null;
             for (exprs) |ex| {
                 if (ex.len == 0) {
                     assert(exprs.len == 1); // must be the only one
-                    var term: [1]TrieNode(T) = undefined;
-                    term[0] = .{ .terminal = outcomes[0] };
+                    const term = term: {
+                        var term: [1]TrieNode(T) = undefined;
+                        term[0] = .{ .terminal = outcomes[0] };
+                        break :term term;
+                    };
                     return term[0..];
                 }
                 const tok = ex[0];
@@ -302,6 +288,7 @@ fn buildTree(
             break :blk count;
         };
 
+        // Find the span of each distinct prefix
         const spans: [distinct]usize = blk: {
             var spans: [distinct]usize = undefined;
             var span_pos: usize = 0;
@@ -328,6 +315,7 @@ fn buildTree(
             break :blk spans;
         };
 
+        // Recursively build tree
         const nodes: [distinct]TrieNode(T) = blk: {
             var nodes: [distinct]TrieNode(T) = undefined;
             var node_pos: usize = 0;
@@ -452,5 +440,150 @@ test matchTree {
         // Just make sure it compiles...
         const mt = matchTree(Outcome, clauses[0..]);
         _ = mt;
+    }
+}
+
+fn Terminal(comptime T: type) type {
+    return struct {
+        outcome: T,
+        captures: []const []const u8,
+    };
+}
+
+const MatchError = error{CaptureOverflow};
+
+fn MatchState(comptime T: type, comptime Context: type) type {
+    return union(enum) {
+        const Self = @This();
+        next: *const fn (ctx: *Context, char: u8) MatchError!Self,
+        terminal: Terminal(T),
+        failed,
+    };
+}
+
+test MatchState {}
+
+fn makeMatcher(
+    comptime T: type,
+    comptime Context: type,
+    comptime trie: []const TrieNode(T),
+) MatchState(T, Context) {
+    comptime {
+        const MS = MatchState(T, Context);
+        if (trie.len == 1 and trie[0] == .terminal) {
+            const shim = struct {
+                pub fn next(ctx: *Context, _: u8) MatchError!MS {
+                    return .{ .terminal = .{
+                        .outcome = trie[0].terminal,
+                        .captures = ctx.captures(),
+                    } };
+                }
+            };
+
+            return .{ .next = shim.next };
+        } else {
+            const next_child: [trie.len]MS = nc: {
+                var kids: [trie.len]MS = undefined;
+                for (trie, 0..) |node, i| {
+                    kids[i] = makeMatcher(T, Context, node.next.children);
+                }
+                break :nc kids;
+            };
+
+            const star_child: [trie.len]MS = sc: {
+                var kids: [trie.len]MS = undefined;
+                for (trie, 0..) |node, i| {
+                    var tmp: [1]TrieNode(T) = undefined;
+                    tmp[0] = .{ .next = .{
+                        .token = .{
+                            .charset = node.next.token.charset,
+                            .quantifier = .@"*",
+                            .capture = .nop,
+                        },
+                        .children = node.next.children,
+                    } };
+                    kids[i] = makeMatcher(T, Context, &tmp);
+                }
+
+                break :sc kids;
+            };
+
+            const shim = struct {
+                fn applyCapture(ctx: *Context, tok: Token) MatchError!void {
+                    switch (tok.capture) {
+                        .start => try ctx.startCapture(),
+                        .stop => ctx.stopCapture(),
+                        .nop => {},
+                    }
+                }
+
+                pub fn next(ctx: *Context, char: u8) MatchError!MS {
+                    try ctx.observe(char);
+
+                    inline for (trie, 0..) |node, i| {
+                        if (node.next.token.match(char)) {
+                            try applyCapture(ctx, node.next.token);
+                            switch (node.next.token.quantifier) {
+                                .@"1", .@"?" => {
+                                    return next_child[i];
+                                },
+                                .@"*", .@"+" => {
+                                    return star_child[i];
+                                },
+                            }
+                        } else {
+                            switch (node.next.token.quantifier) {
+                                .@"*", .@"?" => {
+                                    try applyCapture(ctx, node.next.token);
+                                    return next_child[i].next(ctx, char);
+                                },
+                                else => {},
+                            }
+                        }
+                    }
+
+                    return .{ .failed = {} };
+                }
+            };
+
+            return .{ .next = shim.next };
+        }
+    }
+}
+
+pub fn matcher(
+    comptime T: type,
+    comptime Context: type,
+    comptime clauses: []const MatchClause(T),
+) type {
+    comptime {
+        @setEvalBranchQuota(std.math.maxInt(u32));
+        const trie = matchTree(T, clauses);
+        return makeMatcher(T, Context, trie);
+    }
+}
+
+test matcher {
+    const Outcome = enum {
+        CURSOR_POS_REPORT,
+        UP,
+        DOWN,
+        RIGHT,
+        LEFT,
+    };
+
+    const clauses = &[_]MatchClause(Outcome){
+        .{ .re = "\x1b[A", .outcome = .UP },
+        .{ .re = "\x1b[B", .outcome = .DOWN },
+        .{ .re = "\x1b[C", .outcome = .RIGHT },
+        .{ .re = "\x1b[D", .outcome = .LEFT },
+        .{ .re = "\x1b[(-?\\d+);(-?\\d+)R", .outcome = .CURSOR_POS_REPORT },
+    };
+
+    const Context = MatchContext(10, 1024);
+
+    comptime {
+        const m = matcher(Outcome, Context, clauses[0..]);
+        _ = m;
     }
 }
