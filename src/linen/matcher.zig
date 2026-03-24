@@ -269,11 +269,97 @@ pub fn MatchClause(comptime T: type) type {
     };
 }
 
-pub fn matcher(
+fn TrieNode(comptime T: type) type {
+    return union(enum) {
+        const Self = @This();
+        next: struct { token: Token, children: []const Self },
+        terminal: T,
+    };
+}
+
+fn buildTree(
     comptime T: type,
-    comptime Context: type,
+    comptime exprs: []const []const Token,
+    comptime outcomes: []const T,
+) []const TrieNode(T) {
+    comptime {
+        const distinct: usize = blk: {
+            var count: usize = 0;
+            var prev: ?Token = null;
+            for (exprs) |ex| {
+                if (ex.len == 0) {
+                    assert(exprs.len == 1); // must be the only one
+                    var term: [1]TrieNode(T) = undefined;
+                    term[0] = .{ .terminal = outcomes[0] };
+                    return term[0..];
+                }
+                const tok = ex[0];
+                if (prev == null or !prev.?.eql(tok)) {
+                    count += 1;
+                    prev = tok;
+                }
+            }
+            break :blk count;
+        };
+
+        const spans: [distinct]usize = blk: {
+            var spans: [distinct]usize = undefined;
+            var span_pos: usize = 0;
+
+            var prev: ?Token = null;
+            var run_length: usize = 0;
+            for (exprs) |ex| {
+                assert(ex.len != 0);
+                const tok = ex[0];
+                if (prev != null and !prev.?.eql(tok)) {
+                    spans[span_pos] = run_length;
+                    run_length = 1;
+                    span_pos += 1;
+                } else {
+                    run_length += 1;
+                    prev = tok;
+                }
+            }
+            if (run_length != 0) {
+                spans[span_pos] = run_length;
+                span_pos += 1;
+            }
+            assert(span_pos == distinct);
+            break :blk spans;
+        };
+
+        const nodes: [distinct]TrieNode(T) = blk: {
+            var nodes: [distinct]TrieNode(T) = undefined;
+            var node_pos: usize = 0;
+            var expr_pos: usize = 0;
+            for (spans) |span| {
+                var child_exprs: [span][]const Token = undefined;
+                for (0..span, expr_pos..) |i, e| {
+                    child_exprs[i] = exprs[e][1..];
+                }
+                nodes[node_pos] = .{ .next = .{
+                    .token = exprs[expr_pos][0],
+                    .children = buildTree(
+                        T,
+                        child_exprs[0..],
+                        outcomes[expr_pos .. expr_pos + span],
+                    ),
+                } };
+                node_pos += 1;
+                expr_pos += span;
+            }
+            assert(node_pos == distinct);
+            break :blk nodes;
+        };
+
+        return nodes[0..];
+    }
+}
+
+fn matchTree(
+    comptime T: type,
     comptime clauses: []const MatchClause(T),
-) MatchState(T, Context) {
+) []const TrieNode(T) {
     comptime {
         const MC = MatchClause(T);
 
@@ -341,83 +427,30 @@ pub fn matcher(
             break :blk exprs;
         };
 
-        _ = outcomes;
-        _ = exprs;
-
-        unreachable;
+        return buildTree(T, &exprs, &outcomes);
     }
 }
 
-const TrieNode = union(enum) {
-    next: struct { token: Token, children: []const TrieNode },
-    terminal: u32,
-};
+test matchTree {
+    const Outcome = enum {
+        CURSOR_POS_REPORT,
+        UP,
+        DOWN,
+        RIGHT,
+        LEFT,
+    };
 
-fn matchTree(comptime exprs: []const []const Token, comptime offset: u32) []const TrieNode {
+    const clauses = &[_]MatchClause(Outcome){
+        .{ .re = "\x1b[A", .outcome = .UP },
+        .{ .re = "\x1b[B", .outcome = .DOWN },
+        .{ .re = "\x1b[C", .outcome = .RIGHT },
+        .{ .re = "\x1b[D", .outcome = .LEFT },
+        .{ .re = "\x1b[(-?\\d+);(-?\\d+)R", .outcome = .CURSOR_POS_REPORT },
+    };
+
     comptime {
-        const distinct: usize = blk: {
-            var count: usize = 0;
-            var prev: ?Token = null;
-            for (exprs) |ex| {
-                if (ex.len == 0) {
-                    assert(exprs.len == 1); // must be the only one
-                    return .{.{ .terminal = offset }};
-                }
-                const tok = ex[0];
-                if (prev == null or !prev.?.eql(tok)) {
-                    count += 1;
-                    prev = tok;
-                }
-            }
-            break :blk count;
-        };
-
-        const spans: [distinct]usize = blk: {
-            var spans: [distinct]usize = undefined;
-            var span_pos: usize = 0;
-
-            var prev: ?Token = null;
-            var run_length: usize = 0;
-            for (exprs) |ex| {
-                assert(ex.len != 0);
-                const tok = ex[0];
-                if (prev != null and !prev.?.eql(tok)) {
-                    spans[span_pos] = run_length;
-                    run_length = 1;
-                    span_pos += 1;
-                } else {
-                    run_length += 1;
-                    prev = tok;
-                }
-            }
-            if (run_length != 0) {
-                spans[span_pos] = run_length;
-                span_pos += 1;
-            }
-            assert(span_pos == distinct);
-            break :blk spans;
-        };
-
-        const nodes: [distinct]TrieNode = blk: {
-            var nodes: [distinct]TrieNode = undefined;
-            var node_pos: usize = 0;
-            var expr_pos: usize = 0;
-            for (spans) |span| {
-                var child_exprs: [span][]const Token = undefined;
-                for (0..span, expr_pos..) |i, e| {
-                    child_exprs[i] = exprs[e][1..];
-                }
-                nodes[node_pos] = .{ .next = .{
-                    .token = exprs[expr_pos][0],
-                    .children = matchTree(child_exprs[0..], offset + expr_pos),
-                } };
-                node_pos += 1;
-                expr_pos += span;
-            }
-            assert(node_pos == distinct);
-            break :blk nodes;
-        };
-
-        return nodes[0..];
+        // Just make sure it compiles...
+        const mt = matchTree(Outcome, clauses[0..]);
+        _ = mt;
     }
 }
