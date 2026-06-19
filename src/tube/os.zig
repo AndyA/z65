@@ -231,7 +231,6 @@ pub fn TubeOS(comptime LangType: type) type {
         }
 
         fn doOSBYTE(self: *Self, cpu: anytype) !void {
-            _ = self;
             switch (cpu.A) {
                 0x7e => {
                     cpu.X = cpu.peek8(@intFromEnum(Symbols.ESCAPE)) & 0x80;
@@ -240,7 +239,7 @@ pub fn TubeOS(comptime LangType: type) type {
                 0x82 => ct.setXY(cpu, @intFromEnum(Symbols.MACHINE)),
                 0x83 => ct.setXY(cpu, @intFromEnum(Symbols.PAGE)),
                 0x84 => ct.setXY(cpu, @intFromEnum(Symbols.HIMEM)),
-                0xda => {}, // set VDU queue length
+                0xda => self.vdu.reset(),
                 else => print("OSBYTE {x} not implemented {f}\n", .{ cpu.A, cpu }),
             }
         }

@@ -217,6 +217,7 @@ pub const VDU = struct {
     pub fn init(writer: *std.Io.Writer) Self {
         return Self{ .writer = writer };
     }
+
     pub fn peek8(self: Self, addr: u16) u8 {
         const pos: u8 = @intCast(addr);
         if (pos > self.q_size) @panic("Out of range");
