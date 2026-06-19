@@ -1,4 +1,5 @@
 const std = @import("std");
+const print = std.debug.print;
 const Io = std.Io;
 const serde = @import("../tools/serde.zig").serde;
 const ct = @import("../tools/cpu_tools.zig");
@@ -162,6 +163,11 @@ pub fn TubeOS(comptime LangType: type) type {
             }
         }
 
+        pub fn @"hook:signal"(self: *Self, cpu: anytype) void {
+            _ = self;
+            cpu.poke8(@intFromEnum(Symbols.ESCAPE), 0xff);
+        }
+
         pub fn hexDump(self: Self, cpu: anytype, start: u16, end: u16) !void {
             var pos = start;
             var buf: [16]u8 = undefined;
@@ -234,7 +240,7 @@ pub fn TubeOS(comptime LangType: type) type {
                 0x83 => ct.setXY(cpu, @intFromEnum(Symbols.PAGE)),
                 0x84 => ct.setXY(cpu, @intFromEnum(Symbols.HIMEM)),
                 0xda => {}, // set VDU queue length
-                else => std.debug.print("OSBYTE {x} not implemented {f}\n", .{ cpu.A, cpu }),
+                else => print("OSBYTE {x} not implemented {f}\n", .{ cpu.A, cpu }),
             }
         }
 
@@ -263,7 +269,7 @@ pub fn TubeOS(comptime LangType: type) type {
                 0x02 => {
                     self.setTime(RW_u40.read(cpu, addr) * 10);
                 },
-                else => std.debug.print("OSWORD {x} not implemented\n", .{cpu.A}),
+                else => print("OSWORD {x} not implemented\n", .{cpu.A}),
             }
         }
 
@@ -288,27 +294,27 @@ pub fn TubeOS(comptime LangType: type) type {
 
         fn doOSARGS(self: *Self, cpu: anytype) !void {
             _ = self;
-            std.debug.print("OSARGS {f}\n", .{cpu});
+            print("OSARGS {f}\n", .{cpu});
         }
 
         fn doOSBGET(self: *Self, cpu: anytype) !void {
             _ = self;
-            std.debug.print("OSBGET {f}\n", .{cpu});
+            print("OSBGET {f}\n", .{cpu});
         }
 
         fn doOSBPUT(self: *Self, cpu: anytype) !void {
             _ = self;
-            std.debug.print("OSBPUT {f}\n", .{cpu});
+            print("OSBPUT {f}\n", .{cpu});
         }
 
         fn doOSGBPB(self: *Self, cpu: anytype) !void {
             _ = self;
-            std.debug.print("OSGBPB {f}\n", .{cpu});
+            print("OSGBPB {f}\n", .{cpu});
         }
 
         fn doOSFIND(self: *Self, cpu: anytype) !void {
             _ = self;
-            std.debug.print("OSFIND {f}\n", .{cpu});
+            print("OSFIND {f}\n", .{cpu});
         }
 
         pub fn trap(self: *Self, cpu: anytype, opcode: u8) !void {
@@ -328,7 +334,7 @@ pub fn TubeOS(comptime LangType: type) type {
                     .OSFIND => try self.doOSFIND(cpu),
                 }
             } else {
-                std.debug.print("Illegal instruction: {x} at {f}\n", .{ opcode, cpu });
+                print("Illegal instruction: {x} at {f}\n", .{ opcode, cpu });
                 @panic("Illegal instruction");
             }
         }

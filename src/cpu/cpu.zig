@@ -1,10 +1,11 @@
 const std = @import("std");
+const print = std.debug.print;
 
 pub const PanicTrapHandler = struct {
     pub const Self = @This();
     pub fn trap(self: Self, cpu: anytype, opcode: u8) !void {
         _ = self;
-        std.debug.print("Illegal instruction {x} at {x}\n", .{ opcode, cpu.PC });
+        print("Illegal instruction {x} at {x}\n", .{ opcode, cpu.PC });
         @panic("Illegal instruction");
     }
 };
@@ -75,7 +76,7 @@ fn makeCore(
         const shim = struct {
             pub fn instr(cpu: anytype) void {
                 cpu.os.trap(cpu, opcode) catch |err| {
-                    std.debug.print("Error in trap handler {s}\n", .{@errorName(err)});
+                    print("Error in trap handler {s}\n", .{@errorName(err)});
                     // @panic("Error in trap handler");
                 };
             }
@@ -146,6 +147,7 @@ pub fn CPU(
             int_state: InterruptState = .None,
             stopped: bool = false,
             sleeping: bool = false,
+            signal: std.Io.Event = .unset,
 
             A: u8 = 0,
             X: u8 = 0,
@@ -329,6 +331,10 @@ pub fn CPU(
                 self.wake();
             }
 
+            pub fn setSignal(self: *Self, io: std.Io) void {
+                self.signal.set(io);
+            }
+
             fn pollInterrupts(self: *Self) void {
                 if (self.int_source.pollNMI()) {
                     self.int_source.ackNMI();
@@ -353,6 +359,10 @@ pub fn CPU(
 
             pub fn step(self: *Self) void {
                 self.pollInterrupts();
+                if (@hasDecl(OS, "hook:signal") and self.signal.isSet()) {
+                    @branchHint(.unlikely);
+                    self.os.@"hook:signal"(self);
+                }
                 switch (self.ifetch8()) {
                     inline 0...core.despatch.len - 1 => |op| core.despatch[op](self),
                 }
