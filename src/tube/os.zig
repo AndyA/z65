@@ -148,6 +148,8 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BYTEV));
             assert(cpu.PC == @intFromEnum(MOSEntry.OSCLI));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.CLIV));
+
+            // Setup IRQ vector
             assert(cpu.PC == 0xfffa);
             cpu.poke16(IRQV, irq_addr);
         }
