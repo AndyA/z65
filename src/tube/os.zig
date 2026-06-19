@@ -165,8 +165,7 @@ pub fn TubeOS(comptime LangType: type) type {
             }
         }
 
-        pub fn @"hook:signal"(self: *Self, cpu: anytype) void {
-            _ = self;
+        pub fn @"hook:signal"(_: *Self, cpu: anytype) void {
             cpu.poke8(@intFromEnum(Symbols.ESCAPE), 0xff);
         }
 
