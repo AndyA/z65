@@ -69,6 +69,7 @@ pub const HiBasic = struct {
 
     alloc: std.mem.Allocator,
     config: HiBasicConfig,
+    reader: *std.Io.Reader,
     writer: *std.Io.Writer,
     ram: *[0x10000]u8,
 
@@ -83,6 +84,7 @@ pub const HiBasic = struct {
     pub fn init(
         alloc: std.mem.Allocator,
         config: HiBasicConfig,
+        reader: *std.Io.Reader,
         writer: *std.Io.Writer,
         ram: *[0x10000]u8,
     ) !Self {
@@ -109,6 +111,7 @@ pub const HiBasic = struct {
         return Self{
             .alloc = alloc,
             .config = config,
+            .reader = reader,
             .writer = writer,
             .ram = ram,
             .exec = try HiBasicExec.init(alloc, output.items),

@@ -20,13 +20,6 @@ pub fn build(b: *std.Build) void {
 
     hi_basic.root_module.addImport("clap", clap.module("clap"));
 
-    const anyline = b.dependency("anyline", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
-    hi_basic.root_module.addImport("anyline", anyline.module("anyline"));
-
     b.installArtifact(hi_basic);
 
     const mule = b.addExecutable(.{
