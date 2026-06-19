@@ -222,8 +222,8 @@ pub fn TubeOS(comptime LangType: type) type {
             defer cmd_line.deinit(self.alloc);
             var res = try OSCLI.handle(self.alloc, self.io, cmd_line.items, cpu);
 
-            if (@hasDecl(LangType, "hook:oscli")) {
-                if (!res) res = try self.lang.@"hook:oscli"(cmd_line.items, cpu);
+            if (@hasDecl(LangType, "hook:oscli") and !res) {
+                res = try self.lang.@"hook:oscli"(cmd_line.items, cpu);
             }
 
             if (!res)
