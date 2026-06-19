@@ -96,7 +96,7 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.asmi(.PLA);
             cpu.asmi(.PHA);
             cpu.asmi8(.@"AND #", 0x10);
-            cpu.asmi8(.@"BNE rel", 5);
+            cpu.asmi8(.@"BNE rel", 5); // BRK
             cpu.asmi8(.@"LDA zpg", 0xFC);
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.IRQV));
 
