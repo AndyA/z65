@@ -129,6 +129,7 @@ pub fn TubeOS(comptime LangType: type) type {
             assert(cpu.PC == @intFromEnum(MOSEntry.OSASCI));
             cpu.asmi8(.@"CMP #", 0x0d); // OSASCI
             cpu.asmi8(.@"BNE rel", @intCast(@intFromEnum(MOSEntry.OSWRCH) - cpu.PC - 2));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSNEWL));
             cpu.asmi8(.@"LDA #", 0x0a); // OSNEWL
             cpu.asmi16(.@"JSR abs", @intFromEnum(MOSEntry.OSWRCH));
             cpu.asmi8(.@"LDA #", 0x0d);
