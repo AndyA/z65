@@ -234,8 +234,8 @@ pub fn TubeOS(comptime LangType: type) type {
             _ = self;
             switch (cpu.A) {
                 0x7e => {
-                    cpu.X = cpu.peek8(0xff) & 0x80;
-                    cpu.poke8(0xff, 0x00); // clear Escape
+                    cpu.X = cpu.peek8(@intFromEnum(Symbols.ESCAPE)) & 0x80;
+                    cpu.poke8(@intFromEnum(Symbols.ESCAPE), 0x00); // clear Escape
                 },
                 0x82 => ct.setXY(cpu, @intFromEnum(Symbols.MACHINE)),
                 0x83 => ct.setXY(cpu, @intFromEnum(Symbols.PAGE)),
