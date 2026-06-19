@@ -1,4 +1,5 @@
 const std = @import("std");
+const assert = std.debug.assert;
 const print = std.debug.print;
 const Io = std.Io;
 const serde = @import("../tools/serde.zig").serde;
@@ -115,7 +116,7 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.asmi(.CLI);
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BRKV));
 
-            std.debug.assert(cpu.PC <= STUB_START);
+            assert(cpu.PC <= STUB_START);
 
             cpu.PC = STUB_START;
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FINDV));
@@ -125,17 +126,18 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.ARGSV));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FILEV));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.RDCHV));
-            std.debug.assert(cpu.PC == 0xffe3);
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSASCI));
             cpu.asmi8(.@"CMP #", 0x0d); // OSASCI
-            cpu.asmi8(.@"BNE rel", 0x07); // 7 bytes to LFFEE
+            cpu.asmi8(.@"BNE rel", @intCast(@intFromEnum(MOSEntry.OSWRCH) - cpu.PC - 2));
             cpu.asmi8(.@"LDA #", 0x0a); // OSNEWL
-            cpu.asmi16(.@"JSR abs", 0xffee);
+            cpu.asmi16(.@"JSR abs", @intFromEnum(MOSEntry.OSWRCH));
             cpu.asmi8(.@"LDA #", 0x0d);
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSWRCH));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.WRCHV));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.WORDV));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BYTEV));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.CLIV));
-            std.debug.assert(cpu.PC == 0xfffa);
+            assert(cpu.PC == 0xfffa);
             cpu.poke16(IRQV, irq_addr);
         }
 
