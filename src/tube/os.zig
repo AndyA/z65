@@ -119,12 +119,19 @@ pub fn TubeOS(comptime LangType: type) type {
             assert(cpu.PC <= STUB_START);
 
             cpu.PC = STUB_START;
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSFIND));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FINDV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSGBPB));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.GBPBV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSBPUT));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BPUTV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSBGET));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BGETV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSARGS));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.ARGSV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSFILE));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.FILEV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSRDCH));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.RDCHV));
             assert(cpu.PC == @intFromEnum(MOSEntry.OSASCI));
             cpu.asmi8(.@"CMP #", 0x0d); // OSASCI
@@ -135,8 +142,11 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.asmi8(.@"LDA #", 0x0d);
             assert(cpu.PC == @intFromEnum(MOSEntry.OSWRCH));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.WRCHV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSWORD));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.WORDV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSBYTE));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.BYTEV));
+            assert(cpu.PC == @intFromEnum(MOSEntry.OSCLI));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(MOSVectors.CLIV));
             assert(cpu.PC == 0xfffa);
             cpu.poke16(IRQV, irq_addr);
