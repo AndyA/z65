@@ -67,7 +67,7 @@ pub fn TubeOS(comptime LangType: type) type {
             self.install(cpu);
         }
 
-        fn vector(cpu: anytype, entry: MOSEntry, vec: MOSVectors) void {
+        fn osvec(cpu: anytype, entry: MOSEntry, vec: MOSVectors) void {
             assert(cpu.PC == @intFromEnum(entry));
             cpu.asmi16(.@"JMP (abs)", @intFromEnum(vec));
         }
@@ -124,13 +124,13 @@ pub fn TubeOS(comptime LangType: type) type {
             assert(cpu.PC <= STUB_START);
 
             cpu.PC = STUB_START;
-            vector(cpu, .OSFIND, .FINDV);
-            vector(cpu, .OSGBPB, .GBPBV);
-            vector(cpu, .OSBPUT, .BPUTV);
-            vector(cpu, .OSBGET, .BGETV);
-            vector(cpu, .OSARGS, .ARGSV);
-            vector(cpu, .OSFILE, .FILEV);
-            vector(cpu, .OSRDCH, .RDCHV);
+            osvec(cpu, .OSFIND, .FINDV);
+            osvec(cpu, .OSGBPB, .GBPBV);
+            osvec(cpu, .OSBPUT, .BPUTV);
+            osvec(cpu, .OSBGET, .BGETV);
+            osvec(cpu, .OSARGS, .ARGSV);
+            osvec(cpu, .OSFILE, .FILEV);
+            osvec(cpu, .OSRDCH, .RDCHV);
             assert(cpu.PC == @intFromEnum(MOSEntry.OSASCI));
             cpu.asmi8(.@"CMP #", 0x0d); // OSASCI
             cpu.asmi8(.@"BNE rel", @intCast(@intFromEnum(MOSEntry.OSWRCH) - cpu.PC - 2));
@@ -138,10 +138,10 @@ pub fn TubeOS(comptime LangType: type) type {
             cpu.asmi8(.@"LDA #", 0x0a); // OSNEWL
             cpu.asmi16(.@"JSR abs", @intFromEnum(MOSEntry.OSWRCH));
             cpu.asmi8(.@"LDA #", 0x0d);
-            vector(cpu, .OSWRCH, .WRCHV);
-            vector(cpu, .OSWORD, .WORDV);
-            vector(cpu, .OSBYTE, .BYTEV);
-            vector(cpu, .OSCLI, .CLIV);
+            osvec(cpu, .OSWRCH, .WRCHV);
+            osvec(cpu, .OSWORD, .WORDV);
+            osvec(cpu, .OSBYTE, .BYTEV);
+            osvec(cpu, .OSCLI, .CLIV);
 
             // Setup IRQ vector
             assert(cpu.PC == 0xfffa);
