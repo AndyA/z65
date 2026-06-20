@@ -361,6 +361,7 @@ pub fn CPU(
                 self.pollInterrupts();
                 if (@hasDecl(OS, "hook:signal") and self.signal.isSet()) {
                     @branchHint(.unlikely);
+                    self.signal.reset();
                     self.os.@"hook:signal"(self);
                 }
                 switch (self.ifetch8()) {
