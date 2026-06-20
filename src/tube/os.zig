@@ -79,19 +79,18 @@ pub fn TubeOS(comptime LangType: type) type {
 
             cpu.PC = 0xff00; // traps
             // Build traps and populate vectors
-            switch (@typeInfo(MOSFunction)) {
-                .@"enum" => |info| {
-                    inline for (info.fields) |field| {
-                        const vec_name = field.name[2..] ++ "V";
-                        const vec_addr: u16 = @intFromEnum(@field(MOSVectors, vec_name));
-                        const trap_addr = cpu.PC;
-                        cpu.asm8(TRAP_OPCODE);
-                        cpu.asm8(@intCast(field.value));
-                        cpu.asmi(.RTS);
-                        cpu.poke16(vec_addr, trap_addr);
-                    }
-                },
-                else => @panic("Invalid MOSFunction type"),
+            inline for (@typeInfo(MOSFunction).@"enum".fields) |field| {
+                const vec_name = field.name[2..] ++ "V";
+                const vec_addr: u16 = @intFromEnum(@field(MOSVectors, vec_name));
+                const trap_addr = cpu.PC;
+
+                // Assemble trap instruction
+                cpu.asm8(TRAP_OPCODE);
+                cpu.asm8(@intCast(field.value));
+                cpu.asmi(.RTS);
+
+                // Setup vector
+                cpu.poke16(vec_addr, trap_addr);
             }
 
             const irq_addr = cpu.PC;
