@@ -29,11 +29,7 @@ pub const PSR = packed struct {
         const on_flags = "NV1BDIZC";
         var mask: u8 = 0x80;
         for (off_flags, 0..) |c, i| {
-            if (flags & mask != 0) {
-                buf[i] = on_flags[i];
-            } else {
-                buf[i] = c;
-            }
+            buf[i] = if (flags & mask != 0) on_flags[i] else c;
             mask >>= 1;
         }
 
