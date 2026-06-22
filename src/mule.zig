@@ -10,23 +10,35 @@ const ReadResult = union(enum) {
     shutdown: error{Canceled}!void,
 };
 
-fn readWithTimeout(io: Io, reader: *Io.Reader, timeout: ?Io.Duration) !ReadResult {
-    var results: [10]ReadResult = undefined;
-    var select = Io.Select(ReadResult).init(io, &results);
-    defer _ = select.cancel();
+const Keyboard = struct {
+    const Self = @This();
+    io: Io,
+    reader: *Io.Reader,
+    stop: Io.Event = .unset,
+    queue: Io.Queue(u8),
 
-    // _ = reader;
-    select.async(.input, Io.Reader.takeByte, .{reader});
-
-    if (timeout) |to| {
-        select.async(.timeout, Io.Clock.Duration.sleep, .{
-            .{ .raw = to, .clock = .awake },
-            io,
-        });
+    pub fn init(io: Io, reader: *Io.Reader, buffer: []u8) Self {
+        return Self{ .io = io, .reader = reader, .queue = .init(buffer) };
     }
 
-    return try select.await();
-}
+    pub fn readWithTimeout(self: *Self, timeout: ?Io.Duration) !ReadResult {
+        var results: [10]ReadResult = undefined;
+        var select = Io.Select(ReadResult).init(self.io, &results);
+        defer _ = select.cancel();
+
+        select.async(.input, Io.Reader.takeByte, .{self.reader});
+        select.async(.shutdown, Io.Event.wait, .{ &self.stop, self.io });
+
+        if (timeout) |to| {
+            select.async(.timeout, Io.Clock.Duration.sleep, .{
+                .{ .raw = to, .clock = .awake },
+                self.io,
+            });
+        }
+
+        return try select.await();
+    }
+};
 
 pub fn main(init: std.process.Init) !void {
     // Set up our I/O implementation.
@@ -43,9 +55,13 @@ pub fn main(init: std.process.Init) !void {
 
     var io_buf: [32]u8 = undefined;
     var reader = stdin.reader(init.io, &io_buf);
+    var kb_buf: [256]u8 = undefined;
+
+    var kb: Keyboard = .init(io, &reader.interface, &kb_buf);
+
     // var last_ts: i64 = 0;
     while (true) {
-        const res = try readWithTimeout(io, &reader.interface, .fromSeconds(1));
+        const res = try kb.readWithTimeout(.fromSeconds(1));
         switch (res) {
             .input => |i| {
                 const c = try i;
