@@ -19,6 +19,8 @@ pub fn main(init: std.process.Init) !void {
     const term = try linen.Term.init(.{ .stdin = stdin });
     defer term.deinit();
 
+    var escape: Io.Event = .unset;
+
     // const clock: Io.Clock = .awake;
     print("Hit space to quit\n", .{});
 
@@ -26,17 +28,22 @@ pub fn main(init: std.process.Init) !void {
     var reader = stdin.reader(init.io, &io_buf);
     var kb_buf: [256]u8 = undefined;
 
-    var kb: Keyboard = .init(io, &reader.interface, &kb_buf, .init(onEscape, &.{}));
+    var kb: Keyboard = .init(io, &reader.interface, &kb_buf, &escape);
     try kb.start();
     defer kb.stop();
 
     // var last_ts: i64 = 0;
-    while (true) {
-        if (kb.poll(.fromSeconds(1))) |c| {
-            print("\\x{x:0>2}", .{c});
-            if (c == 0x20) break;
-        } else {
-            print("* ", .{});
+    main: while (true) {
+        switch (kb.poll(.fromSeconds(1))) {
+            .input => |c| {
+                print("\\x{x:0>2}", .{c});
+                if (c == 0x20) break :main;
+            },
+            .escape => {
+                print("Escape\n", .{});
+                escape.reset();
+            },
+            .timeout => print("* ", .{}),
         }
     }
 

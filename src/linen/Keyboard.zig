@@ -1,14 +1,12 @@
 const std = @import("std");
 const Io = std.Io;
 const assert = std.debug.assert;
-const tools = @import("tools.zig");
 
 const Self = @This();
-const EscapeHandler = tools.Signal(anyopaque);
 
 io: Io,
 reader: *Io.Reader,
-on_escape: EscapeHandler,
+escape_event: *Io.Event,
 queue: Io.Queue(u8),
 trap_escape: bool = true, // TODO atomic
 shutdown: Io.Event = .unset,
@@ -19,12 +17,12 @@ const ReadResult = union(enum) {
     shutdown: error{Canceled}!void,
 };
 
-pub fn init(io: Io, reader: *Io.Reader, buffer: []u8, on_escape: EscapeHandler) Self {
+pub fn init(io: Io, reader: *Io.Reader, buffer: []u8, escape_event: *Io.Event) Self {
     return Self{
         .io = io,
         .reader = reader,
         .queue = .init(buffer),
-        .on_escape = on_escape,
+        .escape_event = escape_event,
     };
 }
 
@@ -55,7 +53,7 @@ fn enqueue(self: *Self, c: u8) void {
 
 fn handleEscape(self: *Self) void {
     if (self.trap_escape) {
-        self.on_escape.signal();
+        self.escape_event.set(self.io);
     } else {
         self.enqueue(0x1b);
     }
@@ -104,18 +102,34 @@ pub fn trapEscape(self: *Self, trap: bool) void {
     self.trap_escape = trap;
 }
 
-const PollError = error{ Canceled, Closed, ConcurrencyUnavailable };
+const PollResult = union(enum) {
+    input: u8,
+    escape: void,
+    timeout: void,
+};
 
-pub fn poll(self: *Self, timeout: ?Io.Duration) ?u8 {
-    const PollResult = union(enum) {
+pub fn poll(self: *Self, timeout: ?Io.Duration) PollResult {
+    const Result = union(enum) {
         input: error{ Canceled, Closed }!u8,
         timeout: error{Canceled}!void,
+        escape: error{Canceled}!void,
     };
-    var results: [2]PollResult = undefined;
-    var select = Io.Select(PollResult).init(self.io, &results);
+    var results: [3]Result = undefined;
+    var select = Io.Select(Result).init(self.io, &results);
     defer _ = select.cancel();
 
-    select.concurrent(.input, Io.Queue(u8).getOne, .{ &self.queue, self.io }) catch unreachable;
+    select.concurrent(
+        .input,
+        Io.Queue(u8).getOne,
+        .{ &self.queue, self.io },
+    ) catch unreachable;
+
+    select.concurrent(
+        .escape,
+        Io.Event.wait,
+        .{ self.escape_event, self.io },
+    ) catch unreachable;
+
     if (timeout) |t|
         select.concurrent(.timeout, Io.Clock.Duration.sleep, .{
             .{ .raw = t, .clock = .awake },
@@ -123,7 +137,8 @@ pub fn poll(self: *Self, timeout: ?Io.Duration) ?u8 {
         }) catch unreachable;
 
     return switch (select.await() catch unreachable) {
-        .input => |c| c catch unreachable,
-        .timeout => null,
+        .input => |c| .{ .input = c catch unreachable },
+        .escape => .{ .escape = {} },
+        .timeout => .{ .timeout = {} },
     };
 }
