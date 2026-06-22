@@ -49,7 +49,7 @@ const Keyboard = struct {
     }
 
     fn readWithTimeout(self: *Self, timeout: ?Io.Duration) !ReadResult {
-        var results: [10]ReadResult = undefined;
+        var results: [3]ReadResult = undefined;
         var select = Io.Select(ReadResult).init(self.io, &results);
         defer _ = select.cancel();
 
@@ -117,6 +117,28 @@ const Keyboard = struct {
         const t = try std.Thread.spawn(.{}, run, .{self});
         t.detach();
     }
+
+    pub fn poll(self: *Self, timeout: ?Io.Duration) !?u8 {
+        const PollResult = union(enum) {
+            input: error{ Canceled, Closed }!u8,
+            timeout: error{Canceled}!void,
+        };
+        var results: [2]PollResult = undefined;
+        var select = Io.Select(PollResult).init(self.io, &results);
+        defer _ = select.cancel();
+
+        try select.concurrent(.input, Io.Queue(u8).getOne, .{ &self.queue, self.io });
+        if (timeout) |t|
+            try select.concurrent(.timeout, Io.Clock.Duration.sleep, .{
+                .{ .raw = t, .clock = .awake },
+                self.io,
+            });
+
+        return switch (try select.await()) {
+            .input => |c| try c,
+            .timeout => null,
+        };
+    }
 };
 
 fn onEscape(_: *anyopaque) void {
@@ -146,9 +168,12 @@ pub fn main(init: std.process.Init) !void {
 
     // var last_ts: i64 = 0;
     while (true) {
-        const c = try kb.queue.getOne(io);
-        print("\\x{x:0>2}", .{c});
-        if (c == 0x20) break;
+        if (try kb.poll(.fromSeconds(1))) |c| {
+            print("\\x{x:0>2}", .{c});
+            if (c == 0x20) break;
+        } else {
+            print("* ", .{});
+        }
     }
 
     print("Bye!\n", .{});
