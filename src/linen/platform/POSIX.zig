@@ -4,37 +4,37 @@ const print = std.debug.print;
 const builtin = @import("builtin");
 
 const string = @cImport(@cInclude("string.h"));
-const unistd = @cImport(@cInclude("unistd.h"));
 
 const Self = @This();
 pub const Error = std.posix.TermiosGetError || std.posix.TermiosSetError;
-const CSI = "\x1B[";
 
-previous_termios: std.posix.termios,
+pub const Config = struct {
+    stdin: Io.File,
+};
 
-pub fn init() Error!Self {
-    const stdin_handle = Io.File.stdin().handle;
-    const previous_termios: std.posix.termios = try std.posix.tcgetattr(stdin_handle);
+config: Config,
+previous_termios: std.posix.termios = undefined,
+
+pub fn init(config: Config) Error!Self {
+    const previous_termios: std.posix.termios = try std.posix.tcgetattr(config.stdin.handle);
 
     var termios = previous_termios;
     termios.lflag.ICANON = false;
     termios.lflag.ECHO = false;
 
-    termios.cc[@intFromEnum(std.posix.V.INTR)] = unistd._POSIX_VDISABLE;
-    if (builtin.os.tag == .macos or builtin.os.tag == .freebsd) {
-        termios.cc[@intFromEnum(std.posix.V.DSUSP)] = unistd._POSIX_VDISABLE;
-        termios.cc[@intFromEnum(std.posix.V.SUSP)] = unistd._POSIX_VDISABLE;
-    }
+    termios.cc[@intFromEnum(std.posix.V.INTR)] = 0xff; // disable
+    if (@hasDecl(std.posix.V, "DSUSP"))
+        termios.cc[@intFromEnum(std.posix.V.DSUSP)] = 0xff; // disable
+    if (@hasDecl(std.posix.V, "SUSP"))
+        termios.cc[@intFromEnum(std.posix.V.SUSP)] = 0xff; // disable
 
-    try std.posix.tcsetattr(stdin_handle, std.posix.TCSA.NOW, termios);
+    try std.posix.tcsetattr(config.stdin.handle, std.posix.TCSA.NOW, termios);
 
-    return Self{ .previous_termios = previous_termios };
+    return Self{ .config = config, .previous_termios = previous_termios };
 }
 
 pub fn deinit(self: Self) void {
-    const stdin_handle = Io.File.stdin().handle;
-
-    std.posix.tcsetattr(stdin_handle, std.posix.TCSA.NOW, self.previous_termios) catch {
+    std.posix.tcsetattr(self.config.stdin.handle, std.posix.TCSA.NOW, self.previous_termios) catch {
         const errno_val = std.c._errno().*;
         const errno_string = string.strerror(errno_val);
 
@@ -47,6 +47,7 @@ pub fn deinit(self: Self) void {
 //   - either the cursor position has been reported
 //   - or we timeout (~20ms)
 
+const CSI = "\x1B[";
 pub fn getCursorPosition(self: Self, input: anytype) !void {
     _ = self;
     try input.writeAll(CSI ++ "6n");
