@@ -38,10 +38,6 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
     run_cmd.step.dependOn(b.getInstallStep());
 
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
-
     const mule_step = b.step("mule", "Run the mule");
     const mule_cmd = b.addRunArtifact(mule);
     mule_step.dependOn(&mule_cmd.step);
