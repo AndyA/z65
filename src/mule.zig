@@ -14,8 +14,9 @@ const Keyboard = struct {
     const Self = @This();
     io: Io,
     reader: *Io.Reader,
-    stop: Io.Event = .unset,
     queue: Io.Queue(u8),
+    shutdown: Io.Event = .unset,
+    worker: std.Thread = undefined,
 
     pub fn init(io: Io, reader: *Io.Reader, buffer: []u8) Self {
         return Self{ .io = io, .reader = reader, .queue = .init(buffer) };
@@ -26,17 +27,66 @@ const Keyboard = struct {
         var select = Io.Select(ReadResult).init(self.io, &results);
         defer _ = select.cancel();
 
-        select.async(.input, Io.Reader.takeByte, .{self.reader});
-        select.async(.shutdown, Io.Event.wait, .{ &self.stop, self.io });
+        try select.concurrent(.input, Io.Reader.takeByte, .{self.reader});
+        try select.concurrent(.shutdown, Io.Event.wait, .{ &self.shutdown, self.io });
 
-        if (timeout) |to| {
-            select.async(.timeout, Io.Clock.Duration.sleep, .{
-                .{ .raw = to, .clock = .awake },
+        if (timeout) |t|
+            try select.concurrent(.timeout, Io.Clock.Duration.sleep, .{
+                .{ .raw = t, .clock = .awake },
                 self.io,
             });
-        }
 
         return try select.await();
+    }
+
+    fn enqueue(self: *Self, c: u8) !void {
+        try self.queue.putOne(self.io, c);
+    }
+
+    fn escape(self: *Self) !void {
+        print("Escape!\n", .{});
+        _ = self;
+        // try self.enqueue(0x1b);
+    }
+
+    fn run(self: *Self) !void {
+        main: while (true) {
+            const res = try self.readWithTimeout(null);
+            switch (res) {
+                .input => |i| {
+                    switch (try i) {
+                        0x1b => {
+                            const res2 = try self.readWithTimeout(.fromMilliseconds(10));
+                            switch (res2) {
+                                .input => |ii| {
+                                    switch (try ii) {
+                                        '[' => {
+                                            try self.enqueue(0x1b);
+                                            try self.enqueue('[');
+                                        },
+                                        else => try self.escape(),
+                                    }
+                                },
+                                .shutdown => break :main,
+                                .timeout => try self.escape(),
+                            }
+                        },
+                        else => |c| try self.enqueue(c),
+                    }
+                },
+                .shutdown => break :main,
+                .timeout => unreachable,
+            }
+        }
+    }
+
+    pub fn stop(self: *Self) void {
+        self.shutdown.set(self.io);
+    }
+
+    pub fn start(self: *Self) !void {
+        const t = try std.Thread.spawn(.{}, run, .{self});
+        t.detach();
     }
 };
 
@@ -58,30 +108,14 @@ pub fn main(init: std.process.Init) !void {
     var kb_buf: [256]u8 = undefined;
 
     var kb: Keyboard = .init(io, &reader.interface, &kb_buf);
+    try kb.start();
+    defer kb.stop();
 
     // var last_ts: i64 = 0;
     while (true) {
-        const res = try kb.readWithTimeout(.fromSeconds(1));
-        switch (res) {
-            .input => |i| {
-                const c = try i;
-                print("\\x{x:0>2}", .{c});
-                if (c == 0x20) break;
-            },
-            .shutdown => {},
-            .timeout => print("* ", .{}),
-        }
-        // const c = try reader.interface.takeByte();
-        // const ts = clock.now(init.io).toMilliseconds();
-        // if (last_ts == 0) last_ts = ts;
-        // const elapsed = ts - last_ts;
-        // last_ts = ts;
-        // if (elapsed > 10) print("\n", .{});
-        // if (c == 0x20) break;
-        // if (std.ascii.isPrint(c))
-        //     print("{c}", .{c})
-        // else
-        //     print("\\x{x:0>2}", .{c});
+        const c = try kb.queue.getOne(io);
+        print("\\x{x:0>2}", .{c});
+        if (c == 0x20) break;
     }
 
     print("Bye!\n", .{});
