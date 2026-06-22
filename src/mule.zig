@@ -4,13 +4,34 @@ const print = std.debug.print;
 const assert = std.debug.assert;
 const linen = @import("linen/linen.zig");
 
+fn Signal(comptime T: type) type {
+    return struct {
+        const Self = @This();
+        const Handler = *const fn (ctx: *T) void;
+        handler: Handler,
+        context: *T,
+
+        pub fn init(handler: Handler, context: *T) Self {
+            return .{ .handler = handler, .context = context };
+        }
+
+        pub fn signal(self: Self) void {
+            self.handler(self.context);
+        }
+    };
+}
+
 const Keyboard = struct {
     const Self = @This();
+    const EscapeHandler = Signal(anyopaque);
+
     io: Io,
     reader: *Io.Reader,
+    // on_escape: Sign
+    on_escape: EscapeHandler,
     queue: Io.Queue(u8),
+    trap_escape: bool = true,
     shutdown: Io.Event = .unset,
-    worker: std.Thread = undefined,
 
     const ReadResult = union(enum) {
         input: error{ EndOfStream, ReadFailed }!u8,
@@ -18,11 +39,16 @@ const Keyboard = struct {
         shutdown: error{Canceled}!void,
     };
 
-    pub fn init(io: Io, reader: *Io.Reader, buffer: []u8) Self {
-        return Self{ .io = io, .reader = reader, .queue = .init(buffer) };
+    pub fn init(io: Io, reader: *Io.Reader, buffer: []u8, on_escape: EscapeHandler) Self {
+        return Self{
+            .io = io,
+            .reader = reader,
+            .queue = .init(buffer),
+            .on_escape = on_escape,
+        };
     }
 
-    pub fn readWithTimeout(self: *Self, timeout: ?Io.Duration) !ReadResult {
+    fn readWithTimeout(self: *Self, timeout: ?Io.Duration) !ReadResult {
         var results: [10]ReadResult = undefined;
         var select = Io.Select(ReadResult).init(self.io, &results);
         defer _ = select.cancel();
@@ -43,26 +69,27 @@ const Keyboard = struct {
         try self.queue.putOne(self.io, c);
     }
 
-    fn escape(self: *Self) !void {
-        print("Escape!\n", .{});
-        _ = self;
-        // try self.enqueue(0x1b);
+    fn handleEscape(self: *Self) !void {
+        if (self.trap_escape) {
+            self.on_escape.signal();
+        } else {
+            try self.enqueue(0x1b);
+        }
     }
 
     fn maybeEscape(self: *Self) !void {
         const res = try self.readWithTimeout(.fromMilliseconds(10));
         switch (res) {
             .input => |i| {
-                switch (try i) {
-                    '[' => {
-                        try self.enqueue(0x1b);
-                        try self.enqueue('[');
-                    },
-                    else => try self.escape(),
+                const c = try i;
+                switch (c) {
+                    '[' => try self.enqueue(0x1b),
+                    else => try self.handleEscape(),
                 }
+                try self.enqueue(c);
             },
+            .timeout => try self.handleEscape(),
             .shutdown => {},
-            .timeout => try self.escape(),
         }
     }
 
@@ -76,8 +103,8 @@ const Keyboard = struct {
                         else => |c| try self.enqueue(c),
                     }
                 },
-                .shutdown => {},
                 .timeout => unreachable,
+                .shutdown => {},
             }
         }
     }
@@ -91,6 +118,10 @@ const Keyboard = struct {
         t.detach();
     }
 };
+
+fn onEscape(_: *anyopaque) void {
+    print("Escape\n", .{});
+}
 
 pub fn main(init: std.process.Init) !void {
     // Set up our I/O implementation.
@@ -109,7 +140,7 @@ pub fn main(init: std.process.Init) !void {
     var reader = stdin.reader(init.io, &io_buf);
     var kb_buf: [256]u8 = undefined;
 
-    var kb: Keyboard = .init(io, &reader.interface, &kb_buf);
+    var kb: Keyboard = .init(io, &reader.interface, &kb_buf, .init(onEscape, &.{}));
     try kb.start();
     defer kb.stop();
 
