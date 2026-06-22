@@ -4,12 +4,6 @@ const print = std.debug.print;
 const assert = std.debug.assert;
 const linen = @import("linen/linen.zig");
 
-const ReadResult = union(enum) {
-    input: error{ EndOfStream, ReadFailed }!u8,
-    timeout: error{Canceled}!void,
-    shutdown: error{Canceled}!void,
-};
-
 const Keyboard = struct {
     const Self = @This();
     io: Io,
@@ -17,6 +11,12 @@ const Keyboard = struct {
     queue: Io.Queue(u8),
     shutdown: Io.Event = .unset,
     worker: std.Thread = undefined,
+
+    const ReadResult = union(enum) {
+        input: error{ EndOfStream, ReadFailed }!u8,
+        timeout: error{Canceled}!void,
+        shutdown: error{Canceled}!void,
+    };
 
     pub fn init(io: Io, reader: *Io.Reader, buffer: []u8) Self {
         return Self{ .io = io, .reader = reader, .queue = .init(buffer) };
@@ -49,32 +49,34 @@ const Keyboard = struct {
         // try self.enqueue(0x1b);
     }
 
+    fn maybeEscape(self: *Self) !void {
+        const res = try self.readWithTimeout(.fromMilliseconds(10));
+        switch (res) {
+            .input => |i| {
+                switch (try i) {
+                    '[' => {
+                        try self.enqueue(0x1b);
+                        try self.enqueue('[');
+                    },
+                    else => try self.escape(),
+                }
+            },
+            .shutdown => {},
+            .timeout => try self.escape(),
+        }
+    }
+
     fn run(self: *Self) !void {
-        main: while (true) {
+        while (!self.shutdown.isSet()) {
             const res = try self.readWithTimeout(null);
             switch (res) {
                 .input => |i| {
                     switch (try i) {
-                        0x1b => {
-                            const res2 = try self.readWithTimeout(.fromMilliseconds(10));
-                            switch (res2) {
-                                .input => |ii| {
-                                    switch (try ii) {
-                                        '[' => {
-                                            try self.enqueue(0x1b);
-                                            try self.enqueue('[');
-                                        },
-                                        else => try self.escape(),
-                                    }
-                                },
-                                .shutdown => break :main,
-                                .timeout => try self.escape(),
-                            }
-                        },
+                        0x1b => try self.maybeEscape(),
                         else => |c| try self.enqueue(c),
                     }
                 },
-                .shutdown => break :main,
+                .shutdown => {},
                 .timeout => unreachable,
             }
         }
