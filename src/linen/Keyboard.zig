@@ -94,6 +94,7 @@ pub fn stop(self: *Self) void {
     self.shutdown.set(self.io);
     self.worker.?.join();
     self.worker = null;
+    self.shutdown.reset();
 }
 
 pub fn start(self: *Self) !void {
