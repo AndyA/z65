@@ -99,6 +99,7 @@ pub fn stop(self: *Self) void {
 
 pub fn start(self: *Self) !void {
     assert(self.worker == null);
+    assert(!self.shutdown.isSet());
     self.worker = try std.Thread.spawn(.{}, run, .{self});
 }
 
