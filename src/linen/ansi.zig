@@ -1,6 +1,7 @@
 const std = @import("std");
 const Io = std.Io;
 const assert = std.debug.assert;
+const print = std.debug.print;
 
 pub const InputEvent = union(enum) {
     char: u8,
@@ -88,6 +89,11 @@ pub const Engine = struct {
         self.fallibleEnqueue(ev) catch unreachable;
     }
 
+    fn enqueueMany(self: *Self, buf: []u8) void {
+        for (buf) |c|
+            self.enqueue(.{ .char = c });
+    }
+
     fn handleEscape(self: *Self) void {
         if (self.trap_escape)
             self.escape_event.set(self.io)
@@ -96,17 +102,88 @@ pub const Engine = struct {
     }
 
     fn maybeEscape(self: *Self) void {
-        switch (self.read(.fromMilliseconds(10))) {
-            .input => |i| {
-                const c = i catch unreachable;
-                switch (c) {
-                    '[', 'O' => self.enqueue(.{ .char = 0x1b }),
-                    else => self.handleEscape(),
-                }
-                self.enqueue(.{ .char = c });
-            },
-            .timeout => self.handleEscape(),
-            .shutdown => {},
+        const State = enum {
+            const State = @This();
+
+            initial,
+            parameter,
+            intermediate,
+            final,
+
+            fn isValid(st: State, c: u8) bool {
+                return switch (st) {
+                    .initial => c >= 0x40 and c <= 0x5f,
+                    .parameter => c >= 0x30 and c <= 0x3f,
+                    .intermediate => c >= 0x20 and c <= 0x2f,
+                    .final => c >= 0x40 and c <= 0x7e,
+                };
+            }
+
+            fn next(st: State) State {
+                return switch (st) {
+                    .initial => .parameter,
+                    .parameter => .intermediate,
+                    .intermediate => .final,
+                    .final => unreachable,
+                };
+            }
+        };
+        var state: State = .initial;
+        var buf: [256]u8 = undefined;
+        var buf_pos: u16 = 0;
+
+        esc: while (true) {
+            switch (self.read(.fromMilliseconds(10))) {
+                .input => |i| {
+                    const c = i catch unreachable;
+
+                    if (buf_pos == buf.len) {
+                        self.handleEscape();
+                        self.enqueueMany(buf[0..buf_pos]);
+                        break :esc;
+                    }
+
+                    buf[buf_pos] = c;
+                    buf_pos += 1;
+
+                    decode: switch (state) {
+                        .initial => {
+                            if (!state.isValid(c)) {
+                                self.handleEscape();
+                                self.enqueueMany(buf[0..buf_pos]);
+                                break :esc;
+                            }
+                            state = state.next();
+                        },
+                        .parameter, .intermediate => {
+                            if (!state.isValid(c)) {
+                                state = state.next();
+                                continue :decode state;
+                            }
+                        },
+                        .final => {
+                            if (state.isValid(c)) {
+                                // Handle sequence
+                                print("CMD: ", .{});
+                                for (buf[0..buf_pos]) |cc| {
+                                    print(" {x:0>2}", .{cc});
+                                }
+                                print("\n", .{});
+                            } else {
+                                self.handleEscape();
+                                self.enqueueMany(buf[0..buf_pos]);
+                            }
+                            break :esc;
+                        },
+                    }
+                },
+                .timeout => {
+                    self.handleEscape();
+                    self.enqueueMany(buf[0..buf_pos]);
+                    break :esc;
+                },
+                .shutdown => break :esc,
+            }
         }
     }
 
