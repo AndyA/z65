@@ -64,7 +64,7 @@ fn maybeEscape(self: *Self) void {
         .input => |i| {
             const c = i catch unreachable;
             switch (c) {
-                '[' => self.enqueue(0x1b),
+                '[', 'O' => self.enqueue(0x1b),
                 else => self.handleEscape(),
             }
             self.enqueue(c);

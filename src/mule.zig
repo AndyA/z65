@@ -29,6 +29,7 @@ pub fn main(init: std.process.Init) !void {
     var kb_buf: [256]u8 = undefined;
 
     var kb: Keyboard = .init(io, &reader.interface, &kb_buf, &escape);
+    // kb.trapEscape(false);
     try kb.start();
     defer kb.stop();
 
