@@ -3,7 +3,7 @@ const Io = std.Io;
 const print = std.debug.print;
 const assert = std.debug.assert;
 const linen = @import("linen/linen.zig");
-const Keyboard = @import("linen/Keyboard.zig");
+const ansi = @import("linen/ansi.zig");
 
 fn onEscape(_: *anyopaque) void {
     print("Escape\n", .{});
@@ -26,19 +26,21 @@ pub fn main(init: std.process.Init) !void {
 
     var io_buf: [32]u8 = undefined;
     var reader = stdin.reader(init.io, &io_buf);
-    var kb_buf: [256]u8 = undefined;
+    var kb_buf: [256]ansi.InputEvent = undefined;
 
-    var kb: Keyboard = .init(io, &reader.interface, &kb_buf, &escape);
-    // kb.trapEscape(false);
-    try kb.start();
-    defer kb.stop();
+    var engine: ansi.Engine = .init(io, &reader.interface, &kb_buf, &escape);
+    try engine.start();
+    defer engine.stop();
 
     // var last_ts: i64 = 0;
     main: while (true) {
-        switch (kb.poll(.fromSeconds(1))) {
-            .input => |c| {
+        switch (engine.poll(.fromSeconds(1))) {
+            .char => |c| {
                 print("\\x{x:0>2}", .{c});
                 if (c == 0x20) break :main;
+            },
+            .meta => |m| {
+                print("meta {s}\n", .{@tagName(m)});
             },
             .escape => {
                 print("Escape\n", .{});
