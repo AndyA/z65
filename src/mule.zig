@@ -34,7 +34,7 @@ pub fn main(init: std.process.Init) !void {
 
     // var last_ts: i64 = 0;
     main: while (true) {
-        switch (engine.poll(.fromSeconds(1))) {
+        switch (engine.poll(.fromSeconds(5))) {
             .char => |c| {
                 print("\\x{x:0>2}", .{c});
                 if (c == 0x20) break :main;
@@ -46,7 +46,7 @@ pub fn main(init: std.process.Init) !void {
                 print("Escape\n", .{});
                 escape.reset();
             },
-            .timeout => print("* ", .{}),
+            .timeout => print(" *\n", .{}),
         }
     }
 
