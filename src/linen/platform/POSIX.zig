@@ -19,15 +19,18 @@ pub fn init(config: Config) Error!Self {
     const previous_termios: std.posix.termios = try std.posix.tcgetattr(config.stdin.handle);
 
     var termios = previous_termios;
+
     termios.iflag.IGNBRK = true;
+    termios.iflag.INLCR = false;
     termios.lflag.ICANON = false;
     termios.lflag.ECHO = false;
 
-    termios.cc[@intFromEnum(std.posix.V.INTR)] = 0xff; // disable
-    if (@hasDecl(std.posix.V, "DSUSP"))
-        termios.cc[@intFromEnum(std.posix.V.DSUSP)] = 0xff; // disable
-    if (@hasDecl(std.posix.V, "SUSP"))
-        termios.cc[@intFromEnum(std.posix.V.SUSP)] = 0xff; // disable
+    const flags = [_][]const u8{ "INTR", "DSUSP", "SUSP", "START", "STOP" };
+
+    inline for (flags) |flag| {
+        if (@hasField(std.posix.V, flag))
+            termios.cc[@intFromEnum(@field(std.posix.V, flag))] = 0xff;
+    }
 
     try std.posix.tcsetattr(config.stdin.handle, std.posix.TCSA.NOW, termios);
 
