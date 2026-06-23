@@ -3,9 +3,23 @@ const Io = std.Io;
 const assert = std.debug.assert;
 const print = std.debug.print;
 
+pub const InputMeta = enum(u8) {
+    UP,
+    DOWN,
+    RIGHT,
+    LEFT,
+};
+
+const INPUT_MAP = [_]struct { []const u8, InputMeta }{
+    .{ "[A", .UP },
+    .{ "[B", .DOWN },
+    .{ "[C", .RIGHT },
+    .{ "[D", .LEFT },
+};
+
 pub const InputEvent = union(enum) {
     char: u8,
-    meta: enum(u8) { UP, DOWN, LEFT, RIGHT },
+    meta: InputMeta,
     escape: void,
     timeout: void,
 };
@@ -101,6 +115,21 @@ pub const Engine = struct {
             self.enqueue(.{ .char = 0x1b });
     }
 
+    fn handleAnsi(self: *Self, seq: []const u8) void {
+        for (INPUT_MAP) |im| {
+            if (std.mem.eql(u8, im.@"0", seq)) {
+                self.enqueue(.{ .meta = im.@"1" });
+                return;
+            }
+        }
+        // Handle sequence
+        print("CMD: ", .{});
+        for (seq) |c| {
+            print(" {x:0>2}", .{c});
+        }
+        print("\n", .{});
+    }
+
     fn maybeEscape(self: *Self) void {
         const State = enum {
             const State = @This();
@@ -128,6 +157,7 @@ pub const Engine = struct {
                 };
             }
         };
+
         var state: State = .initial;
         var buf: [256]u8 = undefined;
         var buf_pos: u16 = 0;
@@ -137,22 +167,14 @@ pub const Engine = struct {
                 .input => |i| {
                     const c = i catch unreachable;
 
-                    if (buf_pos == buf.len) {
-                        self.handleEscape();
-                        self.enqueueMany(buf[0..buf_pos]);
-                        break :esc;
-                    }
+                    if (buf_pos == buf.len) break :esc;
 
                     buf[buf_pos] = c;
                     buf_pos += 1;
 
                     decode: switch (state) {
                         .initial => {
-                            if (!state.isValid(c)) {
-                                self.handleEscape();
-                                self.enqueueMany(buf[0..buf_pos]);
-                                break :esc;
-                            }
+                            if (!state.isValid(c)) break :esc;
                             state = state.next();
                         },
                         .parameter, .intermediate => {
@@ -162,29 +184,20 @@ pub const Engine = struct {
                             }
                         },
                         .final => {
-                            if (state.isValid(c)) {
-                                // Handle sequence
-                                print("CMD: ", .{});
-                                for (buf[0..buf_pos]) |cc| {
-                                    print(" {x:0>2}", .{cc});
-                                }
-                                print("\n", .{});
-                            } else {
-                                self.handleEscape();
-                                self.enqueueMany(buf[0..buf_pos]);
-                            }
-                            break :esc;
+                            if (!state.isValid(c)) break :esc;
+                            self.handleAnsi(buf[0..buf_pos]);
+                            return;
                         },
                     }
                 },
-                .timeout => {
-                    self.handleEscape();
-                    self.enqueueMany(buf[0..buf_pos]);
-                    break :esc;
-                },
-                .shutdown => break :esc,
+                .timeout, .shutdown => break :esc,
             }
         }
+
+        // If we leave the loop decode failed so handle Escape and send any
+        // additional bytes
+        self.handleEscape();
+        self.enqueueMany(buf[0..buf_pos]);
     }
 
     fn run(self: *Self) void {
