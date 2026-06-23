@@ -10,6 +10,7 @@ escape_event: *Io.Event,
 queue: Io.Queue(u8),
 trap_escape: bool = true, // TODO atomic
 shutdown: Io.Event = .unset,
+worker: std.Thread = undefined,
 
 const ReadResult = union(enum) {
     input: error{ EndOfStream, ReadFailed }!u8,
@@ -90,11 +91,12 @@ fn run(self: *Self) void {
 
 pub fn stop(self: *Self) void {
     self.shutdown.set(self.io);
+    self.worker.join();
 }
 
 pub fn start(self: *Self) !void {
-    const t = try std.Thread.spawn(.{}, run, .{self});
-    t.detach();
+    self.worker = try std.Thread.spawn(.{}, run, .{self});
+    // t.detach();
 }
 
 pub fn trapEscape(self: *Self, trap: bool) void {
