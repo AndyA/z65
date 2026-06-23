@@ -24,8 +24,8 @@ pub fn main(init: std.process.Init) !void {
     // const clock: Io.Clock = .awake;
     print("Hit space to quit\n", .{});
 
-    var io_buf: [32]u8 = undefined;
-    var reader = stdin.reader(init.io, &io_buf);
+    var in_buf: [32]u8 = undefined;
+    var reader = stdin.reader(init.io, &in_buf);
     var kb_buf: [256]ansi.InputEvent = undefined;
 
     var engine: ansi.Engine = .init(io, &reader.interface, &kb_buf, &escape);

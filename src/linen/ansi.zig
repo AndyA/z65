@@ -8,6 +8,9 @@ pub const InputMeta = enum(u8) {
     DOWN,
     RIGHT,
     LEFT,
+    END,
+    HOME,
+    INS,
     DEL,
 };
 
@@ -16,6 +19,9 @@ const INPUT_MAP = [_]struct { []const u8, InputMeta }{
     .{ "[B", .DOWN },
     .{ "[C", .RIGHT },
     .{ "[D", .LEFT },
+    .{ "[F", .END },
+    .{ "[H", .HOME },
+    .{ "[2~", .INS },
     .{ "[3~", .DEL },
 };
 
@@ -103,11 +109,6 @@ pub const Engine = struct {
 
     fn enqueue(self: *Self, ev: InputEvent) void {
         self.fallibleEnqueue(ev) catch unreachable;
-    }
-
-    fn enqueueMany(self: *Self, buf: []u8) void {
-        for (buf) |c|
-            self.enqueue(.{ .char = c });
     }
 
     fn handleEscape(self: *Self) void {
@@ -202,7 +203,8 @@ pub const Engine = struct {
         // If we leave the loop decode failed so handle Escape and send any
         // additional bytes
         self.handleEscape();
-        self.enqueueMany(buf[0..buf_pos]);
+        for (buf[0..buf_pos]) |c|
+            self.enqueue(.{ .char = c });
     }
 
     fn run(self: *Self) void {
