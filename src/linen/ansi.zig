@@ -37,7 +37,7 @@ pub const InputMeta = enum(u8) {
     F20,
 };
 
-const INPUT_MAP = [_]struct { []const u8, InputMeta }{
+const ANSI_MAP = [_]struct { []const u8, InputMeta }{
     .{ "[A", .UP },
     .{ "[B", .DOWN },
     .{ "[C", .RIGHT },
@@ -88,6 +88,7 @@ pub const Engine = struct {
 
     io: Io,
     reader: *Io.Reader,
+    writer: *Io.Writer,
     escape_event: *Io.Event,
     queue: InputQueue,
     queue_overflow: Io.Event = .unset,
@@ -101,10 +102,17 @@ pub const Engine = struct {
         shutdown: error{Canceled}!void,
     };
 
-    pub fn init(io: Io, reader: *Io.Reader, buffer: []InputEvent, escape_event: *Io.Event) Self {
+    pub fn init(
+        io: Io,
+        reader: *Io.Reader,
+        writer: *Io.Writer,
+        buffer: []InputEvent,
+        escape_event: *Io.Event,
+    ) Self {
         return Self{
             .io = io,
             .reader = reader,
+            .writer = writer,
             .queue = .init(buffer),
             .escape_event = escape_event,
         };
@@ -170,7 +178,7 @@ pub const Engine = struct {
 
     fn handleAnsi(self: *Self, seq: []const u8) void {
         // Look for simple matches
-        for (INPUT_MAP) |im| {
+        for (ANSI_MAP) |im| {
             if (std.mem.eql(u8, im.@"0", seq)) {
                 self.enqueue(.{ .meta = im.@"1" });
                 return;
@@ -186,7 +194,7 @@ pub const Engine = struct {
         print("\"\n", .{});
     }
 
-    fn maybeEscape(self: *Self) void {
+    fn parseEscape(self: *Self) void {
         const State = enum {
             const State = @This();
 
@@ -262,7 +270,7 @@ pub const Engine = struct {
             switch (self.read(null)) {
                 .input => |i| {
                     switch (i catch unreachable) {
-                        0x1b => self.maybeEscape(),
+                        0x1b => self.parseEscape(),
                         else => |c| self.enqueue(.{ .char = c }),
                     }
                 },

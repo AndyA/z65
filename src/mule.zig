@@ -16,6 +16,7 @@ pub fn main(init: std.process.Init) !void {
     const io = threaded.io();
 
     const stdin = Io.File.stdin();
+    const stdout = Io.File.stdout();
     const term = try linen.Term.init(.{ .stdin = stdin });
     defer term.deinit();
 
@@ -26,9 +27,17 @@ pub fn main(init: std.process.Init) !void {
 
     var in_buf: [32]u8 = undefined;
     var reader = stdin.reader(init.io, &in_buf);
+    var out_buf: [1]u8 = undefined;
+    var writer = stdout.writer(init.io, &out_buf);
     var kb_buf: [256]ansi.InputEvent = undefined;
 
-    var engine: ansi.Engine = .init(io, &reader.interface, &kb_buf, &escape);
+    var engine: ansi.Engine = .init(
+        io,
+        &reader.interface,
+        &writer.interface,
+        &kb_buf,
+        &escape,
+    );
     try engine.start();
     defer engine.stop();
 
