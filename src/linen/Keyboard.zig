@@ -80,7 +80,8 @@ fn run(self: *Self) void {
                     else => |c| self.enqueue(c),
                 }
             },
-            else => {},
+            .timeout => unreachable,
+            .shutdown => {},
         }
     }
 }
