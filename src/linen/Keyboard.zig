@@ -26,24 +26,22 @@ pub fn init(io: Io, reader: *Io.Reader, buffer: []u8, escape_event: *Io.Event) S
     };
 }
 
-fn fallibleRead(self: *Self, timeout: ?Io.Duration) !ReadResult {
+fn fallibleRead(self: *Self, timeout: Io.Duration) !ReadResult {
     var results: [3]ReadResult = undefined;
     var select = Io.Select(ReadResult).init(self.io, &results);
     defer _ = select.cancel();
 
     try select.concurrent(.input, Io.Reader.takeByte, .{self.reader});
     try select.concurrent(.shutdown, Io.Event.wait, .{ &self.shutdown, self.io });
-
-    if (timeout) |t|
-        try select.concurrent(.timeout, Io.Clock.Duration.sleep, .{
-            .{ .raw = t, .clock = .awake },
-            self.io,
-        });
+    try select.concurrent(.timeout, Io.Clock.Duration.sleep, .{
+        .{ .raw = timeout, .clock = .awake },
+        self.io,
+    });
 
     return try select.await();
 }
 
-fn read(self: *Self, timeout: ?Io.Duration) ReadResult {
+fn read(self: *Self, timeout: Io.Duration) ReadResult {
     return self.fallibleRead(timeout) catch unreachable;
 }
 
@@ -75,7 +73,7 @@ fn maybeEscape(self: *Self) void {
 
 fn run(self: *Self) void {
     while (!self.shutdown.isSet()) {
-        switch (self.read(null)) {
+        switch (self.read(.max)) {
             .input => |i| {
                 switch (i catch unreachable) {
                     0x1b => self.maybeEscape(),
@@ -101,9 +99,9 @@ pub fn trapEscape(self: *Self, trap: bool) void {
     self.trap_escape = trap;
 }
 
-const PollResult = union(enum) { input: u8, escape: void, timeout: void };
+pub const PollResult = union(enum) { input: u8, escape: void, timeout: void };
 
-fn falliblePoll(self: *Self, timeout: ?Io.Duration) !PollResult {
+fn falliblePoll(self: *Self, timeout: Io.Duration) !PollResult {
     const Result = union(enum) {
         input: error{ Canceled, Closed }!u8,
         timeout: error{Canceled}!void,
@@ -115,12 +113,10 @@ fn falliblePoll(self: *Self, timeout: ?Io.Duration) !PollResult {
 
     try select.concurrent(.input, Io.Queue(u8).getOne, .{ &self.queue, self.io });
     try select.concurrent(.escape, Io.Event.wait, .{ self.escape_event, self.io });
-
-    if (timeout) |t|
-        try select.concurrent(.timeout, Io.Clock.Duration.sleep, .{
-            .{ .raw = t, .clock = .awake },
-            self.io,
-        });
+    try select.concurrent(.timeout, Io.Clock.Duration.sleep, .{
+        .{ .raw = timeout, .clock = .awake },
+        self.io,
+    });
 
     return switch (try select.await()) {
         .input => |c| .{ .input = try c },
@@ -129,6 +125,6 @@ fn falliblePoll(self: *Self, timeout: ?Io.Duration) !PollResult {
     };
 }
 
-pub fn poll(self: *Self, timeout: ?Io.Duration) PollResult {
+pub fn poll(self: *Self, timeout: Io.Duration) PollResult {
     return self.falliblePoll(timeout) catch unreachable;
 }
