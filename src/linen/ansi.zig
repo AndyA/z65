@@ -118,6 +118,7 @@ pub const Engine = struct {
     }
 
     fn handleAnsi(self: *Self, seq: []const u8) void {
+        // Look for simple matches
         for (INPUT_MAP) |im| {
             if (std.mem.eql(u8, im.@"0", seq)) {
                 self.enqueue(.{ .meta = im.@"1" });
@@ -126,10 +127,12 @@ pub const Engine = struct {
         }
         // Handle sequence
         print("CMD: ", .{});
-        for (seq) |c| {
-            print(" {x:0>2}", .{c});
-        }
-        print("\n", .{});
+        for (seq) |c|
+            print("{x:0>2} ", .{c});
+        print("\"", .{});
+        for (seq) |c|
+            print("{c}", .{if (std.ascii.isPrint(c)) c else '.'});
+        print("\"\n", .{});
     }
 
     fn maybeEscape(self: *Self) void {
