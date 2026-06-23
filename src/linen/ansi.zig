@@ -8,6 +8,7 @@ pub const InputMeta = enum(u8) {
     DOWN,
     RIGHT,
     LEFT,
+    DEL,
 };
 
 const INPUT_MAP = [_]struct { []const u8, InputMeta }{
@@ -15,6 +16,7 @@ const INPUT_MAP = [_]struct { []const u8, InputMeta }{
     .{ "[B", .DOWN },
     .{ "[C", .RIGHT },
     .{ "[D", .LEFT },
+    .{ "[3~", .DEL },
 };
 
 pub const InputEvent = union(enum) {
