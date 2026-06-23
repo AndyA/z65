@@ -19,6 +19,7 @@ pub fn init(config: Config) Error!Self {
     const previous_termios: std.posix.termios = try std.posix.tcgetattr(config.stdin.handle);
 
     var termios = previous_termios;
+    termios.iflag.IGNBRK = true;
     termios.lflag.ICANON = false;
     termios.lflag.ECHO = false;
 
