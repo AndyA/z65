@@ -8,6 +8,7 @@ io: Io,
 reader: *Io.Reader,
 escape_event: *Io.Event,
 queue: Io.Queue(u8),
+queue_overflow: Io.Event = .unset,
 trap_escape: bool = true, // TODO atomic
 shutdown: Io.Event = .unset,
 worker: ?std.Thread = null,
@@ -27,7 +28,10 @@ pub fn init(io: Io, reader: *Io.Reader, buffer: []u8, escape_event: *Io.Event) S
     };
 }
 
-fn fallibleRead(self: *Self, timeout: ?Io.Duration) !ReadResult {
+fn fallibleRead(self: *Self, timeout: ?Io.Duration) error{
+    Canceled,
+    ConcurrencyUnavailable,
+}!ReadResult {
     var results: [3]ReadResult = undefined;
     var select = Io.Select(ReadResult).init(self.io, &results);
     defer _ = select.cancel();
@@ -36,10 +40,11 @@ fn fallibleRead(self: *Self, timeout: ?Io.Duration) !ReadResult {
     try select.concurrent(.shutdown, Io.Event.wait, .{ &self.shutdown, self.io });
 
     if (timeout) |t|
-        try select.concurrent(.timeout, Io.Clock.Duration.sleep, .{
-            .{ .raw = t, .clock = .awake },
-            self.io,
-        });
+        try select.concurrent(
+            .timeout,
+            Io.Clock.Duration.sleep,
+            .{ .{ .raw = t, .clock = .awake }, self.io },
+        );
 
     return try select.await();
 }
@@ -48,8 +53,30 @@ fn read(self: *Self, timeout: ?Io.Duration) ReadResult {
     return self.fallibleRead(timeout) catch unreachable;
 }
 
+fn fallibleEnqueue(self: *Self, c: u8) error{ Canceled, ConcurrencyUnavailable }!void {
+    const Result = union(enum) {
+        put: error{ Canceled, Closed }!void,
+        timeout: error{Canceled}!void,
+    };
+    var results: [2]Result = undefined;
+    var select = Io.Select(Result).init(self.io, &results);
+    defer _ = select.cancel();
+
+    try select.concurrent(.put, Io.Queue(u8).putOne, .{ &self.queue, self.io, c });
+    try select.concurrent(
+        .timeout,
+        Io.Clock.Duration.sleep,
+        .{ .{ .raw = .fromMilliseconds(10), .clock = .awake }, self.io },
+    );
+
+    switch (try select.await()) {
+        .put => {},
+        .timeout => self.queue_overflow.set(self.io),
+    }
+}
+
 fn enqueue(self: *Self, c: u8) void {
-    self.queue.putOne(self.io, c) catch unreachable;
+    self.fallibleEnqueue(c) catch unreachable;
 }
 
 fn handleEscape(self: *Self) void {
@@ -109,7 +136,11 @@ pub fn trapEscape(self: *Self, trap: bool) void {
 
 const PollResult = union(enum) { input: u8, escape: void, timeout: void };
 
-fn falliblePoll(self: *Self, timeout: ?Io.Duration) !PollResult {
+fn falliblePoll(self: *Self, timeout: ?Io.Duration) error{
+    Canceled,
+    ConcurrencyUnavailable,
+    Closed,
+}!PollResult {
     const Result = union(enum) {
         input: error{ Canceled, Closed }!u8,
         timeout: error{Canceled}!void,
