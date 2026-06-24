@@ -38,6 +38,7 @@ const Editor = struct {
 
     pub fn init(buffer: []u8, chars: []Char) Self {
         assert(buffer.len == chars.len);
+        assert(buffer.len <= std.math.maxInt(u16));
         return .{ .buffer = buffer, .chars = chars };
     }
 
