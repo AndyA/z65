@@ -81,7 +81,8 @@ runs = 0
 for key, run in groupby(mappings, lambda m: m.cells):
     runs += 1
     same = list(run)
-    print(f".{{ .first = 0x{same[0].codepoint:0>06x}, .width = {key} }},")
+    width = "1 | 2" if key == 3 else str(key)
+    print(f".{{ .first = 0x{same[0].codepoint:0>06x}, .width = {width} }},")
 
 print(f".{{ .first = 0x{same[-1].codepoint + 1:0>06x}, .width = 0 }},")
 
