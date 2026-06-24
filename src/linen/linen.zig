@@ -1,6 +1,7 @@
 const std = @import("std");
 const assert = std.debug.assert;
 const print = std.debug.print;
+const u = std.unicode;
 
 const builtin = @import("builtin");
 
@@ -15,7 +16,7 @@ pub const Term = switch (builtin.os.tag) {
 fn utf8Valid(chars: []const u8) bool {
     var pos: usize = 0;
     while (pos < chars.len)
-        pos += std.unicode.utf8ByteSequenceLength(chars[pos]) catch unreachable;
+        pos += u.utf8ByteSequenceLength(chars[pos]) catch unreachable;
     return pos == chars.len;
 }
 
@@ -40,7 +41,8 @@ const Editor = struct {
     }
 
     fn charStartIndex(self: Self, char_pos: u16) u16 {
-        return @intCast(@intFromPtr(self.chars[char_pos].bytes.ptr) - @intFromPtr(self.buffer.ptr));
+        return @intCast(@intFromPtr(self.chars[char_pos].bytes.ptr) -
+            @intFromPtr(self.buffer.ptr));
     }
 
     fn charEndIndex(self: Self, char_pos: u16) u16 {
@@ -58,25 +60,25 @@ const Editor = struct {
     }
 
     fn refreshChars(self: *Self) void {
-        var buf_pos = self.endOfChars();
+        const buf = self.buffer;
+        var pos = self.endOfChars();
 
-        while (buf_pos < self.buf_used) {
-            // print("buffer: {any}, pos: {d}\n", .{ self.buffer[0..self.buf_used], buf_pos });
-            const bytes = std.unicode.utf8ByteSequenceLength(self.buffer[buf_pos]) catch unreachable;
-            const codepoint = std.unicode.utf8Decode(self.buffer[buf_pos .. buf_pos + bytes]) catch unreachable;
-            const cells = tools.countCells(codepoint);
-            if (cells == 0 and self.char_used != 0) { // zero width
+        while (pos < self.buf_used) {
+            const bytes = u.utf8ByteSequenceLength(buf[pos]) catch unreachable;
+            const cp = u.utf8Decode(buf[pos .. pos + bytes]) catch unreachable;
+            const width = tools.countCells(cp);
+            if (width == 0 and self.char_used != 0) { // zero width
                 // Extend previous char's span
                 self.chars[self.char_used - 1].bytes.len += bytes;
             } else {
                 assert(self.char_used <= self.chars.len);
                 defer self.char_used += 1;
                 self.chars[self.char_used] = .{
-                    .bytes = self.buffer[buf_pos .. buf_pos + bytes],
-                    .width = cells,
+                    .bytes = buf[pos .. pos + bytes],
+                    .width = width,
                 };
             }
-            buf_pos += bytes;
+            pos += bytes;
         }
     }
 
