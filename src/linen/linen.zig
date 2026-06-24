@@ -23,8 +23,9 @@ fn utf8Valid(chars: []const u8) bool {
 const Editor = struct {
     const Self = @This();
 
-    pub const Char = struct {
-        bytes: []u8,
+    pub const Char = packed struct {
+        pos: u16,
+        len: u14,
         width: u2, // display width
     };
 
@@ -44,12 +45,12 @@ const Editor = struct {
         assert(char_pos <= self.char_used);
         if (char_pos == self.char_used)
             return self.buf_used;
-        return @intCast(@intFromPtr(self.chars[char_pos].bytes.ptr) -
-            @intFromPtr(self.buffer.ptr));
+        return self.chars[char_pos].pos;
     }
 
     fn charEndIndex(self: Self, char_pos: u16) u16 {
-        return @intCast(self.charStartIndex(char_pos) + self.chars[char_pos].bytes.len);
+        assert(char_pos < self.char_used);
+        return self.charStartIndex(char_pos) + self.chars[char_pos].len;
     }
 
     fn startOfChars(self: Self) u16 {
@@ -72,12 +73,13 @@ const Editor = struct {
             const width = tools.countCells(cp);
             if (width == 0 and self.char_used != 0) { // zero width
                 // Extend previous char's span
-                self.chars[self.char_used - 1].bytes.len += bytes;
+                self.chars[self.char_used - 1].len += bytes;
             } else {
                 assert(self.char_used <= self.chars.len);
                 defer self.char_used += 1;
                 self.chars[self.char_used] = .{
-                    .bytes = buf[pos .. pos + bytes],
+                    .pos = pos,
+                    .len = bytes,
                     .width = width,
                 };
             }
@@ -149,8 +151,8 @@ const Editor = struct {
         self.assertHealthy();
         if (self.char_pos == self.char_used)
             return false;
-        const idx = self.charStartIndex(self.chars[self.char_pos]);
-        const len = self.chars[self.char_pos].bytes.len;
+        const idx = self.charStartIndex(self.char_pos);
+        const len = self.chars[self.char_pos].len;
         @memmove(
             self.buffer[idx .. self.buf_used - len],
             self.buffer[idx + len .. self.buf_used],
