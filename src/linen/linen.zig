@@ -58,7 +58,7 @@ const Editor = struct {
         return self.charEndIndex(self.char_used - 1);
     }
 
-    fn refreshChars(self: *Self) void {
+    fn recalcChars(self: *Self) void {
         const buf = self.buffer;
         var pos = self.endOfCharsIndex();
 
@@ -82,9 +82,9 @@ const Editor = struct {
         }
     }
 
-    fn refreshForward(self: *Self) void {
+    fn recalcForward(self: *Self) void {
         self.char_used = self.char_pos;
-        self.refreshChars();
+        self.recalcChars();
     }
 
     fn assertHealthy(self: Self) void {
@@ -138,7 +138,7 @@ const Editor = struct {
 
         // Rebuild self.chars
         const before = self.char_used;
-        self.refreshForward();
+        self.recalcForward();
         self.char_pos += self.char_used - before;
         return true;
     }
@@ -154,7 +154,7 @@ const Editor = struct {
             self.buffer[idx + len .. self.buf_used],
         );
         self.buf_used -= len;
-        self.refreshForward();
+        self.recalcForward();
         return true;
     }
 
@@ -176,7 +176,7 @@ const Editor = struct {
         @memmove(self.buffer[0..len], self.buffer[idx..self.buf_used]);
         self.buf_used = len;
         self.char_pos = 0;
-        self.refreshForward();
+        self.recalcForward();
     }
 
     pub fn killRight(self: *Self) void {
