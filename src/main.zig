@@ -165,4 +165,5 @@ test {
     @import("std").testing.refAllDecls(@This());
     _ = @import("basic/model/vars.zig");
     _ = @import("linen/linen.zig");
+    _ = @import("linen/unicode/tools.zig");
 }
