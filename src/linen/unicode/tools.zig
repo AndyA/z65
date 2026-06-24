@@ -44,3 +44,17 @@ test countCells {
         try expectEqual(w.width, countCells(last));
     }
 }
+
+pub const CellCounter = struct {
+    prefer: enum { narrow, wide },
+
+    pub fn count(self: CellCounter, codepoint: u21) u2 {
+        return switch (countCells(codepoint)) {
+            1 | 2 => switch (self.prefer) {
+                .narrow => 1,
+                .wide => 2,
+            },
+            else => |cells| cells,
+        };
+    }
+};
