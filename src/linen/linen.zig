@@ -16,7 +16,7 @@ pub const Term = switch (builtin.os.tag) {
 fn utf8Valid(chars: []const u8) bool {
     var pos: usize = 0;
     while (pos < chars.len)
-        pos += u.utf8ByteSequenceLength(chars[pos]) catch unreachable;
+        pos += u.utf8ByteSequenceLength(chars[pos]) catch return false;
     return pos == chars.len;
 }
 
@@ -53,19 +53,14 @@ const Editor = struct {
         return self.charStartIndex(char_pos) + self.chars[char_pos].len;
     }
 
-    fn startOfChars(self: Self) u16 {
-        if (self.char_used == 0) return 0;
-        return self.charStartIndex(0);
-    }
-
-    fn endOfChars(self: Self) u16 {
+    fn endOfCharsIndex(self: Self) u16 {
         if (self.char_used == 0) return 0;
         return self.charEndIndex(self.char_used - 1);
     }
 
     fn refreshChars(self: *Self) void {
         const buf = self.buffer;
-        var pos = self.endOfChars();
+        var pos = self.endOfCharsIndex();
 
         while (pos < self.buf_used) {
             const bytes = u.utf8ByteSequenceLength(buf[pos]) catch unreachable;
@@ -93,7 +88,7 @@ const Editor = struct {
     }
 
     fn assertHealthy(self: Self) void {
-        assert(self.endOfChars() == self.buf_used);
+        assert(self.endOfCharsIndex() == self.buf_used);
         assert(self.char_pos <= self.char_used);
     }
 
@@ -124,11 +119,11 @@ const Editor = struct {
 
     pub fn insert(self: *Self, char: []const u8) bool {
         self.assertHealthy();
-        assert(char.len != 0);
         assert(utf8Valid(char));
 
         if (self.buf_used + char.len >= self.buffer.len)
             return false;
+
         const idx = self.charStartIndex(self.char_pos);
 
         // Shift buffer to make space
@@ -137,6 +132,7 @@ const Editor = struct {
             self.buffer[idx..self.buf_used],
         );
         self.buf_used += @as(u16, @intCast(char.len));
+
         // Copy char
         @memcpy(self.buffer[idx .. idx + char.len], char);
 
@@ -196,7 +192,7 @@ const Editor = struct {
 
     pub fn getBytes(self: Self) []const u8 {
         self.assertHealthy();
-        return self.buffer[self.startOfChars()..self.endOfChars()];
+        return self.buffer[0..self.buf_used];
     }
 };
 
@@ -207,7 +203,7 @@ test Editor {
     var buf: [256]u8 = undefined;
     var chars: [256]Editor.Char = undefined;
 
-    var editor: Editor = .{ .buffer = &buf, .chars = &chars };
+    var editor: Editor = .init(&buf, &chars);
     try expectEqual(true, editor.insert("a"));
     try expectEqual(true, editor.insert("ᄀ"));
     try expectEqual(true, editor.moveLeft());
