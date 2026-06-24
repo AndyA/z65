@@ -117,24 +117,24 @@ const Editor = struct {
         self.char_pos = self.char_used;
     }
 
-    pub fn insert(self: *Self, char: []const u8) bool {
+    pub fn insert(self: *Self, bytes: []const u8) bool {
         self.assertHealthy();
-        assert(utf8Valid(char));
+        assert(utf8Valid(bytes));
 
-        if (self.buf_used + char.len >= self.buffer.len)
+        if (self.buf_used + bytes.len >= self.buffer.len)
             return false;
 
         const idx = self.charStartIndex(self.char_pos);
 
         // Shift buffer to make space
         @memmove(
-            self.buffer[idx + char.len .. self.buf_used + char.len],
+            self.buffer[idx + bytes.len .. self.buf_used + bytes.len],
             self.buffer[idx..self.buf_used],
         );
-        self.buf_used += @as(u16, @intCast(char.len));
+        self.buf_used += @as(u16, @intCast(bytes.len));
 
         // Copy char
-        @memcpy(self.buffer[idx .. idx + char.len], char);
+        @memcpy(self.buffer[idx .. idx + bytes.len], bytes);
 
         // Rebuild self.chars
         const before = self.char_used;
