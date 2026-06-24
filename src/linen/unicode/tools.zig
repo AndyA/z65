@@ -44,26 +44,3 @@ test countCells {
         try expectEqual(w.width, countCells(last));
     }
 }
-
-pub const PreferWidth = enum { narrow, wide };
-
-pub fn countCellsPrefer(codepoint: u21, prefer: PreferWidth) u2 {
-    return switch (countCells(codepoint)) {
-        1 | 2 => switch (prefer) {
-            .narrow => 1,
-            .wide => 2,
-        },
-        else => |cells| cells,
-    };
-}
-
-test countCellsPrefer {
-    try expectEqual(0, countCellsPrefer(0x000000, .narrow));
-    try expectEqual(0, countCellsPrefer(0x000000, .wide));
-    try expectEqual(1, countCellsPrefer(0x000041, .narrow));
-    try expectEqual(1, countCellsPrefer(0x000041, .wide));
-    try expectEqual(2, countCellsPrefer(0x001100, .narrow));
-    try expectEqual(2, countCellsPrefer(0x001100, .wide));
-    try expectEqual(1, countCellsPrefer(0x0000a1, .narrow));
-    try expectEqual(2, countCellsPrefer(0x0000a1, .wide));
-}
