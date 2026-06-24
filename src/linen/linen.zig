@@ -12,10 +12,10 @@ pub const Term = switch (builtin.os.tag) {
     else => @import("platform/posix.zig"),
 };
 
-fn utf8Valid(chars: []u8) bool {
-    var pos = 0;
+fn utf8Valid(chars: []const u8) bool {
+    var pos: usize = 0;
     while (pos < chars.len)
-        pos += std.unicode.utf8ByteSequenceLength(chars[pos]);
+        pos += std.unicode.utf8ByteSequenceLength(chars[pos]) catch unreachable;
     return pos == chars.len;
 }
 
@@ -39,35 +39,42 @@ const Editor = struct {
         return .{ .buffer = buffer, .chars = chars };
     }
 
-    fn charStartIndex(self: Self, char: Char) u16 {
-        return @intCast(@intFromPtr(char.bytes.ptr) - @intFromPtr(self.buffer.ptr));
+    fn charStartIndex(self: Self, char_pos: u16) u16 {
+        return @intCast(@intFromPtr(self.chars[char_pos].bytes.ptr) - @intFromPtr(self.buffer.ptr));
+    }
+
+    fn charEndIndex(self: Self, char_pos: u16) u16 {
+        return @intCast(self.charStartIndex(char_pos) + self.chars[char_pos].bytes.len);
+    }
+
+    fn startOfChars(self: Self) u16 {
+        if (self.char_used == 0) return 0;
+        return self.charStartIndex(0);
+    }
+
+    fn endOfChars(self: Self) u16 {
+        if (self.char_used == 0) return 0;
+        return self.charEndIndex(self.char_used - 1);
     }
 
     fn refreshChars(self: *Self) void {
-        var buf_pos = if (self.char_used > 0) self.chars[self.char_used - 1] else 0;
+        var buf_pos = self.endOfChars();
+
         while (buf_pos < self.buf_used) {
+            // print("buffer: {any}, pos: {d}\n", .{ self.buffer[0..self.buf_used], buf_pos });
             const bytes = std.unicode.utf8ByteSequenceLength(self.buffer[buf_pos]) catch unreachable;
-            const codepoint = std.unicode.utf8Decode(self.buffer[buf_pos .. buf_pos + bytes]);
+            const codepoint = std.unicode.utf8Decode(self.buffer[buf_pos .. buf_pos + bytes]) catch unreachable;
             const cells = tools.countCells(codepoint);
-            if (cells == 0) { // zero width
-                if (self.char_used == 0) {
-                    assert(self.char_used <= self.chars.len);
-                    self.chars[self.char_used] = .{
-                        .bytes = self.buffer[buf_pos .. buf_pos + bytes],
-                        .width = 0,
-                    };
-                    self.char_used += 1;
-                } else {
-                    // Extend char's span
-                    self.chars[self.char_used - 1].bytes.len += bytes;
-                }
+            if (cells == 0 and self.char_used != 0) { // zero width
+                // Extend previous char's span
+                self.chars[self.char_used - 1].bytes.len += bytes;
             } else {
                 assert(self.char_used <= self.chars.len);
+                defer self.char_used += 1;
                 self.chars[self.char_used] = .{
                     .bytes = self.buffer[buf_pos .. buf_pos + bytes],
                     .width = cells,
                 };
-                self.char_used += 1;
             }
             buf_pos += bytes;
         }
@@ -78,9 +85,8 @@ const Editor = struct {
         self.refreshChars();
     }
 
-    fn assertHealthy(self: *Self) void {
-        const buf_pos = if (self.char_used > 0) self.chars[self.char_used - 1] else 0;
-        assert(buf_pos == self.buf_used);
+    fn assertHealthy(self: Self) void {
+        assert(self.endOfChars() == self.buf_used);
         assert(self.char_pos <= self.char_used);
     }
 
@@ -99,6 +105,16 @@ const Editor = struct {
         return true;
     }
 
+    pub fn goStart(self: *Self) void {
+        self.assertHealthy();
+        self.char_pos = 0;
+    }
+
+    pub fn goEnd(self: *Self) void {
+        self.assertHealthy();
+        self.char_pos = self.char_used;
+    }
+
     pub fn insert(self: *Self, char: []const u8) bool {
         self.assertHealthy();
         assert(char.len != 0);
@@ -109,14 +125,14 @@ const Editor = struct {
         const idx = if (self.char_pos == self.char_used)
             self.buf_used
         else
-            self.charStartIndex(self.chars[self.char_pos]);
+            self.charStartIndex(self.char_pos);
 
         // Shift buffer to make space
         @memmove(
-            self.buffer[idx..self.buf_used],
             self.buffer[idx + char.len .. self.buf_used + char.len],
+            self.buffer[idx..self.buf_used],
         );
-        self.buf_used += char.len;
+        self.buf_used += @as(u16, @intCast(char.len));
         // Copy char
         @memcpy(self.buffer[idx .. idx + char.len], char);
 
@@ -157,7 +173,7 @@ const Editor = struct {
         self.assertHealthy();
         if (self.char_pos == self.char_used)
             return self.killAll();
-        const idx = self.charStartIndex(self.chars[self.char_pos]);
+        const idx = self.charStartIndex(self.char_pos);
         const len = self.buf_used - idx;
         @memmove(self.buffer[0..len], self.buffer[idx..self.buf_used]);
         self.buf_used = len;
@@ -171,10 +187,44 @@ const Editor = struct {
             return self.killAll()
         else if (self.char_pos == self.char_used)
             return;
-        self.buf_used = self.charStartIndex(self.chars[self.char_pos]);
+        self.buf_used = self.charStartIndex(self.char_pos);
         self.char_used = self.char_pos;
     }
+
+    pub fn getChars(self: Self) []const Char {
+        self.assertHealthy();
+        return self.chars[0..self.char_used];
+    }
+
+    pub fn getBytes(self: Self) []const u8 {
+        self.assertHealthy();
+        return self.buffer[self.startOfChars()..self.endOfChars()];
+    }
 };
+
+const expectEqual = std.testing.expectEqual;
+const expectEqualDeep = std.testing.expectEqualDeep;
+
+test Editor {
+    var buf: [256]u8 = undefined;
+    var chars: [256]Editor.Char = undefined;
+
+    var editor: Editor = .{ .buffer = &buf, .chars = &chars };
+    try expectEqual(true, editor.insert("a"));
+    try expectEqual(true, editor.insert("ᄀ"));
+    try expectEqual(true, editor.moveLeft());
+    try expectEqual(true, editor.insert("e"));
+
+    for (editor.getChars()) |c| {
+        print("{}\n", .{c});
+    }
+
+    try expectEqual(true, editor.insert("\xcc\x80"));
+
+    for (editor.getChars()) |c| {
+        print("{}\n", .{c});
+    }
+}
 
 pub const Linen = struct {
     const Self = @This();
