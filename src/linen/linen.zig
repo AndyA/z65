@@ -41,6 +41,9 @@ const Editor = struct {
     }
 
     fn charStartIndex(self: Self, char_pos: u16) u16 {
+        assert(char_pos <= self.char_used);
+        if (char_pos == self.char_used)
+            return self.buf_used;
         return @intCast(@intFromPtr(self.chars[char_pos].bytes.ptr) -
             @intFromPtr(self.buffer.ptr));
     }
@@ -124,10 +127,7 @@ const Editor = struct {
 
         if (self.buf_used + char.len >= self.buffer.len)
             return false;
-        const idx = if (self.char_pos == self.char_used)
-            self.buf_used
-        else
-            self.charStartIndex(self.char_pos);
+        const idx = self.charStartIndex(self.char_pos);
 
         // Shift buffer to make space
         @memmove(
@@ -173,8 +173,6 @@ const Editor = struct {
 
     pub fn killLeft(self: *Self) void {
         self.assertHealthy();
-        if (self.char_pos == self.char_used)
-            return self.killAll();
         const idx = self.charStartIndex(self.char_pos);
         const len = self.buf_used - idx;
         @memmove(self.buffer[0..len], self.buffer[idx..self.buf_used]);
@@ -185,10 +183,6 @@ const Editor = struct {
 
     pub fn killRight(self: *Self) void {
         self.assertHealthy();
-        if (self.char_pos == 0)
-            return self.killAll()
-        else if (self.char_pos == self.char_used)
-            return;
         self.buf_used = self.charStartIndex(self.char_pos);
         self.char_used = self.char_pos;
     }
