@@ -35,6 +35,8 @@ pub fn countCells(codepoint: u21) u2 {
 test countCells {
     try expectEqual(0, countCells(0x000000));
     try expectEqual(1, countCells(0x000041));
+    try expectEqual(3, countCells(0x0000a1));
+    try expectEqual(2, countCells(0x001100));
 
     for (WIDTHS, 1..) |w, i| {
         try expectEqual(w.width, countCells(w.first));
